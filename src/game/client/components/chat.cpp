@@ -4,7 +4,7 @@
 #include "chat.h"
 
 #include <engine/editor.h>
-#include <engine/external/remimu.h>
+#include <engine/external/regex.h>
 #include <engine/graphics.h>
 #include <engine/keys.h>
 #include <engine/shared/config.h>
@@ -561,8 +561,12 @@ void CChat::OnMessage(int MsgType, void *pRawMsg)
 
 		if(g_Config.m_TcRegexChatIgnore[0] && g_Config.m_RiEnableCensorList)
 		{
-			const char *pFilteredMSG = FilterText(pMsg->m_pMessage, pMsg->m_ClientId, true);
-			AddLine(pMsg->m_ClientId, pMsg->m_Team, pFilteredMSG);
+			auto &Re = GameClient()->m_TClient.m_RegexChatIgnore;
+			if(Re.error().empty() && Re.test(pMsg->m_pMessage))
+			{
+				const char *pFilteredMSG = FilterText(pMsg->m_pMessage, pMsg->m_ClientId, true);
+				AddLine(pMsg->m_ClientId, pMsg->m_Team, pFilteredMSG);
+			}
 		}
 
 		/*

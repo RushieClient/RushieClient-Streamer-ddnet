@@ -1175,6 +1175,7 @@ set(EXPECTED_DATA
   autoexec_server.cfg
   background_noise.png
   blob.png
+  builtinscripts/sayemoticon.chai
   censorlist.txt
   communityicons/none.png
   countryflags/AD.png
@@ -1978,7 +1979,7 @@ set(EXPECTED_DATA
   wordlist.txt
 )
 
-set_glob(DATA GLOB_RECURSE "cfg;frag;json;map;otf;png;rules;ttc;ttf;txt;vert;wv" data ${EXPECTED_DATA})
+set_glob(DATA GLOB_RECURSE "cfg;chai;frag;json;map;otf;png;rules;ttc;ttf;txt;vert;wv" data ${EXPECTED_DATA})
 
 ########################################################################
 # COPY DATA AND SHARED LIBS
@@ -2270,7 +2271,8 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   websockets.h
 )
 set_src(ENGINE_EXTERNAL GLOB src/engine/external
-  remimu.h
+  regex.cpp
+  regex.h
   spt.cpp
   spt.h
   tinyexpr.cpp
@@ -2580,10 +2582,6 @@ if(CLIENT)
     components/tclient/bindchat.h
     components/tclient/bindwheel.cpp
     components/tclient/bindwheel.h
-    components/tclient/chaiscript.cpp
-    components/tclient/chaiscript.h
-    components/tclient/conditional.cpp
-    components/tclient/conditional.h
     components/tclient/custom_communities.cpp
     components/tclient/custom_communities.h
     components/tclient/data_version.h
@@ -2598,6 +2596,10 @@ if(CLIENT)
     components/tclient/player_indicator.h
     components/tclient/rainbow.cpp
     components/tclient/rainbow.h
+    components/tclient/scripting.cpp
+    components/tclient/scripting.h
+    components/tclient/scripting/impl.cpp
+    components/tclient/scripting/impl.h
     components/tclient/skinprofiles.cpp
     components/tclient/skinprofiles.h
     components/tclient/statusbar.cpp
