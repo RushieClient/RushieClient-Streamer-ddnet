@@ -492,3 +492,15 @@ Only empty servers
 
 Change whole word (else use regex)
 == Менять все слово (иначе regex)
+
+[Rclientfilter]
+Replace word with:
+== Заменять слово с:
+
+[Rclientfilter]
+Full
+== Полностью
+
+[Rclientfilter]
+Both
+== Оба

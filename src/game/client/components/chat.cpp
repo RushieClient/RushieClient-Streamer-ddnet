@@ -1804,7 +1804,7 @@ const char *CChat::FilterText(const char *pMessage, int ClientId, bool IsChat)
 	}
 
 	std::string filteredMessage;
-	if(!g_Config.m_RiFilterChangeWholeWord)
+	if(g_Config.m_RiFilterChangeWholeWord == 0)
 	{
 		filteredMessage = Re.replace(pMessage, true, [](const std::string &match, int matchIndex, int group) -> std::string {
 			if(group != 0)
@@ -1828,7 +1828,7 @@ const char *CChat::FilterText(const char *pMessage, int ClientId, bool IsChat)
 		});
 		str_copy(s_aFilteredMessage, filteredMessage.c_str(), sizeof(s_aFilteredMessage));
 	}
-	else
+	else if(g_Config.m_RiFilterChangeWholeWord == 1)
 	{
 		for(size_t w = 0; w < SplitMsg.size(); w++)
 		{
@@ -1857,6 +1857,63 @@ const char *CChat::FilterText(const char *pMessage, int ClientId, bool IsChat)
 				str_append(s_aFilteredMessage, SplitMsg[w].c_str(), sizeof(s_aFilteredMessage));
 			}
 		}
+	}
+	else if(g_Config.m_RiFilterChangeWholeWord == 2)
+	{
+		// First, process whole words - replace exact matches with RiBlockedContentReplacementChar
+		for(size_t w = 0; w < SplitMsg.size(); w++)
+		{
+			if(w > 0)
+				str_append(s_aFilteredMessage, " ", sizeof(s_aFilteredMessage));
+			
+			bool IsExactMatch = false;
+			if(Re.error().empty())
+			{
+				// Check if the word exactly matches a blocked word
+				std::string matchedWord;
+				Re.match(SplitMsg[w], false, [&matchedWord, &SplitMsg, w](const std::string &match, int matchIndex, int group) {
+					if(group == 0 && match == SplitMsg[w])
+					{
+						matchedWord = match;
+					}
+				});
+				IsExactMatch = !matchedWord.empty();
+			}
+			
+			if(IsExactMatch)
+			{
+				// Whole word matches exactly - replace with RiBlockedContentReplacementChar
+				str_append(s_aFilteredMessage, g_Config.m_RiBlockedContentReplacementChar, sizeof(s_aFilteredMessage));
+			}
+			else
+			{
+				// Word doesn't match exactly - keep it for partial match processing
+				str_append(s_aFilteredMessage, SplitMsg[w].c_str(), sizeof(s_aFilteredMessage));
+			}
+		}
+		
+		// Then, use regex to replace partial matches with RiBlockedContentPartialReplacementChar
+		filteredMessage = Re.replace(s_aFilteredMessage, true, [](const std::string &match, int matchIndex, int group) -> std::string {
+			if(group != 0)
+				return "";
+			
+			if(g_Config.m_RiMultipleReplacementChar)
+			{
+				size_t size = 0, count = 0;
+				str_utf8_stats(match.c_str(), match.length() * 4, match.length(), &size, &count);
+				std::string replacement;
+				for(size_t i = 0; i < count; i++)
+				{
+					replacement += g_Config.m_RiBlockedContentPartialReplacementChar;
+				}
+				return replacement;
+			}
+			else
+			{
+				return g_Config.m_RiBlockedContentPartialReplacementChar;
+			}
+		});
+		str_copy(s_aFilteredMessage, filteredMessage.c_str(), sizeof(s_aFilteredMessage));
 	}
 
 	if(g_Config.m_RiShowBlockedWordInConsole && IsChat && !BlockedWords.empty())

@@ -651,7 +651,20 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	Column.HSplitTop(LineSize, &Label, &Column);
 	DoEditBoxWithLabel(&s_ReplacementChar, &Label, RCLocalize("Replacement char"), "*", g_Config.m_RiBlockedContentReplacementChar, sizeof(g_Config.m_RiBlockedContentReplacementChar));
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiFilterChangeWholeWord, RCLocalize("Change whole word (else use regex)"), &g_Config.m_RiFilterChangeWholeWord, &Column, LineSize);
+	static std::vector<CButtonContainer> s_vButtonContainers = {{}, {}, {}};
+	DoLine_RadioMenu(Column, RCLocalize("Replace word with:", "Rclientfilter"),
+		s_vButtonContainers,
+		{RCLocalize("Regex", "Rclientfilter"), RCLocalize("Full", "Rclientfilter"), RCLocalize("Both", "Rclientfilter")},
+		{0, 1, 2},
+		g_Config.m_RiFilterChangeWholeWord);
+	if(g_Config.m_RiFilterChangeWholeWord == 2)
+	{
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		static CLineInput s_PartialReplacementChar;
+		s_PartialReplacementChar.SetBuffer(g_Config.m_RiBlockedContentPartialReplacementChar, sizeof(g_Config.m_RiBlockedContentPartialReplacementChar));
+		Column.HSplitTop(LineSize, &Label, &Column);
+		DoEditBoxWithLabel(&s_PartialReplacementChar, &Label, RCLocalize("Partial Replacement char"), "*", g_Config.m_RiBlockedContentPartialReplacementChar, sizeof(g_Config.m_RiBlockedContentPartialReplacementChar));
+	}
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiChatAnim, RCLocalize("Animate chat"), &g_Config.m_RiChatAnim, &Column, LineSize);
