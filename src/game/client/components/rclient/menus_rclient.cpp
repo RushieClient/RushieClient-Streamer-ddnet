@@ -1140,23 +1140,24 @@ void CMenus::RenderSettingsRushieBindWheelSpec(CUIRect MainView)
 	int HoveringIndex = -1;
 
 	float MouseDist = distance(Center, Ui()->MousePos());
-	if(MouseDist < Radius && MouseDist > Radius * 0.25f)
+	const int SegmentCount = GameClient()->m_BindWheelSpec.m_vBinds.size();
+	if (MouseDist < Radius && MouseDist > Radius * 0.25f && SegmentCount > 0)
 	{
-		int SegmentCount = GameClient()->m_BindWheelSpec.m_vBinds.size();
 		float SegmentAngle = 2.0f * pi / SegmentCount;
 
 		float HoveringAngle = angle(Ui()->MousePos() - Center) + SegmentAngle / 2.0f;
-		if(HoveringAngle < 0.0f)
+		if (HoveringAngle < 0.0f)
 			HoveringAngle += 2.0f * pi;
 
 		HoveringIndex = (int)(HoveringAngle / (2.0f * pi) * SegmentCount);
-		if(Ui()->MouseButtonClicked(0))
+		HoveringIndex = std::clamp(HoveringIndex, 0, SegmentCount - 1);
+		if (Ui()->MouseButtonClicked(0))
 		{
 			s_SelectedBindIndex = HoveringIndex;
 			str_copy(s_aBindName, GameClient()->m_BindWheelSpec.m_vBinds[HoveringIndex].m_aName);
 			str_copy(s_aBindCommand, GameClient()->m_BindWheelSpec.m_vBinds[HoveringIndex].m_aCommand);
 		}
-		else if(Ui()->MouseButtonClicked(1) && s_SelectedBindIndex >= 0 && HoveringIndex >= 0 && HoveringIndex != s_SelectedBindIndex)
+		else if (Ui()->MouseButtonClicked(1) && s_SelectedBindIndex >= 0 && HoveringIndex >= 0 && HoveringIndex != s_SelectedBindIndex)
 		{
 			CBindWheelSpec::CBind BindA = GameClient()->m_BindWheelSpec.m_vBinds[s_SelectedBindIndex];
 			CBindWheelSpec::CBind BindB = GameClient()->m_BindWheelSpec.m_vBinds[HoveringIndex];
@@ -1165,28 +1166,30 @@ void CMenus::RenderSettingsRushieBindWheelSpec(CUIRect MainView)
 			str_copy(GameClient()->m_BindWheelSpec.m_vBinds[HoveringIndex].m_aName, BindA.m_aName);
 			str_copy(GameClient()->m_BindWheelSpec.m_vBinds[HoveringIndex].m_aCommand, BindA.m_aCommand);
 		}
-		else if(Ui()->MouseButtonClicked(2))
+		else if (Ui()->MouseButtonClicked(2))
 		{
 			s_SelectedBindIndex = HoveringIndex;
 		}
 	}
-	else if(MouseDist < Radius && Ui()->MouseButtonClicked(0))
+	else if (MouseDist < Radius && Ui()->MouseButtonClicked(0))
 	{
 		s_SelectedBindIndex = -1;
 		str_copy(s_aBindName, "");
 		str_copy(s_aBindCommand, "");
 	}
 
-	const float Theta = pi * 2.0f / std::max<float>(1.0f, GameClient()->m_BindWheelSpec.m_vBinds.size()); // Prevent divide by 0
-	for(int i = 0; i < static_cast<int>(GameClient()->m_BindWheelSpec.m_vBinds.size()); i++)
+	const float Theta = pi * 2.0f / std::max<float>(1.0f, GameClient()->m_BindWheelSpec.m_vBinds.size());
+	for (int i = 0; i < static_cast<int>(GameClient()->m_BindWheelSpec.m_vBinds.size()); i++)
 	{
+		TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
+
 		float SegmentFontSize = FontSize * 1.1f;
-		if(i == s_SelectedBindIndex)
+		if (i == s_SelectedBindIndex)
 		{
 			SegmentFontSize = FontSize * 1.7f;
 			TextRender()->TextColor(ColorRGBA(0.5f, 1.0f, 0.75f, 1.0f));
 		}
-		else if(i == HoveringIndex)
+		else if (i == HoveringIndex)
 		{
 			SegmentFontSize = FontSize * 1.35f;
 		}
@@ -1195,9 +1198,11 @@ void CMenus::RenderSettingsRushieBindWheelSpec(CUIRect MainView)
 		const float Angle = Theta * i;
 
 		const vec2 Pos = direction(Angle) * (Radius * 0.75f) + Center;
-		const CUIRect Rect = CUIRect{Pos.x - 50.0f, Pos.y - 50.0f, 100.0f, 100.0f};
+		const CUIRect Rect = CUIRect{ Pos.x - 50.0f, Pos.y - 50.0f, 100.0f, 100.0f };
 		Ui()->DoLabel(&Rect, Bind.m_aName, SegmentFontSize, TEXTALIGN_MC);
 	}
+
+	TextRender()->TextColor(ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f));
 
 	LeftView.HSplitTop(LineSize, &Button, &LeftView);
 	Button.VSplitLeft(100.0f, &Label, &Button);
@@ -1220,10 +1225,10 @@ void CMenus::RenderSettingsRushieBindWheelSpec(CUIRect MainView)
 
 	LeftView.HSplitTop(MarginSmall, nullptr, &LeftView);
 	LeftView.HSplitTop(LineSize, &Button, &LeftView);
-	if(DoButton_Menu(&s_OverrideButton, RCLocalize("Override Selected"), 0, &Button) && s_SelectedBindIndex >= 0)
+	if (DoButton_Menu(&s_OverrideButton, RCLocalize("Override Selected"), 0, &Button) && s_SelectedBindIndex >= 0 && s_SelectedBindIndex < static_cast<int>(GameClient()->m_BindWheel.m_vBinds.size()))
 	{
 		CBindWheel::CBind TempBind;
-		if(str_length(s_aBindName) == 0)
+		if (str_length(s_aBindName) == 0)
 			str_copy(TempBind.m_aName, "*");
 		else
 			str_copy(TempBind.m_aName, s_aBindName);
@@ -1238,7 +1243,7 @@ void CMenus::RenderSettingsRushieBindWheelSpec(CUIRect MainView)
 	if(DoButton_Menu(&s_AddButton, RCLocalize("Add Bind"), 0, &ButtonAdd))
 	{
 		CBindWheel::CBind TempBind;
-		if(str_length(s_aBindName) == 0)
+		if (str_length(s_aBindName) == 0)
 			str_copy(TempBind.m_aName, "*");
 		else
 			str_copy(TempBind.m_aName, s_aBindName);
