@@ -106,3 +106,9 @@ MACRO_CONFIG_INT(RiEdgeInfoPosY, ri_edge_info_pos_y, 56, 0, 100, CFGFLAG_CLIENT 
 
 //Menus
 MACRO_CONFIG_INT(RiBrFilterPlayers, ri_br_filter_players, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show only empty servers")
+
+//Socket
+MACRO_CONFIG_INT(RiCrossChatAutoConnect, ri_cross_chat_autoconnect, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically connect to CrossChat on startup")
+MACRO_CONFIG_INT(RiCrossChatInGameChat, ri_cross_chat_ingame_chat, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable CrossChat integration with in-game chat")
+MACRO_CONFIG_INT(RiCrossChatDebug, ri_cross_chat_debug, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable CrossChat debug messages")
+MACRO_CONFIG_STR(RiSocketNameserver, ri_ntwr_nameserver, 256, "localhost:3000", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Nameserver for websockets")
