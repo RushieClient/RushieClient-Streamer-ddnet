@@ -115,3 +115,6 @@ MACRO_CONFIG_STR(RiPulseSocketNameserver, ri_pulse_ntwr_nameserver, 256, "localh
 
 //RClient Socket
 MACRO_CONFIG_STR(RiIndicatorServerUrl, ri_indicator_server_url, 256, "localhost:3000", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Pulse Nameserver for websockets")
+
+//Config tab
+MACRO_CONFIG_INT(RiUiShowRClient, ri_ui_show_rclient, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show RClient domain in Configs tab")
