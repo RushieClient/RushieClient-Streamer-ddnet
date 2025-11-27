@@ -46,6 +46,10 @@ void CRClient::OnConsoleInit()
 	Console()->Register("tracker_reset", "", CFGFLAG_CLIENT, ConTargetPlayerPosReset, this, "Reset tracker pos");
 	Console()->Register("tracker_remove", "r[player]", CFGFLAG_CLIENT, ConTargetPlayerPosRemove, this, "Remove tracker pos of player");
 	Console()->Register("add_censor_list", "r[word]", CFGFLAG_CLIENT, ConAddCensorList, this, "Reset tracker pos");
+	Console()->Register("+ri_spec_left", "", CFGFLAG_CLIENT, ConSpecLeft, this, "move camera left in spec");
+	Console()->Register("+ri_spec_right", "", CFGFLAG_CLIENT, ConSpecRight, this, "move camera left in spec");
+	Console()->Register("+ri_spec_up", "", CFGFLAG_CLIENT, ConSpecUp, this, "move camera left in spec");
+	Console()->Register("+ri_spec_down", "", CFGFLAG_CLIENT, ConSpecDown, this, "move camera left in spec");
 	Console()->Chain(
 		"ri_regex_player_whitelist", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
 			if(pResult->NumArguments() == 1)
@@ -110,6 +114,20 @@ void CRClient::OnRender()
 	{
 		Client()->DiscordRPCchange();
 		GameClient()->m_Menus.m_RPC_Ratelimit = -2;
+	}
+
+	if(GameClient()->m_Snap.m_SpecInfo.m_Active && GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == SPEC_FREEVIEW && !GameClient()->m_AdminPanelRi.IsActive() && g_Config.m_RiSpectatorMoveEnable)
+	{
+		float Speed = 75.0f * 32.0f * (GameClient()->m_Camera.m_Zoom * 6 / g_Config.m_ClDefaultZoom) * (g_Config.m_RiSpectatorMoveSpeed / 100.0f); // Adjusted for frame-time independence
+		float FrameTime = Client()->RenderFrameTime();
+		if(m_SpecMoveUp)
+			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy].y -= Speed * FrameTime;
+		if(m_SpecMoveDown)
+			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy].y += Speed * FrameTime;
+		if(m_SpecMoveLeft)
+			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy].x -= Speed * FrameTime;
+		if(m_SpecMoveRight)
+			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy].x += Speed * FrameTime;
 	}
 }
 
@@ -1436,4 +1454,26 @@ void CRClient::ConAddCensorList(IConsole::IResult *pResult, void *pUserData)
 	{
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", "No word in this");
 	}
+}
+
+//Camera move
+void CRClient::ConSpecLeft(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	pSelf->m_SpecMoveLeft = pResult->GetInteger(0) != 0;
+}
+void CRClient::ConSpecRight(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	pSelf->m_SpecMoveRight = pResult->GetInteger(0) != 0;
+}
+void CRClient::ConSpecUp(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	pSelf->m_SpecMoveUp = pResult->GetInteger(0) != 0;
+}
+void CRClient::ConSpecDown(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	pSelf->m_SpecMoveDown = pResult->GetInteger(0) != 0;
 }

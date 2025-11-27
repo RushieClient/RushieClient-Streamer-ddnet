@@ -276,7 +276,7 @@ void CAdminPanel::OnRender()
 
 	if(GameClient()->m_Snap.m_SpecInfo.m_Active && GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == SPEC_FREEVIEW && m_pActiveItem != &m_AdminInput && m_pActiveItem != &m_AdminTimers)
 	{
-		float Speed = 2500.0f * (GameClient()->m_Camera.m_Zoom * 6 / g_Config.m_ClDefaultZoom); // Adjusted for frame-time independence
+		float Speed = 75.0f * 32.0f * (GameClient()->m_Camera.m_Zoom * 6 / g_Config.m_ClDefaultZoom) * (g_Config.m_RiSpectatorMoveSpeed / 100.0f); // Adjusted for frame-time independence
 		float FrameTime = Client()->RenderFrameTime();
 		if(Input()->KeyIsPressed(KEY_W))
 			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy].y -= Speed * FrameTime;

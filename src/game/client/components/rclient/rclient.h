@@ -30,6 +30,17 @@ class CRClient : public CComponent
 
 	static void ConAddWhiteList(IConsole::IResult *pResult, void *pUserData);
 
+	//Camera move
+	static void ConSpecLeft(IConsole::IResult *pResult, void *pUserData);
+	static void ConSpecRight(IConsole::IResult *pResult, void *pUserData);
+	static void ConSpecUp(IConsole::IResult *pResult, void *pUserData);
+	static void ConSpecDown(IConsole::IResult *pResult, void *pUserData);
+	bool m_SpecMoveLeft = false;
+	bool m_SpecMoveRight = false;
+	bool m_SpecMoveUp = false;
+	bool m_SpecMoveDown = false;
+
+
 	//45 degrees
 	int m_45degreestoggle = 0;
 	int m_45degreestogglelastinput = 0;

@@ -118,3 +118,7 @@ MACRO_CONFIG_STR(RiIndicatorServerUrl, ri_indicator_server_url, 256, "localhost:
 
 //Config tab
 MACRO_CONFIG_INT(RiUiShowRClient, ri_ui_show_rclient, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show RClient domain in Configs tab")
+
+//Spectator move
+MACRO_CONFIG_INT(RiSpectatorMoveSpeed, ri_spectator_move_speed, 100, 10, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Speed of spectator freeview movement")
+MACRO_CONFIG_INT(RiSpectatorMoveEnable, ri_spectator_move_enable, 100, 10, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable spectator movement binds")
