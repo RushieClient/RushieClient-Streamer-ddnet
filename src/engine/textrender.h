@@ -72,9 +72,6 @@ namespace FontIcons
 	[[maybe_unused]] static const char *FONT_ICON_MAGNIFYING_GLASS = "\xEF\x80\x82";
 	[[maybe_unused]] static const char *FONT_ICON_HEART = "\xEF\x80\x84";
 	[[maybe_unused]] static const char *FONT_ICON_HEART_CRACK = "\xEF\x9E\xA9";
-	[[maybe_unused]] static const char *FONT_ICON_LIST_TRACK = "\xEF\x80\xBA";
-	[[maybe_unused]] static const char *FONT_ICON_PEOPLE_GROUP = "\xEE\x94\xB3";
-	[[maybe_unused]] static const char *FONT_ICON_PERSON_RIFLE = "\xEE\x95\x8E";
 	[[maybe_unused]] static const char *FONT_ICON_STAR = "\xEF\x80\x85";
 	[[maybe_unused]] static const char *FONT_ICON_XMARK = "\xEF\x80\x8D";
 	[[maybe_unused]] static const char *FONT_ICON_CIRCLE = "\xEF\x84\x91";
@@ -143,6 +140,8 @@ namespace FontIcons
 	[[maybe_unused]] static const char *FONT_ICON_EYE = "\xEF\x81\xAE";
 	[[maybe_unused]] static const char *FONT_ICON_EYE_SLASH = "\xEF\x81\xB0";
 	[[maybe_unused]] static const char *FONT_ICON_EYE_DROPPER = "\xEF\x87\xBB";
+	[[maybe_unused]] static const char *FONT_ICON_COMMENT = "\xEF\x81\xB5";
+	[[maybe_unused]] static const char *FONT_ICON_COMMENT_SLASH = "\xEF\x92\xB3";
 
 	[[maybe_unused]] static const char *FONT_ICON_DICE_ONE = "\xEF\x94\xA5";
 	[[maybe_unused]] static const char *FONT_ICON_DICE_TWO = "\xEF\x94\xA8";
@@ -161,15 +160,16 @@ namespace FontIcons
 	[[maybe_unused]] static const char *FONT_ICON_CAMERA = "\xEF\x80\xB0";
 
 	// RClient
+	[[maybe_unused]] static const char *FONT_ICON_LIST_TRACK = "\xEF\x80\xBA";
+	[[maybe_unused]] static const char *FONT_ICON_PEOPLE_GROUP = "\xEE\x94\xB3";
+	[[maybe_unused]] static const char *FONT_ICON_PERSON_RIFLE = "\xEE\x95\x8E";
 	[[maybe_unused]] static const char *FONT_ICON_GAVEL = "\xEF\x83\xA3";
 	[[maybe_unused]] static const char *FONT_ICON_DOOR_OPEN = "\xEF\x94\xAB";
 	[[maybe_unused]] static const char *FONT_ICON_SCULL = "\xEF\x95\x8C";
 	[[maybe_unused]] static const char *FONT_ICON_ANGLE_UP = "\xEF\x84\x86";
 	[[maybe_unused]] static const char *FONT_ICON_ANGLES_UP = "\xEF\x84\x82";
 	// TClient
-	[[maybe_unused]] static const char *FONT_ICON_COMMENT_SLASH = "\xEF\x92\xB3";
 	[[maybe_unused]] static const char *FONT_ICON_USERS = "\xEF\x83\x80";
-	[[maybe_unused]] static const char *FONT_ICON_COMMENT = "\xEF\x81\xB5";
 }
 
 enum ETextCursorSelectionMode
