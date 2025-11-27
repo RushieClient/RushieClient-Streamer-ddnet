@@ -8,14 +8,7 @@ void CRClientIndicator::OnInit()
 
 void CRClientIndicator::OnShutdown()
 {
-	if(m_IsConnected)
-	{
-		m_Socket.close();
-	}
-
-	m_IsConnected = false;
-	m_TokenReceived = false;
-	m_aAuthToken[0] = '\0';
+	DisconnectFromServer();
 }
 
 void CRClientIndicator::OnRender()
