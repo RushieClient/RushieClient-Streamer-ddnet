@@ -917,7 +917,7 @@ void CPlayers::RenderPlayer(
 	{
 		GameClient()->m_Effects.FreezingFlakes(BodyPos, vec2(32, 32), Alpha);
 	}
-	if(RenderInfo.m_TeeRenderFlags & TEE_EFFECT_SPARKLE)
+	if(RenderInfo.m_TeeRenderFlags & TEE_EFFECT_SPARKLE || (ClientId == GameClient()->m_Snap.m_LocalClientId && g_Config.m_RiShowSparkleTrail))
 	{
 		GameClient()->m_Effects.SparkleTrail(BodyPos, Alpha);
 	}
