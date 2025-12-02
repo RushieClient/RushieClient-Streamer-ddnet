@@ -977,7 +977,7 @@ void CPlayers::RenderPlayer(
 	{
 		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
 
-		if(g_Config.m_RiShowAfkTextureInMenu)
+		if(g_Config.m_RiShowAfkTextureInSpec)
 		{
 			Graphics()->TextureSet(m_RiSpecAfkTexture);
 			Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffsetToEmoticon, BodyPos.x, BodyPos.y);
