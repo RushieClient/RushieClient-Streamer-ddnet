@@ -1652,6 +1652,7 @@ set(EXPECTED_DATA
   rclient/riactions.png
   rclient/rihammer.png
   rclient/rihook.png
+  rclient/spec_afk.png
   shader/pipeline.frag
   shader/pipeline.vert
   shader/prim.frag

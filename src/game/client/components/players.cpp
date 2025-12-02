@@ -973,6 +973,28 @@ void CPlayers::RenderPlayer(
 		Graphics()->QuadsSetRotation(0);
 	}
 
+	if(GameClient()->m_aClients[ClientId].m_Paused && !GameClient()->m_aClients[ClientId].m_Afk && g_Config.m_RiShowAfkEmoteInSpec)
+	{
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, Alpha);
+
+		if(g_Config.m_RiShowAfkTextureInMenu)
+		{
+			Graphics()->TextureSet(m_RiSpecAfkTexture);
+			Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffsetToEmoticon, BodyPos.x, BodyPos.y);
+		}
+		else
+		{
+			int CurEmoticon = (SPRITE_ZZZ - SPRITE_OOP);
+			Graphics()->TextureSet(GameClient()->m_EmoticonsSkin.m_aSpriteEmoticons[CurEmoticon]);
+			int QuadOffset = QuadOffsetToEmoticon + CurEmoticon;
+			Graphics()->RenderQuadContainerAsSprite(m_WeaponEmoteQuadContainerIndex, QuadOffset, Position.x + 24.f, Position.y - 40.f);
+		}
+
+		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 1.0f);
+		Graphics()->QuadsSetRotation(0);
+	}
+
+
 	if(g_Config.m_ClShowEmotes && !GameClient()->m_aClients[ClientId].m_EmoticonIgnore && GameClient()->m_aClients[ClientId].m_EmoticonStartTick != -1)
 	{
 		float SinceStart = (Client()->GameTick(g_Config.m_ClDummy) - GameClient()->m_aClients[ClientId].m_EmoticonStartTick) + (Client()->IntraGameTickSincePrev(g_Config.m_ClDummy) - GameClient()->m_aClients[ClientId].m_EmoticonStartFraction);
@@ -1625,6 +1647,7 @@ void CPlayers::OnInit()
 {
 	m_WeaponEmoteQuadContainerIndex = Graphics()->CreateQuadContainer(false);
 	m_RiMenuAfkTexture = Graphics()->LoadTexture("rclient/menu_afk.png", IStorage::TYPE_ALL);
+	m_RiSpecAfkTexture = Graphics()->LoadTexture("rclient/spec_afk.png", IStorage::TYPE_ALL);
 
 	Graphics()->SetColor(1.f, 1.f, 1.f, 1.f);
 
