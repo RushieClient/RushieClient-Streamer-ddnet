@@ -1,6 +1,20 @@
 #include "rclient_indicator.h"
+
+#include <base/system.h>
+
 #include "engine/client.h"
 #include "game/client/gameclient.h"
+
+std::string NormalizeServerUrl(const char *pConfigUrl, const char *pDefaultUrl)
+{
+	std::string Url = (pConfigUrl && pConfigUrl[0]) ? pConfigUrl : pDefaultUrl;
+	if(Url.rfind("http://", 0) != 0 && Url.rfind("https://", 0) != 0 && Url.rfind("ws://", 0) != 0 && Url.rfind("wss://", 0) != 0)
+	{
+		const bool LooksLocal = Url.rfind("localhost", 0) == 0 || Url.rfind("127.", 0) == 0 || Url.rfind("192.168.", 0) == 0 || Url.rfind("10.", 0) == 0;
+		Url = (LooksLocal ? "http://" : "https://") + Url;
+	}
+	return Url;
+}
 
 void CRClientIndicator::OnInit()
 {
@@ -13,10 +27,28 @@ void CRClientIndicator::OnShutdown()
 
 void CRClientIndicator::OnRender()
 {
-	if(!g_Config.m_RiShowRclientIndicator)
-		return;
+	const int ClientState = Client()->State();
 
-	if(m_PrevClientState != IClient::STATE_ONLINE && Client()->State() == IClient::STATE_ONLINE)
+	if(!g_Config.m_RiShowRclientIndicator)
+	{
+		if(m_IsConnected || m_IsConnecting)
+		{
+			DisconnectFromServer();
+		}
+		m_PrevClientState = ClientState;
+		return;
+	}
+
+	const bool IsOnline = ClientState == IClient::STATE_ONLINE;
+	const bool ShouldAttemptConnect = IsOnline && !m_IsConnected && !m_IsConnecting &&
+		(m_LastConnectAttempt == 0 || time_get() - m_LastConnectAttempt > time_freq() * 5);
+
+	if(ShouldAttemptConnect)
+	{
+		ConnectToServer();
+	}
+
+	if(m_PrevClientState != IClient::STATE_ONLINE && IsOnline)
 	{
 		if(!m_IsConnected)
 		{
@@ -27,7 +59,7 @@ void CRClientIndicator::OnRender()
 			RegisterPlayer();
 		}
 	}
-	else if(m_PrevClientState == IClient::STATE_ONLINE && Client()->State() != IClient::STATE_ONLINE)
+	else if(m_PrevClientState == IClient::STATE_ONLINE && !IsOnline)
 	{
 		// Unregister from old server
 		if(m_IsConnected && m_Socket.socket())
@@ -36,7 +68,7 @@ void CRClientIndicator::OnRender()
 			dbg_msg("RClient", "Unregistering from server");
 		}
 	}
-	else if(Client()->State() == IClient::STATE_ONLINE && m_IsConnected && m_TokenReceived)
+	else if(IsOnline && m_IsConnected && m_TokenReceived)
 	{
 		if(GameClient()->m_aLocalIds[0] != m_PlayerId)
 		{
@@ -50,16 +82,23 @@ void CRClientIndicator::OnRender()
 		}
 	}
 
-	m_PrevClientState = Client()->State();
+	m_PrevClientState = ClientState;
 }
 
 void CRClientIndicator::ConnectToServer()
 {
-	if(m_IsConnected)
+	if(m_IsConnected || m_IsConnecting)
 		return;
+
+	m_IsConnecting = true;
+	m_LastConnectAttempt = time_get();
+	m_TokenReceived = false;
+	m_ServerUrl = NormalizeServerUrl(g_Config.m_RiIndicatorServerUrl, DEFAULT_RCLIENT_SERVER_URL);
 
 	m_Socket.set_open_listener([this]() {
 		m_IsConnected = true;
+		m_IsConnecting = false;
+		m_LastConnectAttempt = time_get();
 		dbg_msg("RClient", "Connected to RClient server");
 		SetupSocketListeners();
 		if(m_Socket.socket())
@@ -67,19 +106,23 @@ void CRClientIndicator::ConnectToServer()
 	});
 	m_Socket.set_close_listener([this](sio::client::close_reason const &Reason) {
 		m_IsConnected = false;
+		m_IsConnecting = false;
 		m_TokenReceived = false;
+		m_LastConnectAttempt = time_get();
 		dbg_msg("RClient", "Disconnected from RClient server (reason: %i)", static_cast<int>(Reason));
 	});
 	m_Socket.set_fail_listener([this]() {
 		m_IsConnected = false;
+		m_IsConnecting = false;
 		m_TokenReceived = false;
+		m_LastConnectAttempt = time_get();
 		dbg_msg("RClient", "Connection to RClient server failed");
 	});
 
 	// Connect to server
-	m_Socket.connect(RCLIENT_SERVER_URL);
+	m_Socket.connect(m_ServerUrl);
 
-	dbg_msg("RClient", "Connecting to RClient server...");
+	dbg_msg("RClient", "Connecting to RClient server %s ...", m_ServerUrl.c_str());
 }
 
 void CRClientIndicator::DisconnectFromServer()
@@ -90,7 +133,11 @@ void CRClientIndicator::DisconnectFromServer()
 	}
 
 	m_IsConnected = false;
+	m_IsConnecting = false;
 	m_TokenReceived = false;
+	m_LastConnectAttempt = 0;
+	m_PlayerId = -1;
+	m_DummyId = -1;
 	m_aAuthToken[0] = '\0';
 }
 
@@ -105,6 +152,9 @@ void CRClientIndicator::SetupSocketListeners()
 	});
 	m_Socket.socket()->on("registration_success", [this](sio::event &Event) {
 		OnRegistrationSuccess(Event);
+	});
+	m_Socket.socket()->on("all_players_response", [this](sio::event &Event) {
+		OnAllPlayersResponse(Event);
 	});
 	m_Socket.socket()->on("unregister_success", [this](sio::event &Event) {
 		OnUnregisterSuccess(Event);
@@ -191,6 +241,12 @@ void CRClientIndicator::OnRegistrationSuccess(sio::event &Event)
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "Successfully registered on %s as player %d", ServerAddr.c_str(), PlayerId);
 	GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", aBuf);
+
+	// Запрашиваем полный список, чтобы синхронизироваться при гонках (быстрое подключение dummy/основного)
+	if(m_Socket.socket())
+	{
+		m_Socket.socket()->emit("get_all_players");
+	}
 }
 
 void CRClientIndicator::OnUnregisterSuccess(sio::event &Event)
@@ -257,6 +313,43 @@ void CRClientIndicator::OnPlayersUpdate(sio::event &Event)
 	char aBuf[256];
 	str_format(aBuf, sizeof(aBuf), "Players update for %s: %d players", ServerAddr.c_str(), (int)PlayersMap.size());
 	GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "RClient", aBuf);
+}
+
+void CRClientIndicator::OnAllPlayersResponse(sio::event &Event)
+{
+	auto Data = Event.get_message();
+	if(!Data || Data->get_flag() != sio::message::flag_object)
+		return;
+
+	std::lock_guard<std::mutex> Lock(m_RClientUsersMutex);
+	m_RClientUsers.clear();
+
+	for(auto &ServerEntry : Data->get_map())
+	{
+		const std::string ServerAddr = ServerEntry.first;
+		auto ServerPlayers = ServerEntry.second;
+		if(ServerPlayers->get_flag() != sio::message::flag_object)
+			continue;
+
+		auto &PlayersMap = ServerPlayers->get_map();
+		for(auto &PlayerEntry : PlayersMap)
+		{
+			int PlayerId = std::stoi(PlayerEntry.first);
+			auto PlayerData = PlayerEntry.second;
+			if(PlayerData->get_flag() != sio::message::flag_object)
+				continue;
+
+			auto &PlayerDataMap = PlayerData->get_map();
+			m_RClientUsers[ServerAddr][PlayerId] = true;
+			if(PlayerDataMap.find("dummy_id") != PlayerDataMap.end())
+			{
+				int DummyId = PlayerDataMap["dummy_id"]->get_int();
+				m_RClientUsers[ServerAddr][DummyId] = true;
+			}
+		}
+	}
+
+	GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "RClient", "All players synced");
 }
 
 void CRClientIndicator::OnError(sio::event &Event)

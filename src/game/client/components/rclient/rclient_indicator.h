@@ -9,6 +9,7 @@
 
 #include <sio_client.h>
 
+#include <cstdint>
 #include <map>
 #include <mutex>
 #include <string>
@@ -16,10 +17,13 @@
 
 class CRClientIndicator : public CComponent
 {
-	static constexpr const char *RCLIENT_SERVER_URL = "http://localhost:5050";
+	static constexpr const char *DEFAULT_RCLIENT_SERVER_URL = "https://server.rushie-client.ru";
 
 	// Socket.IO client
 	sio::client m_Socket;
+	bool m_IsConnecting = false;
+	int64_t m_LastConnectAttempt = 0;
+	std::string m_ServerUrl;
 
 	// Authentication
 	char m_aAuthToken[128] = {0};
@@ -37,6 +41,7 @@ class CRClientIndicator : public CComponent
 	void OnRegistrationSuccess(sio::event &Event);
 	void OnUnregisterSuccess(sio::event &Event);
 	void OnPlayersUpdate(sio::event &Event);
+	void OnAllPlayersResponse(sio::event &Event);
 	void OnError(sio::event &Event);
 
 	// Connection management
