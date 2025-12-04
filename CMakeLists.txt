@@ -2868,7 +2868,7 @@ if(CLIENT)
       PROPERTY OUTPUT_NAME ${CLIENT_EXECUTABLE}
   )
   # Use TLS-capable Socket.IO client so wss:// endpoints (e.g. RClient indicator) work.
-  target_link_libraries(game-client ${LIBS_CLIENT} sioclient_tls)
+  target_link_libraries(game-client ${LIBS_CLIENT} sioclient)
 
   if(MSVC)
     target_compile_options(game-client PRIVATE /bigobj) # TClient, required for ChaiScript
@@ -3108,7 +3108,7 @@ if(SERVER)
   set_property(TARGET game-server
       PROPERTY OUTPUT_NAME ${SERVER_EXECUTABLE}
   )
-  target_link_libraries(game-server ${LIBS_SERVER} sioclient_tls)
+  target_link_libraries(game-server ${LIBS_SERVER} sioclient)
   list(APPEND TARGETS_OWN game-server)
   list(APPEND TARGETS_LINK game-server)
 
