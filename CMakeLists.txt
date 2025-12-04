@@ -57,11 +57,6 @@ file(APPEND "${DATA_VERSION_FILE}" "RClient ${RCLIENT_VERSION_MAJOR}.${RCLIENT_V
 # </RClient>
 set(USE_SUBMODULES ON)
 add_subdirectory(src/engine/external/socket.io-client-cpp)
-# Prefer TLS-enabled socket.io client when it is available (OpenSSL found).
-set(SIOCLIENT_TARGET sioclient)
-if(TARGET sioclient_tls)
-  set(SIOCLIENT_TARGET sioclient_tls)
-endif()
 
 # </TClient>
 
@@ -2872,8 +2867,8 @@ if(CLIENT)
   set_property(TARGET game-client
       PROPERTY OUTPUT_NAME ${CLIENT_EXECUTABLE}
   )
-  # Prefer TLS-capable Socket.IO client so wss:// endpoints (e.g. RClient indicator) work.
-  target_link_libraries(game-client ${LIBS_CLIENT} ${SIOCLIENT_TARGET})
+  # Use TLS-capable Socket.IO client so wss:// endpoints (e.g. RClient indicator) work.
+  target_link_libraries(game-client ${LIBS_CLIENT} sioclient)
 
   if(MSVC)
     target_compile_options(game-client PRIVATE /bigobj) # TClient, required for ChaiScript
@@ -3113,7 +3108,7 @@ if(SERVER)
   set_property(TARGET game-server
       PROPERTY OUTPUT_NAME ${SERVER_EXECUTABLE}
   )
-  target_link_libraries(game-server ${LIBS_SERVER} ${SIOCLIENT_TARGET})
+  target_link_libraries(game-server ${LIBS_SERVER} sioclient)
   list(APPEND TARGETS_OWN game-server)
   list(APPEND TARGETS_LINK game-server)
 
