@@ -204,7 +204,7 @@ void CMenusStart::RenderStartMenu(CUIRect MainView)
 	{
 		CUIRect Version;
 		MainView.HSplitTop(40.0f, &Version, nullptr);
-		char aBuf[128] = "Based on Tater client. Thanks Pulse client for some functions";
+		char aBuf[128] = "Based on Tater client. Thanks Pulse and Entity clients for some functions";
 		Ui()->DoLabel(&Version, aBuf, 14.0f, TEXTALIGN_CENTER);
 	}
 	static CButtonContainer s_ConsoleButton;
