@@ -54,10 +54,6 @@ endif()
 
 file(APPEND "${DATA_VERSION_FILE}" "RClient ${RCLIENT_VERSION_MAJOR}.${RCLIENT_VERSION_MINOR}.${RCLIENT_VERSION_PATCH}\n")
 
-# </RClient>
-set(USE_SUBMODULES ON)
-add_subdirectory(src/engine/external/socket.io-client-cpp)
-
 # </TClient>
 
 set(ORIGINAL_CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH})
@@ -2575,11 +2571,6 @@ if(CLIENT)
     components/rclient/rclient.h
     components/rclient/rclient_indicator.cpp
     components/rclient/rclient_indicator.h
-    components/rclient/socket/modules/socket_chat.cpp
-    components/rclient/socket/modules/socket_chat.h
-    components/rclient/socket/socket.cpp
-    components/rclient/socket/socket.h
-    components/rclient/socket/socket_component.h
     components/scoreboard.cpp
     components/scoreboard.h
     components/skins.cpp
@@ -2871,8 +2862,8 @@ if(CLIENT)
   set_property(TARGET game-client
       PROPERTY OUTPUT_NAME ${CLIENT_EXECUTABLE}
   )
-  # Use TLS-capable Socket.IO client so wss:// endpoints (e.g. RClient indicator) work.
-  target_link_libraries(game-client ${LIBS_CLIENT} sioclient)
+
+  target_link_libraries(game-client ${LIBS_CLIENT})
 
   if(MSVC)
     target_compile_options(game-client PRIVATE /bigobj) # TClient, required for ChaiScript
@@ -3112,7 +3103,7 @@ if(SERVER)
   set_property(TARGET game-server
       PROPERTY OUTPUT_NAME ${SERVER_EXECUTABLE}
   )
-  target_link_libraries(game-server ${LIBS_SERVER} sioclient)
+  target_link_libraries(game-server ${LIBS_SERVER})
   list(APPEND TARGETS_OWN game-server)
   list(APPEND TARGETS_LINK game-server)
 

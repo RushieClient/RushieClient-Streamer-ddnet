@@ -104,14 +104,7 @@ MACRO_CONFIG_INT(RiEdgeInfoPosY, ri_edge_info_pos_y, 56, 0, 100, CFGFLAG_CLIENT 
 //Menus
 MACRO_CONFIG_INT(RiBrFilterPlayers, ri_br_filter_players, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show only empty servers")
 
-//Pulse Socket
-MACRO_CONFIG_INT(RiCrossChatAutoConnect, ri_cross_chat_autoconnect, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Automatically connect to CrossChat on startup")
-MACRO_CONFIG_INT(RiCrossChatInGameChat, ri_cross_chat_ingame_chat, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable CrossChat integration with in-game chat")
-MACRO_CONFIG_INT(RiCrossChatDebug, ri_cross_chat_debug, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable CrossChat debug messages")
-MACRO_CONFIG_STR(RiPulseSocketNameserver, ri_pulse_ntwr_nameserver, 256, "localhost:3000", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Pulse Nameserver for websockets")
-
-//RClient Socket
-MACRO_CONFIG_STR(RiIndicatorServerUrl, ri_indicator_server_url, 256, "http://ws.server.rushie-client.ru", CFGFLAG_CLIENT | CFGFLAG_SAVE, "RClient indicator Socket.IO server URL")
+//RClient Nameplates
 MACRO_CONFIG_INT(RiShowRclientIndicator, ri_show_rclient_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Rclient player indicator in nameplates")
 
 //Config tab

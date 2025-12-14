@@ -1,67 +1,46 @@
 #ifndef RCLIENT_RCLIENT_INDICATOR_H
 #define RCLIENT_RCLIENT_INDICATOR_H
 
-#include "engine/client.h"
-
-#include <engine/shared/console.h>
-
 #include <game/client/component.h>
 
-#include <sio_client.h>
-
-#include <cstdint>
-#include <map>
-#include <mutex>
-#include <string>
-#include <vector>
+#include <engine/shared/console.h>
+#include <engine/shared/http.h>
 
 class CRClientIndicator : public CComponent
 {
-	static constexpr const char *DEFAULT_RCLIENT_SERVER_URL = "http://ws.server.rushie-client.ru";
-
-	// Socket.IO client
-	sio::client m_Socket;
-	bool m_IsConnecting = false;
-	int64_t m_LastConnectAttempt = 0;
-	std::string m_ServerUrl;
-
-	// Authentication
+	std::shared_ptr<CHttpRequest> m_pAuthTokenTask = nullptr;
+	void FetchAuthToken();
+	void FinishAuthToken();
+	void ResetAuthToken();
 	char m_aAuthToken[128] = {0};
-	bool m_TokenReceived = false;
 
-	int m_DummyId = -1;
-	int m_PlayerId = -1;
-	bool m_IsConnected = false;
-	int m_PrevClientState = IClient::STATE_OFFLINE;
-
-	std::map<std::string, std::map<int, bool>> m_RClientUsers;
-	std::mutex m_RClientUsersMutex;
-
-	void OnTokenReceived(sio::event &Event);
-	void OnRegistrationSuccess(sio::event &Event);
-	void OnUnregisterSuccess(sio::event &Event);
-	void OnPlayersUpdate(sio::event &Event);
-	void OnAllPlayersResponse(sio::event &Event);
-	void OnError(sio::event &Event);
-
-	// Connection management
-	void ConnectToServer();
-	void DisconnectFromServer();
-	void RegisterPlayer();
-	void UpdateServerInfo();
-	void SetupSocketListeners();
-
+	static constexpr const char *RCLIENT_URL_USERS = "https://server.rushie-client.ru/users.json";
+	static constexpr const char *RCLIENT_TOKEN_URL = "https://server.rushie-client.ru/token";
+	// Server and Player Info Collection
+	std::shared_ptr<CHttpRequest> m_pRClientUsersTaskSend = nullptr;
+	void SendServerPlayerInfo();
+	void SendPlayerData(const char *pServerAddress, int ClientId, int DummyClientId = -1);
+	void FetchRClientUsers();
+	void FinishRClientUsers();
+	void ResetRClientUsers();
+	// void FinishRClientUsersSend();
+	void ResetRClientUsersSend();
+	char m_aCurrentServerAddress[256];
+	std::shared_ptr<CHttpRequest> m_pRClientUsersTask = nullptr;
+	std::vector<std::pair<std::string, int>> m_vRClientUsers; // server address, player id
+	void SendDummyRclientUsers();
+	int64_t s_LastFetch = 0;
+	bool s_InitialFetchDone = false;
+	bool s_InitialFetchDoneDummy = false;
+	int s_RclientIndicatorCount = 0;
 public:
-
+	CRClientIndicator();
 	int Sizeof() const override { return sizeof(*this); }
 	void OnInit() override;
-	void OnShutdown() override;
+
 	void OnRender() override;
 
 	bool IsPlayerRClient(int ClientId);
-	bool IsConnected() const { return m_IsConnected; }
-
-	sio::client* GetSocket() { return &m_Socket; }
 };
 
 #endif // RCLIENT_RCLIENT_INDICATOR_H
