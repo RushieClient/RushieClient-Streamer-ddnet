@@ -2,7 +2,3 @@
 	path = ddnet-libs
 	url = https://github.com/ddnet/ddnet-libs
 	shallow = true
-[submodule "src/engine/external/socket.io-client-cpp"]
-	path = src/engine/external/socket.io-client-cpp
-	url = https://github.com/RushieClient/socket.io-client-cpp
-	shallow = true
