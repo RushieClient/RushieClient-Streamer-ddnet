@@ -21,6 +21,7 @@ MACRO_CONFIG_STR(RiBlockedContentPartialReplacementChar, ri_blocked_content_part
 
 //Scoreboard
 MACRO_CONFIG_INT(RiScoreboardFriendMark, ri_scoreboard_friendmark, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show friend mark (♥) in scoreboard")
+MACRO_CONFIG_INT(RiScoreboardAlwaysShowQuickActions, ri_scoreboard_always_show_quick_actions, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show quick actions in scoreboard always")
 
 //Lasers
 MACRO_CONFIG_INT(RiLaserGlowIntensity, ri_laser_ench, 0, 0, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "")

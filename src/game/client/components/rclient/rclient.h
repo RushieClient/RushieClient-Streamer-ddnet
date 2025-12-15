@@ -133,6 +133,9 @@ public:
 	char TargetPositionNickname[MAX_CLIENTS][32];
 	int TargetCount = 0;
 	bool IsTracked(int ClientId);
+	void TargetPlayerPosAdd(const char *Nickname);
+	void TargetPlayerPosRemove(const char *Nickname);
+	void TargetPlayerPosReset();
 
 	//WarList
 	bool IsInWarlist(int ClientId, int Index);
@@ -144,6 +147,13 @@ public:
 	static std::vector<std::string> SplitRegex(const char *aboba);
 	static std::vector<std::string> SplitWords(const char *MSG);
 	Regex m_RegexSplitPlayer;
+
+	// Scoreboard
+	static std::string encodeUTF8(const std::string &Input);
+	float GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger);
+
+	//Copy
+	void CopySkin(const char *Nickname);
 };
 
 #endif

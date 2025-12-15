@@ -3,6 +3,7 @@
 #include <game/client/animstate.h>
 #include <game/client/components/chat.h>
 #include <game/client/gameclient.h>
+#include <game/client/ui.h>
 
 #include <game/localization.h>
 #include <game/version.h>
@@ -1008,18 +1009,13 @@ void CRClient::ConFindSkin(IConsole::IResult *pResult, void *pUserData)
 	}
 }
 
-void CRClient::ConCopySkin(IConsole::IResult *pResult, void *pUserData)
+void CRClient::CopySkin(const char *Nickname)
 {
-	CRClient *pSelf = (CRClient *)pUserData;
-	const char *pInput = pResult->GetString(0);
-	char aInput[256];
-	str_copy(aInput, pInput, sizeof(aInput));
-	str_utf8_trim_right(aInput);
 	int ClientID = -1;
 	// First try to find by name
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
-		if(str_comp_nocase(pSelf->GameClient()->m_aClients[i].m_aName, aInput) == 0)
+		if(str_comp_nocase(GameClient()->m_aClients[i].m_aName, Nickname) == 0)
 		{
 			ClientID = i;
 			break;
@@ -1029,78 +1025,88 @@ void CRClient::ConCopySkin(IConsole::IResult *pResult, void *pUserData)
 	// If not found by name, try to use input as ID
 	if(ClientID == -1)
 	{
-		ClientID = str_toint(aInput);
+		ClientID = str_toint(Nickname);
 	}
 
 	// Validate client ID
 	if(ClientID >= 0 && ClientID < MAX_CLIENTS)
 	{
-		const CGameClient::CClientData &ClientData = pSelf->GameClient()->m_aClients[ClientID];
+		const CGameClient::CClientData &ClientData = GameClient()->m_aClients[ClientID];
 		if(ClientData.m_aSkinName[0])
 		{
 			char aBuf[512];
 
 			// Базовая информация о скине
 			str_format(aBuf, sizeof(aBuf), "Skin info for client %d:\n", ClientID);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
 
 			str_format(aBuf, sizeof(aBuf), "- Name: %s", ClientData.m_aName);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
 
 			// Название скина
 			str_format(aBuf, sizeof(aBuf), "- Skin Name: %s", ClientData.m_aSkinName);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
 
 			// Цвет тела
 			str_format(aBuf, sizeof(aBuf), "- Body Color: %d",
 				ClientData.m_ColorBody);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
 
 			// Цвет ног
 			str_format(aBuf, sizeof(aBuf), "- Feet Color: %d",
 				ClientData.m_ColorFeet);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
 
 			// Включены ли кастом цвет
 			str_format(aBuf, sizeof(aBuf), "- Custom Color: %d",
 				ClientData.m_UseCustomColor);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
 
 			if(g_Config.m_ClDummy == 1)
 			{
-				str_copy(pSelf->GameClient()->m_RClient.DummySkinBeforeCopyPlayer, g_Config.m_ClDummySkin, sizeof(pSelf->GameClient()->m_RClient.DummySkinBeforeCopyPlayer));
-				pSelf->GameClient()->m_RClient.DummyUseCustomColorBeforeCopyPlayer = g_Config.m_ClDummyUseCustomColor;
-				pSelf->GameClient()->m_RClient.DummyBodyColorBeforeCopyPlayer = g_Config.m_ClDummyColorBody;
-				pSelf->GameClient()->m_RClient.DummyFeetColorBeforeCopyPlayer = g_Config.m_ClDummyColorFeet;
+				str_copy(DummySkinBeforeCopyPlayer, g_Config.m_ClDummySkin, sizeof(DummySkinBeforeCopyPlayer));
+				DummyUseCustomColorBeforeCopyPlayer = g_Config.m_ClDummyUseCustomColor;
+				DummyBodyColorBeforeCopyPlayer = g_Config.m_ClDummyColorBody;
+				DummyFeetColorBeforeCopyPlayer = g_Config.m_ClDummyColorFeet;
 				str_copy(g_Config.m_ClDummySkin, ClientData.m_aSkinName, sizeof(g_Config.m_ClDummySkin));
 				g_Config.m_ClDummyUseCustomColor = ClientData.m_UseCustomColor;
 				g_Config.m_ClDummyColorBody = ClientData.m_ColorBody;
 				g_Config.m_ClDummyColorFeet = ClientData.m_ColorFeet;
-				pSelf->GameClient()->SendDummyInfo(false);
+				GameClient()->SendDummyInfo(false);
 			}
 			if(g_Config.m_ClDummy == 0)
 			{
-				str_copy(pSelf->GameClient()->m_RClient.PlayerSkinBeforeCopyPlayer, g_Config.m_ClPlayerSkin, sizeof(pSelf->GameClient()->m_RClient.PlayerSkinBeforeCopyPlayer));
-				pSelf->GameClient()->m_RClient.PlayerUseCustomColorBeforeCopyPlayer = g_Config.m_ClPlayerUseCustomColor;
-				pSelf->GameClient()->m_RClient.PlayerBodyColorBeforeCopyPlayer = g_Config.m_ClPlayerColorBody;
-				pSelf->GameClient()->m_RClient.PlayerFeetColorBeforeCopyPlayer = g_Config.m_ClPlayerColorFeet;
+				str_copy(PlayerSkinBeforeCopyPlayer, g_Config.m_ClPlayerSkin, sizeof(PlayerSkinBeforeCopyPlayer));
+				PlayerUseCustomColorBeforeCopyPlayer = g_Config.m_ClPlayerUseCustomColor;
+				PlayerBodyColorBeforeCopyPlayer = g_Config.m_ClPlayerColorBody;
+				PlayerFeetColorBeforeCopyPlayer = g_Config.m_ClPlayerColorFeet;
 				str_copy(g_Config.m_ClPlayerSkin, ClientData.m_aSkinName, sizeof(g_Config.m_ClPlayerSkin));
 				g_Config.m_ClPlayerUseCustomColor = ClientData.m_UseCustomColor;
 				g_Config.m_ClPlayerColorBody = ClientData.m_ColorBody;
 				g_Config.m_ClPlayerColorFeet = ClientData.m_ColorFeet;
-				pSelf->GameClient()->SendInfo(false);
+				GameClient()->SendInfo(false);
 			}
 		}
 		else
 		{
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", "No skin found for this client");
+			Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", "No skin found for this client");
 		}
 	}
 	else
 	{
-		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", "Invalid client ID");
-		pSelf->GameClient()->Echo("No that player on server");
+		Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", "Invalid client ID");
+		GameClient()->Echo("No that player on server");
 	}
+}
+
+void CRClient::ConCopySkin(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = (CRClient *)pUserData;
+	const char *pInput = pResult->GetString(0);
+	char aInput[256];
+	str_copy(aInput, pInput, sizeof(aInput));
+	str_utf8_trim_right(aInput);
+	pSelf->CopySkin(aInput);
 }
 
 void CRClient::ConFindPlayer(IConsole::IResult *pResult, void *pUserData)
@@ -1236,10 +1242,10 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 
 			if(g_Config.m_ClDummy == 1)
 			{
-				str_copy(pSelf->GameClient()->m_RClient.DummySkinBeforeCopyPlayer, g_Config.m_ClDummySkin, sizeof(pSelf->GameClient()->m_RClient.DummySkinBeforeCopyPlayer));
-				pSelf->GameClient()->m_RClient.DummyUseCustomColorBeforeCopyPlayer = g_Config.m_ClDummyUseCustomColor;
-				pSelf->GameClient()->m_RClient.DummyBodyColorBeforeCopyPlayer = g_Config.m_ClDummyColorBody;
-				pSelf->GameClient()->m_RClient.DummyFeetColorBeforeCopyPlayer = g_Config.m_ClDummyColorFeet;
+				str_copy(pSelf->DummySkinBeforeCopyPlayer, g_Config.m_ClDummySkin, sizeof(pSelf->DummySkinBeforeCopyPlayer));
+				pSelf->DummyUseCustomColorBeforeCopyPlayer = g_Config.m_ClDummyUseCustomColor;
+				pSelf->DummyBodyColorBeforeCopyPlayer = g_Config.m_ClDummyColorBody;
+				pSelf->DummyFeetColorBeforeCopyPlayer = g_Config.m_ClDummyColorFeet;
 				g_Config.m_ClDummyUseCustomColor = ClientData.m_UseCustomColor;
 				g_Config.m_ClDummyColorBody = ClientData.m_ColorBody;
 				g_Config.m_ClDummyColorFeet = ClientData.m_ColorFeet;
@@ -1247,10 +1253,10 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 			}
 			if(g_Config.m_ClDummy == 0)
 			{
-				str_copy(pSelf->GameClient()->m_RClient.PlayerSkinBeforeCopyPlayer, g_Config.m_ClPlayerSkin, sizeof(pSelf->GameClient()->m_RClient.PlayerSkinBeforeCopyPlayer));
-				pSelf->GameClient()->m_RClient.PlayerUseCustomColorBeforeCopyPlayer = g_Config.m_ClPlayerUseCustomColor;
-				pSelf->GameClient()->m_RClient.PlayerBodyColorBeforeCopyPlayer = g_Config.m_ClPlayerColorBody;
-				pSelf->GameClient()->m_RClient.PlayerFeetColorBeforeCopyPlayer = g_Config.m_ClPlayerColorFeet;
+				str_copy(pSelf->PlayerSkinBeforeCopyPlayer, g_Config.m_ClPlayerSkin, sizeof(pSelf->PlayerSkinBeforeCopyPlayer));
+				pSelf->PlayerUseCustomColorBeforeCopyPlayer = g_Config.m_ClPlayerUseCustomColor;
+				pSelf->PlayerBodyColorBeforeCopyPlayer = g_Config.m_ClPlayerColorBody;
+				pSelf->PlayerFeetColorBeforeCopyPlayer = g_Config.m_ClPlayerColorFeet;
 				g_Config.m_ClPlayerUseCustomColor = ClientData.m_UseCustomColor;
 				g_Config.m_ClPlayerColorBody = ClientData.m_ColorBody;
 				g_Config.m_ClPlayerColorFeet = ClientData.m_ColorFeet;
@@ -1269,6 +1275,144 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 	}
 }
 
+void CRClient::TargetPlayerPosAdd(const char *Nickname)
+{
+	int ClientID = -1;
+	// First try to find by name
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(str_comp_nocase(GameClient()->m_aClients[i].m_aName, Nickname) == 0)
+		{
+			ClientID = i;
+			// Find first free slot
+			for(int j = 0; j < MAX_CLIENTS; j++)
+			{
+				if(TargetPositionId[j] == -1)
+				{
+					str_copy(TargetPositionNickname[j], GameClient()->m_aClients[ClientID].m_aName);
+					TargetPositionId[j] = ClientID;
+					TargetCount++;
+					char aBuf[128];
+					str_format(aBuf, sizeof(aBuf), "%s added to target list", GameClient()->m_aClients[ClientID].m_aName);
+					GameClient()->Echo(aBuf);
+					break;
+				}
+			}
+			break;
+		}
+	}
+
+	// If not found by name, try to use input as ID
+	if(ClientID == -1)
+	{
+		ClientID = str_toint(Nickname);
+		if(ClientID >= 0 && ClientID < MAX_CLIENTS && GameClient()->m_aClients[ClientID].m_aName[0] != '\0')
+		{
+			// Find first free slot
+			for(int j = 0; j < MAX_CLIENTS; j++)
+			{
+				if(TargetPositionId[j] == -1)
+				{
+					str_copy(TargetPositionNickname[j], GameClient()->m_aClients[ClientID].m_aName);
+					TargetPositionId[j] = ClientID;
+					TargetCount++;
+					break;
+				}
+			}
+		}
+		else
+		{
+			GameClient()->Echo("Invalid player ID or player not found");
+			dbg_msg("Search player", "Invalid player ID or player not found");
+		}
+	}
+}
+
+void CRClient::TargetPlayerPosRemove(const char *Nickname)
+{
+	int ClientID = -1;
+	// First try to find by name
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		if(str_comp_nocase(GameClient()->m_aClients[i].m_aName, Nickname) == 0)
+		{
+			ClientID = i;
+			// Find first free slot
+			for(int j = 0; j < TargetCount; j++)
+			{
+				if(str_comp_nocase(TargetPositionNickname[j], GameClient()->m_aClients[ClientID].m_aName) == 0)
+				{
+					TargetCount--;
+
+					// Shift remaining targets to fill the gap
+					for(int k = j; k < TargetCount; k++)
+					{
+						TargetPositionId[k] = TargetPositionId[k + 1];
+						str_copy(TargetPositionNickname[k], TargetPositionNickname[k + 1], sizeof(TargetPositionNickname[k]));
+					}
+
+					// Clear the last slot
+					TargetPositionId[TargetCount] = -1;
+					TargetPositionNickname[TargetCount][0] = '\0';
+					char aBuf[128];
+					str_format(aBuf, sizeof(aBuf), "%s removed from target list", GameClient()->m_aClients[ClientID].m_aName);
+					GameClient()->Echo(aBuf);
+					return;
+				}
+			}
+			break;
+		}
+	}
+
+	// If not found by name, try to use input as ID
+	if(ClientID == -1)
+	{
+		ClientID = str_toint(Nickname);
+		if(ClientID >= 0 && ClientID < MAX_CLIENTS && GameClient()->m_aClients[ClientID].m_aName[0] != '\0')
+		{
+			// Find matching slot
+			for(int j = 0; j < TargetCount; j++)
+			{
+				if(TargetPositionId[j] == ClientID)
+				{
+					TargetCount--;
+
+					// Shift remaining targets to fill the gap
+					for(int k = j; k < TargetCount; k++)
+					{
+						TargetPositionId[k] = TargetPositionId[k + 1];
+						str_copy(TargetPositionNickname[k], TargetPositionNickname[k + 1], sizeof(TargetPositionNickname[k]));
+					}
+
+					// Clear the last slot
+					TargetPositionId[TargetCount] = -1;
+					TargetPositionNickname[TargetCount][0] = '\0';
+
+					GameClient()->Echo("Player removed from target list");
+					return;
+				}
+			}
+			GameClient()->Echo("Player not in target list");
+		}
+		else
+		{
+			GameClient()->Echo("Invalid player ID or player not found");
+			dbg_msg("Search player", "Invalid player ID or player not found");
+		}
+	}
+}
+
+void CRClient::TargetPlayerPosReset()
+{
+	for(int i = 0; i < MAX_CLIENTS; i++)
+	{
+		TargetPositionId[i] = -1;
+		TargetPositionNickname[i][0] = '\0';
+	}
+	TargetCount = 0;
+	GameClient()->Echo("Target list reset");
+}
+
 void CRClient::ConTargetPlayerPos(IConsole::IResult *pResult, void *pUserData)
 {
 	CRClient *pSelf = (CRClient *)pUserData;
@@ -1280,67 +1424,15 @@ void CRClient::ConTargetPlayerPos(IConsole::IResult *pResult, void *pUserData)
 	char aInput[256];
 	str_copy(aInput, pInput, sizeof(aInput));
 	str_utf8_trim_right(aInput);
-	int ClientID = -1;
-	// First try to find by name
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		if(str_comp_nocase(pSelf->GameClient()->m_aClients[i].m_aName, aInput) == 0)
-		{
-			ClientID = i;
-			// Find first free slot
-			for(int j = 0; j < MAX_CLIENTS; j++)
-			{
-				if(pSelf->GameClient()->m_RClient.TargetPositionId[j] == -1)
-				{
-					str_copy(pSelf->GameClient()->m_RClient.TargetPositionNickname[j], pSelf->GameClient()->m_aClients[ClientID].m_aName);
-					pSelf->GameClient()->m_RClient.TargetPositionId[j] = ClientID;
-					pSelf->GameClient()->m_RClient.TargetCount++;
-					char aBuf[128];
-					str_format(aBuf, sizeof(aBuf), "%s added to target list", pSelf->GameClient()->m_aClients[ClientID].m_aName);
-					pSelf->GameClient()->Echo(aBuf);
-					break;
-				}
-			}
-			break;
-		}
-	}
-
-	// If not found by name, try to use input as ID
-	if(ClientID == -1)
-	{
-		ClientID = str_toint(aInput);
-		if(ClientID >= 0 && ClientID < MAX_CLIENTS && pSelf->GameClient()->m_aClients[ClientID].m_aName[0] != '\0')
-		{
-			// Find first free slot
-			for(int j = 0; j < MAX_CLIENTS; j++)
-			{
-				if(pSelf->GameClient()->m_RClient.TargetPositionId[j] == -1)
-				{
-					str_copy(pSelf->GameClient()->m_RClient.TargetPositionNickname[j], pSelf->GameClient()->m_aClients[ClientID].m_aName);
-					pSelf->GameClient()->m_RClient.TargetPositionId[j] = ClientID;
-					pSelf->GameClient()->m_RClient.TargetCount++;
-					break;
-				}
-			}
-		}
-		else
-		{
-			pSelf->GameClient()->Echo("Invalid player ID or player not found");
-			dbg_msg("Search player", "Invalid player ID or player not found");
-		}
-	}
+	pSelf->TargetPlayerPosAdd(aInput);
 }
+
 void CRClient::ConTargetPlayerPosReset(IConsole::IResult *pResult, void *pUserData)
 {
 	CRClient *pSelf = (CRClient *)pUserData;
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		pSelf->GameClient()->m_RClient.TargetPositionId[i] = -1;
-		pSelf->GameClient()->m_RClient.TargetPositionNickname[i][0] = '\0';
-	}
-	pSelf->GameClient()->m_RClient.TargetCount = 0;
-	pSelf->GameClient()->Echo("Target list reset");
+	pSelf->TargetPlayerPosReset();
 }
+
 void CRClient::ConTargetPlayerPosRemove(IConsole::IResult *pResult, void *pUserData)
 {
 	CRClient *pSelf = (CRClient *)pUserData;
@@ -1348,76 +1440,7 @@ void CRClient::ConTargetPlayerPosRemove(IConsole::IResult *pResult, void *pUserD
 	char aInput[256];
 	str_copy(aInput, pInput, sizeof(aInput));
 	str_utf8_trim_right(aInput);
-	int ClientID = -1;
-	// First try to find by name
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		if(str_comp_nocase(pSelf->GameClient()->m_aClients[i].m_aName, aInput) == 0)
-		{
-			ClientID = i;
-			// Find first free slot
-			for(int j = 0; j < pSelf->GameClient()->m_RClient.TargetCount; j++)
-			{
-				if(str_comp_nocase(pSelf->GameClient()->m_RClient.TargetPositionNickname[j], pSelf->GameClient()->m_aClients[ClientID].m_aName) == 0)
-				{
-					pSelf->GameClient()->m_RClient.TargetCount--;
-
-					// Shift remaining targets to fill the gap
-					for(int k = j; k < pSelf->GameClient()->m_RClient.TargetCount; k++)
-					{
-						pSelf->GameClient()->m_RClient.TargetPositionId[k] = pSelf->GameClient()->m_RClient.TargetPositionId[k + 1];
-						str_copy(pSelf->GameClient()->m_RClient.TargetPositionNickname[k], pSelf->GameClient()->m_RClient.TargetPositionNickname[k + 1], sizeof(pSelf->GameClient()->m_RClient.TargetPositionNickname[k]));
-					}
-
-					// Clear the last slot
-					pSelf->GameClient()->m_RClient.TargetPositionId[pSelf->GameClient()->m_RClient.TargetCount] = -1;
-					pSelf->GameClient()->m_RClient.TargetPositionNickname[pSelf->GameClient()->m_RClient.TargetCount][0] = '\0';
-					char aBuf[128];
-					str_format(aBuf, sizeof(aBuf), "%s removed from target list", pSelf->GameClient()->m_aClients[ClientID].m_aName);
-					pSelf->GameClient()->Echo(aBuf);
-					return;
-				}
-			}
-			break;
-		}
-	}
-
-	// If not found by name, try to use input as ID
-	if(ClientID == -1)
-	{
-		ClientID = str_toint(aInput);
-		if(ClientID >= 0 && ClientID < MAX_CLIENTS && pSelf->GameClient()->m_aClients[ClientID].m_aName[0] != '\0')
-		{
-			// Find matching slot
-			for(int j = 0; j < pSelf->GameClient()->m_RClient.TargetCount; j++)
-			{
-				if(pSelf->GameClient()->m_RClient.TargetPositionId[j] == ClientID)
-				{
-					pSelf->GameClient()->m_RClient.TargetCount--;
-
-					// Shift remaining targets to fill the gap
-					for(int k = j; k < pSelf->GameClient()->m_RClient.TargetCount; k++)
-					{
-						pSelf->GameClient()->m_RClient.TargetPositionId[k] = pSelf->GameClient()->m_RClient.TargetPositionId[k + 1];
-						str_copy(pSelf->GameClient()->m_RClient.TargetPositionNickname[k], pSelf->GameClient()->m_RClient.TargetPositionNickname[k + 1], sizeof(pSelf->GameClient()->m_RClient.TargetPositionNickname[k]));
-					}
-
-					// Clear the last slot
-					pSelf->GameClient()->m_RClient.TargetPositionId[pSelf->GameClient()->m_RClient.TargetCount] = -1;
-					pSelf->GameClient()->m_RClient.TargetPositionNickname[pSelf->GameClient()->m_RClient.TargetCount][0] = '\0';
-
-					pSelf->GameClient()->Echo("Player removed from target list");
-					return;
-				}
-			}
-			pSelf->GameClient()->Echo("Player not in target list");
-		}
-		else
-		{
-			pSelf->GameClient()->Echo("Invalid player ID or player not found");
-			dbg_msg("Search player", "Invalid player ID or player not found");
-		}
-	}
+	pSelf->TargetPlayerPosRemove(aInput);
 }
 
 void CRClient::ConAddCensorList(IConsole::IResult *pResult, void *pUserData)
@@ -1502,4 +1525,55 @@ void CRClient::RclientOnPlayerChange(bool Connected)
 	{
 		str_copy(g_Config.m_PlayerClan, g_Config.m_PlayerClanNoDummy, sizeof(g_Config.m_PlayerClan));
 	}
+}
+
+std::string CRClient::encodeUTF8(const std::string &Input)
+{
+	std::ostringstream Encoded;
+	const char *ptr = Input.c_str();
+
+	while(*ptr != '\0')
+	{
+		int CodePoint = str_utf8_decode(&ptr);
+		if(CodePoint < 0)
+		{
+			Encoded << "-ERROR-";
+			break;
+		}
+
+		if(CodePoint <= 127 && std::isalnum(static_cast<unsigned char>(CodePoint)))
+		{
+			Encoded << static_cast<char>(CodePoint);
+		}
+		else
+		{
+			Encoded << '-' << CodePoint << '-';
+		}
+	}
+
+	return Encoded.str();
+}
+
+float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger)
+{
+	// Default: m_ScoreboardPopupContext.m_IsLocal ? 30.0f : 60.0f
+	// Default: m_ScoreboardPopupContext.m_IsLocal ? 58.5f : 87.5f
+	constexpr float OuterPopupPadding = 2.0f * (1.0f + 4.0f); // 
+	constexpr float InnerMargin = 10.0f; // View.Margin(5.0f) inside PopupScoreboard
+	constexpr float LabelHeight = 12.0f;
+	constexpr float ItemSpacing = 2.0f;
+	constexpr float ButtonHeight = 17.5f;
+	constexpr float QuickActionHeight = 25.0f + ItemSpacing * 2.0f; // height of one quick-action row including spacing
+
+	// Both popup entry points currently render the same stack of buttons.
+	const int ButtonRows = IsDefaultRender ? 8 : 7;
+
+	float ScoreboardHeight = OuterPopupPadding + InnerMargin + LabelHeight;
+	if(IsBigger)
+	{
+		ScoreboardHeight += QuickActionHeight * 2.0f; // friend/mute/emote + tracker/team/war
+	}
+	ScoreboardHeight += ButtonRows * (ButtonHeight + ItemSpacing * 2.0f);
+
+	return ScoreboardHeight;
 }
