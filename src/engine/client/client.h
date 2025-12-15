@@ -527,7 +527,7 @@ public:
 	virtual void SaveReplay(int Length, const char *pFilename = "");
 
 	bool EditorHasUnsavedData() const override { return m_pEditor->HasUnsavedData(); }
-	IFriends *Friends() override { return &m_Friends; }
+
 	IFriends *Foes() override { return &m_Foes; }
 
 	void GetSmoothFreezeTick(int *pSmoothTick, float *pSmoothIntraTick, float MixAmount) override;
