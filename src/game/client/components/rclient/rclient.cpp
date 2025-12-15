@@ -1527,20 +1527,6 @@ void CRClient::RclientOnPlayerChange(bool Connected)
 	}
 }
 
-std::string CRClient::encodeUTF8(const std::string &Input)
-{
-	if(Input.empty())
-	{
-		return {};
-	}
-
-	// EscapeUrl percent-encodes the UTF-8 bytes so ddnet.org can handle special characters.
-	std::string Encoded(Input.size() * 3 + 1, '\0');
-	EscapeUrl(Encoded.data(), Encoded.size(), Input.c_str());
-	Encoded.resize(str_length(Encoded.c_str()));
-	return Encoded;
-}
-
 float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int ClientId)
 {
 	// Default: m_ScoreboardPopupContext.m_IsLocal ? 30.0f : 60.0f

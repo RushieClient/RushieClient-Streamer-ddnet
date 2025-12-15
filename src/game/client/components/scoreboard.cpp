@@ -4,6 +4,7 @@
 
 #include <engine/demo.h>
 #include <engine/graphics.h>
+#include <engine/shared/http.h>
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
 
@@ -1246,12 +1247,14 @@ CUi::EPopupMenuFunctionResult CScoreboard::PopupScoreboard(void *pContext, CUIRe
 		pScoreboard->Client()->GetServerInfo(&ServerInfo);
 		int Community = (str_comp(ServerInfo.m_aCommunityId, "kog") == 0) ? 1 : (str_comp(ServerInfo.m_aCommunityId, "unique") == 0) ? 2 : 0;
 		char aCommunityLink[512];
+		char aEncodedName[256];
+		EscapeUrl(aEncodedName, sizeof(aEncodedName), Client.m_aName);
 		if(Community == 1)
-			str_format(aCommunityLink, sizeof(aCommunityLink), "https://kog.tw/#p=players&player=%s", Client.m_aName);
+			str_format(aCommunityLink, sizeof(aCommunityLink), "https://kog.tw/#p=players&player=%s", aEncodedName);
 		else if(Community == 2)
-			str_format(aCommunityLink, sizeof(aCommunityLink), "https://uniqueclan.net/ranks/player/%s", Client.m_aName);
+			str_format(aCommunityLink, sizeof(aCommunityLink), "https://uniqueclan.net/ranks/player/%s", aEncodedName);
 		else
-			str_format(aCommunityLink, sizeof(aCommunityLink), "https://ddnet.org/players/%s", CRClient::encodeUTF8(Client.m_aName).c_str());
+			str_format(aCommunityLink, sizeof(aCommunityLink), "https://ddnet.org/players/%s", aEncodedName);
 
 		pScoreboard->Client()->ViewLink(aCommunityLink);
 	}

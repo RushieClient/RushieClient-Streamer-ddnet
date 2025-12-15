@@ -149,7 +149,6 @@ public:
 	Regex m_RegexSplitPlayer;
 
 	// Scoreboard
-	static std::string encodeUTF8(const std::string &Input);
 	float GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int ClientId = -1);
 
 	//Copy
