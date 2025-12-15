@@ -30,6 +30,8 @@ class CDiscord : public IDiscord
 {
 	DiscordActivity m_Activity;
 	bool m_UpdateActivity = false;
+	int64_t m_LastActivityUpdate = 0;
+
 	IDiscordCore *m_pCore;
 	IDiscordActivityEvents m_ActivityEvents;
 	IDiscordActivityManager *m_pActivityManager;
@@ -37,10 +39,7 @@ class CDiscord : public IDiscord
 	FDiscordCreate m_pfnDiscordCreate;
 	bool m_Enabled;
 
-	bool m_ShowMap;
-
 public:
-	int64_t m_TimeStamp = time_timestamp();
 	bool Init(FDiscordCreate pfnDiscordCreate)
 	{
 		m_pfnDiscordCreate = pfnDiscordCreate;
@@ -66,6 +65,8 @@ public:
 		DiscordCreateParams Params;
 		DiscordCreateParamsSetDefault(&Params);
 
+		// Params.client_id = 752165779117441075; // DDNet
+		// Params.client_id = 1325361453988970527; // TClient
 		Params.client_id = 1397526062799388803; // R-Client
 		Params.flags = EDiscordCreateFlags::DiscordCreateFlags_NoRequireDiscord;
 		Params.event_data = this;
@@ -84,7 +85,8 @@ public:
 		// which application to launch when joining activity
 		m_pActivityManager->register_command(m_pActivityManager, CONNECTLINK_DOUBLE_SLASH);
 		m_pActivityManager->register_steam(m_pActivityManager, 412220); // steam id
-		str_copy(m_Activity.details, "Just joined", sizeof(m_Activity.details));
+
+		ClearGameInfo();
 
 		return false;
 	}
@@ -99,44 +101,44 @@ public:
 
 		if(m_pCore && m_Enabled)
 		{
+			// update every 5 seconds, rate limit is 5 updates per 20 seconds
+			if(m_UpdateActivity && time_get() > m_LastActivityUpdate + time_freq() * 5)
+			{
+				m_UpdateActivity = false;
+				m_LastActivityUpdate = time_get();
+
+				m_pActivityManager->update_activity(m_pActivityManager, &m_Activity, 0, 0);
+			}
+
 			m_pCore->run_callbacks(m_pCore);
-			m_pActivityManager->update_activity(m_pActivityManager, &m_Activity, 0, 0);
 		}
 	}
-	void ClearGameInfo(const char *pDetail) override
-	{
-		if(!m_Enabled || !m_pActivityManager)
-			return;
 
+	void ClearGameInfo() override
+	{
 		mem_zero(&m_Activity, sizeof(DiscordActivity));
 
 		str_copy(m_Activity.assets.large_image, "rclient_logo", sizeof(m_Activity.assets.large_image));
-		str_copy(m_Activity.assets.large_text, "rushie-client.ru", sizeof(m_Activity.assets.large_text));
-		str_copy(m_Activity.details, pDetail, sizeof(m_Activity.details));
-
-		m_Activity.timestamps.start = m_TimeStamp;
-
+		str_copy(m_Activity.assets.large_text, "RClient logo", sizeof(m_Activity.assets.large_text));
+		m_Activity.timestamps.start = time_timestamp();
+		str_copy(m_Activity.details, "Offline", sizeof(m_Activity.details));
 		m_Activity.instance = false;
+
 		m_UpdateActivity = true;
 	}
 
-	void SetGameInfo(const CServerInfo &ServerInfo, const char *pMapName, const char *pDetail, bool ShowMap, bool Registered) override
+	void SetGameInfo(const CServerInfo &ServerInfo, const char *pMapName, bool Registered) override
 	{
-		if(!m_Enabled || !m_pActivityManager)
-			return;
-
 		mem_zero(&m_Activity, sizeof(DiscordActivity));
 
-		// E-Client
 		str_copy(m_Activity.assets.large_image, "rclient_logo", sizeof(m_Activity.assets.large_image));
-		str_copy(m_Activity.assets.large_text, "rushie-client.ru", sizeof(m_Activity.assets.large_text));
-		m_ShowMap = ShowMap;
+		str_copy(m_Activity.assets.large_text, "RClient logo", sizeof(m_Activity.assets.large_text));
+		m_Activity.timestamps.start = time_timestamp();
+		str_copy(m_Activity.name, "Online", sizeof(m_Activity.name));
 		m_Activity.instance = true;
-		m_Activity.timestamps.start = m_TimeStamp;
-		if(m_ShowMap)
-			str_copy(m_Activity.state, pMapName, sizeof(m_Activity.state));
-		str_copy(m_Activity.details, pDetail, sizeof(m_Activity.details));
 
+		str_copy(m_Activity.details, ServerInfo.m_aName, sizeof(m_Activity.details));
+		str_copy(m_Activity.state, pMapName, sizeof(m_Activity.state));
 		m_Activity.party.size.current_size = ServerInfo.m_NumClients;
 		m_Activity.party.size.max_size = ServerInfo.m_MaxClients;
 		// private makes it so the game isn't public to join, but there's 'Ask to Join' button instead
@@ -158,14 +160,13 @@ public:
 	{
 		if(!m_Activity.instance)
 			return;
-		m_UpdateActivity = true;
-		m_Activity.party.size.max_size = ServerInfo.m_MaxClients;
 
 		UpdateServerIp(ServerInfo);
 
-		// E-Client
-		if(m_ShowMap)
-			str_copy(m_Activity.state, pMapName, sizeof(m_Activity.state));
+		str_copy(m_Activity.details, ServerInfo.m_aName, sizeof(m_Activity.details));
+		str_copy(m_Activity.state, pMapName, sizeof(m_Activity.state));
+		m_Activity.party.size.max_size = ServerInfo.m_MaxClients;
+		m_UpdateActivity = true;
 	}
 
 	void UpdatePlayerCount(int Count) override
@@ -245,9 +246,9 @@ static IDiscord *CreateDiscordImpl()
 
 class CDiscordStub : public IDiscord
 {
-	void Update(bool RPC) override {}
-	void ClearGameInfo(const char *pDetail) override {}
-	void SetGameInfo(const CServerInfo &ServerInfo, const char *pMapName, const char *pDetail, bool ShowMap, bool Registered) override {}
+	void Update(bool Enabled) override {}
+	void ClearGameInfo() override {}
+	void SetGameInfo(const CServerInfo &ServerInfo, const char *pMapName, bool Registered) override {}
 	void UpdateServerInfo(const CServerInfo &ServerInfo, const char *pMapName) override {}
 	void UpdatePlayerCount(int Count) override {}
 };

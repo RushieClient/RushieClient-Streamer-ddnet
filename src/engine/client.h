@@ -350,9 +350,6 @@ public:
 
 	// TClient
 	bool m_IsLocalFrozen = false;
-
-	// RClient
-	virtual void DiscordRPCchange() = 0;
 };
 
 class IGameClient : public IInterface

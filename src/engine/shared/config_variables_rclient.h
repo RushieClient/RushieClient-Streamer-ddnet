@@ -84,11 +84,6 @@ MACRO_CONFIG_INT(RiChatBubbleShowTime, ri_chat_bubble_showtime, 200, 200, 1000, 
 MACRO_CONFIG_INT(RiChatBubbleFadeOut, ri_chat_bubble_fadeout, 35, 15, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "How long it fades out")
 MACRO_CONFIG_INT(RiChatBubbleFadeIn, ri_chat_bubble_fadein, 15, 15, 100, CFGFLAG_CLIENT | CFGFLAG_SAVE, "how long it fades in")
 
-// Discord
-MACRO_CONFIG_INT(RiDiscordMapStatus, ri_discord_map_status, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show What Map you're on")
-MACRO_CONFIG_STR(RiDiscordOnlineStatus, ri_discord_online_status, 25, "Online", CFGFLAG_CLIENT | CFGFLAG_SAVE, "discord Online Status")
-MACRO_CONFIG_STR(RiDiscordOfflineStatus, ri_discord_offline_status, 25, "Offline", CFGFLAG_CLIENT | CFGFLAG_SAVE, "discord Offline Status")
-
 // RCON
 MACRO_CONFIG_INT(RiPlaySounds, ri_play_sounds, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Plays sound when do command")
 

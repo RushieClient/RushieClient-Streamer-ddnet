@@ -448,36 +448,14 @@ void CClient::SetState(EClientState State)
 		CServerInfo CurrentServerInfo;
 		GetServerInfo(&CurrentServerInfo);
 
+		Discord()->SetGameInfo(CurrentServerInfo, m_aCurrentMap, Registered);
 		Steam()->SetGameInfo(ServerAddress(), m_aCurrentMap, Registered);
 	}
 	else if(OldState == IClient::STATE_ONLINE)
 	{
+		Discord()->ClearGameInfo();
 		Steam()->ClearGameInfo();
 	}
-	DiscordRPCchange();
-}
-
-void CClient::ConDiscordRPCchange(IConsole::IResult *pResult, void *pUserData)
-{
-	CClient *pSelf = (CClient *)pUserData;
-	pSelf->DiscordRPCchange();
-}
-
-void CClient::DiscordRPCchange()
-{
-	if(State() == IClient::STATE_ONLINE)
-	{
-		const bool Registered = m_ServerBrowser.IsRegistered(ServerAddress());
-		CServerInfo CurrentServerInfo;
-		GetServerInfo(&CurrentServerInfo);
-
-		Discord()->SetGameInfo(CurrentServerInfo, m_aCurrentMap, g_Config.m_RiDiscordOnlineStatus, g_Config.m_RiDiscordMapStatus, Registered);
-	}
-	else if(State() == IClient::STATE_OFFLINE)
-	{
-		Discord()->ClearGameInfo(g_Config.m_RiDiscordOfflineStatus);
-	}
-	dbg_msg("RClient", "Discord RPC reloaded");
 }
 
 // called when the map is loaded and we should init for a new round
@@ -1523,8 +1501,7 @@ void CClient::ProcessServerInfo(int RawType, NETADDR *pFrom, const void *pData, 
 			{
 				m_CurrentServerInfo = Info;
 				m_CurrentServerInfoRequestTime = -1;
-				if(g_Config.m_TcDiscordRPC)
-					Discord()->UpdateServerInfo(Info, m_aCurrentMap);
+				Discord()->UpdateServerInfo(Info, m_aCurrentMap);
 			}
 
 			bool ValidPong = false;
@@ -3131,8 +3108,7 @@ void CClient::InitInterfaces()
 #if defined(CONF_AUTOUPDATE)
 	m_pUpdater = Kernel()->RequestInterface<IUpdater>();
 #endif
-	if(g_Config.m_TcDiscordRPC)
-		m_pDiscord = Kernel()->RequestInterface<IDiscord>();
+	m_pDiscord = Kernel()->RequestInterface<IDiscord>();
 	m_pSteam = Kernel()->RequestInterface<ISteam>();
 	m_pNotifications = Kernel()->RequestInterface<INotifications>();
 	m_pStorage = Kernel()->RequestInterface<IStorage>();

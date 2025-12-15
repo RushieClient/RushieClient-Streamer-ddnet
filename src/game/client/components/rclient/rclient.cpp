@@ -110,11 +110,6 @@ void CRClient::OnRender()
 			ResetFindHours();
 		}
 	}
-	if(GameClient()->m_Menus.m_RPC_Ratelimit < time_get() && (GameClient()->m_Menus.m_RPC_Ratelimit - time_get()) / time_freq() > -1)
-	{
-		Client()->DiscordRPCchange();
-		GameClient()->m_Menus.m_RPC_Ratelimit = -2;
-	}
 
 	if(GameClient()->m_Snap.m_SpecInfo.m_Active && GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == SPEC_FREEVIEW && !GameClient()->m_AdminPanelRi.IsActive() && g_Config.m_RiSpectatorMoveEnable)
 	{

@@ -139,10 +139,6 @@ class CClient : public IClient, public CDemoPlayer::IListener
 	bool m_aDidPostConnect[NUM_DUMMIES] = {false, false};
 	bool m_GenerateTimeoutSeed = true;
 
-	//Rclient
-	static void ConDiscordRPCchange(IConsole::IResult *pResult, void *pUserData);
-	void DiscordRPCchange() override;
-
 	// TClient
 	std::array<bool, NUM_DUMMIES> m_aExecuteOnJoinDone = {};
 
