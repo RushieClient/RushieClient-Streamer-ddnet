@@ -77,7 +77,6 @@ class CRClient : public CComponent
 	void FetchRclientVersionCheck();
 	void FinishRclientVersionCheck();
 	void ResetRclientVersionCheck();
-	int RclientVersionCheckDone = 0;
 
 	// Find map rank
 	std::shared_ptr<CHttpRequest> m_pSearchRankOnMapTask = nullptr;
