@@ -1554,19 +1554,37 @@ std::string CRClient::encodeUTF8(const std::string &Input)
 	return Encoded.str();
 }
 
-float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger)
+float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int ClientId)
 {
 	// Default: m_ScoreboardPopupContext.m_IsLocal ? 30.0f : 60.0f
 	// Default: m_ScoreboardPopupContext.m_IsLocal ? 58.5f : 87.5f
-	constexpr float OuterPopupPadding = 2.0f * (1.0f + 4.0f); // 
+	constexpr float OuterPopupPadding = 2.0f * (1.0f + 4.0f); // popup border + margin on both sides
 	constexpr float InnerMargin = 10.0f; // View.Margin(5.0f) inside PopupScoreboard
 	constexpr float LabelHeight = 12.0f;
 	constexpr float ItemSpacing = 2.0f;
 	constexpr float ButtonHeight = 17.5f;
 	constexpr float QuickActionHeight = 25.0f + ItemSpacing * 2.0f; // height of one quick-action row including spacing
 
+	const int LocalId = GameClient()->m_aLocalIds[g_Config.m_ClDummy];
+	const int LocalTeam = GameClient()->m_Teams.Team(LocalId);
+	const int TargetTeam = GameClient()->m_Teams.Team(ClientId);
+	const bool LocalInTeam = LocalTeam != TEAM_FLOCK && LocalTeam != TEAM_SUPER;
+	const bool TargetInTeam = TargetTeam != TEAM_FLOCK && TargetTeam != TEAM_SUPER;
+	const bool LocalIsTarget = LocalId == ClientId;
+	int ExtraButtonRows = 0;
+	if(LocalInTeam && LocalTeam == TargetTeam)
+		ExtraButtonRows++; // Exit
+	if(TargetInTeam && LocalTeam != TargetTeam)
+		ExtraButtonRows++; // Join
+	if(LocalInTeam && TargetTeam != LocalTeam)
+		ExtraButtonRows++; // Invite
+	if(!LocalIsTarget && LocalInTeam && TargetTeam == LocalTeam)
+		ExtraButtonRows++; // Kick
+	if(LocalInTeam && LocalTeam == TargetTeam)
+		ExtraButtonRows++; // Lock
+
 	// Both popup entry points currently render the same stack of buttons.
-	const int ButtonRows = IsDefaultRender ? 8 : 7;
+	const int ButtonRows = (IsDefaultRender ? 8 : 7) + ExtraButtonRows;
 
 	float ScoreboardHeight = OuterPopupPadding + InnerMargin + LabelHeight;
 	if(IsBigger)
@@ -1574,6 +1592,9 @@ float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger)
 		ScoreboardHeight += QuickActionHeight * 2.0f; // friend/mute/emote + tracker/team/war
 	}
 	ScoreboardHeight += ButtonRows * (ButtonHeight + ItemSpacing * 2.0f);
+
+	if (ExtraButtonRows != 0)
+		ScoreboardHeight += ItemSpacing * 4.0f;
 
 	return ScoreboardHeight;
 }

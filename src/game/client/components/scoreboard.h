@@ -64,6 +64,12 @@ class CScoreboard : public CComponent
 		CButtonContainer m_ClipNameButton;
 		CButtonContainer m_SwapButton;
 
+		CButtonContainer m_TeamExitButton;
+		CButtonContainer m_TeamJoinButton;
+		CButtonContainer m_TeamInviteButton;
+		CButtonContainer m_TeamKickButton;
+		CButtonContainer m_TeamLockButton;
+
 		int m_ClientId;
 		bool m_IsLocal;
 		bool m_IsSpectating;
