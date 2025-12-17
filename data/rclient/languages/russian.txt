@@ -541,3 +541,18 @@ Teams
 [ScoreboardSorting]
 All
 == Всё
+
+Show friend icon in scoreboard
+== Показвать иконку друга в скорбоард
+
+Always show quick actions
+== Всегда показывать быстрые действия
+
+Show sparkle trail
+== Показвать трейл из частиц
+
+Show frozen flakes in freeze
+== Показвать снежки в фризе
+
+Partial Replacement char
+== Частичная замена
