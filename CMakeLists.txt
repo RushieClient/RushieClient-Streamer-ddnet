@@ -915,12 +915,12 @@ list(APPEND TARGETS_OWN rust-bridge-shared)
 
 if(TARGET_OS STREQUAL "android")
   set(CARGO_BUILD_DIR "${CARGO_NDK_TARGET}/")
-  set(CARGO_BUILD ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} DDNET_TEST_NO_LINK=1 ${RUST_CARGO} ndk --manifest-path "${PROJECT_SOURCE_DIR}/Cargo.toml" --target ${CARGO_NDK_TARGET} --platform ${CARGO_NDK_API} build)
-  set(CARGO_TEST ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} ${RUST_CARGO} ndk --target ${CARGO_NDK_TARGET} --platform ${CARGO_NDK_API} test)
+  set(CARGO_BUILD ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} DDNET_TEST_NO_LINK=1 ${RUST_CARGO} ndk --manifest-path "${PROJECT_SOURCE_DIR}/Cargo.toml" --target ${CARGO_NDK_TARGET} --platform ${CARGO_NDK_API} build --locked)
+  set(CARGO_TEST ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} ${RUST_CARGO} ndk --target ${CARGO_NDK_TARGET} --platform ${CARGO_NDK_API} test --locked)
 else()
   set(CARGO_BUILD_DIR "")
-  set(CARGO_BUILD ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} DDNET_TEST_NO_LINK=1 ${RUST_CARGO} build --manifest-path "${PROJECT_SOURCE_DIR}/Cargo.toml")
-  set(CARGO_TEST ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} ${RUST_CARGO} test)
+  set(CARGO_BUILD ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} DDNET_TEST_NO_LINK=1 ${RUST_CARGO} build --locked --manifest-path "${PROJECT_SOURCE_DIR}/Cargo.toml")
+  set(CARGO_TEST ${CMAKE_COMMAND} -E env CARGO_TARGET_DIR=${PROJECT_BINARY_DIR} ${RUST_CARGO} test --locked)
 endif()
 if(MSVC)
   list(INSERT CARGO_BUILD 0 ${CMAKE_COMMAND} -E env $<$<CONFIG:Debug>:CFLAGS=/MTd> $<$<CONFIG:Debug>:CXXFLAGS=/MTd>)
@@ -2122,6 +2122,8 @@ set_src(BASE GLOB_RECURSE src/base
   color.cpp
   color.h
   crashdump.cpp
+  dbg.cpp
+  dbg.h
   detect.h
   dynamic.h
   fs.cpp
@@ -2282,6 +2284,8 @@ set_src(ENGINE_SHARED GLOB_RECURSE src/engine/shared
   websockets.h
 )
 set_src(ENGINE_EXTERNAL GLOB src/engine/external
+  mumble.cpp
+  mumble.h
   regex.cpp
   regex.h
   spt.cpp
@@ -2602,6 +2606,8 @@ if(CLIENT)
     components/tclient/menus_tclient.cpp
     components/tclient/mod.cpp
     components/tclient/mod.h
+    components/tclient/mumble.cpp
+    components/tclient/mumble.h
     components/tclient/outlines.cpp
     components/tclient/outlines.h
     components/tclient/pet.cpp

@@ -80,6 +80,7 @@
 #include "components/tclient/bindwheel.h"
 #include "components/tclient/custom_communities.h"
 #include "components/tclient/mod.h"
+#include "components/tclient/mumble.h"
 #include "components/tclient/outlines.h"
 #include "components/tclient/pet.h"
 #include "components/tclient/player_indicator.h"
@@ -230,6 +231,7 @@ public:
 	CPet m_Pet;
 	CPlayerIndicator m_PlayerIndicator;
 	COutlines m_Outlines;
+	CMumble m_Mumble;
 	CRainbow m_Rainbow;
 	CWarList m_WarList;
 	CScripting m_Scripting;
@@ -303,6 +305,7 @@ private:
 	static void ConchainSpecialInfoupdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainSpecialDummyInfoupdate(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainRefreshSkins(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
+	static void ConchainRefreshEventSkins(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 	static void ConchainSpecialDummy(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
 	static void ConTuneParam(IConsole::IResult *pResult, void *pUserData);
