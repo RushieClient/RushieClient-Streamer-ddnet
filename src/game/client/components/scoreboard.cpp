@@ -1275,7 +1275,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::PopupScoreboard(void *pContext, CUIRe
 	{
 		char aWhisperBuf[512];
 		str_format(aWhisperBuf, sizeof(aWhisperBuf), "chat all /whisper %s ", Client.m_aName);
-		pScoreboard->Console()->ExecuteLine(aWhisperBuf);
+		pScoreboard->Console()->ExecuteLine(aWhisperBuf, IConsole::CLIENT_ID_UNSPECIFIED);
 	}
 
 	View.HSplitTop(ItemSpacing * 2, nullptr, &View);
@@ -1322,7 +1322,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::PopupScoreboard(void *pContext, CUIRe
 	{
 		char aSwapBuf[256];
 		str_format(aSwapBuf, sizeof(aSwapBuf), "say /swap %s", Client.m_aName);
-		pScoreboard->Console()->ExecuteLine(aSwapBuf);
+		pScoreboard->Console()->ExecuteLine(aSwapBuf, IConsole::CLIENT_ID_UNSPECIFIED);
 	}
 
 	View.HSplitTop(ItemSpacing * 4, nullptr, &View);
@@ -1356,14 +1356,14 @@ CUi::EPopupMenuFunctionResult CScoreboard::PopupScoreboard(void *pContext, CUIRe
 
 		if(LocalInTeam && LocalTeam == TargetTeam)
 		{
-			AddTeamButton(&pPopupContext->m_TeamExitButton, Localize("Exit"), [&]() { pScoreboard->Console()->ExecuteLine("say /team 0"); });
+			AddTeamButton(&pPopupContext->m_TeamExitButton, Localize("Exit"), [&]() { pScoreboard->Console()->ExecuteLine("say /team 0", IConsole::CLIENT_ID_UNSPECIFIED); });
 		}
 		if(TargetInTeam && LocalTeam != TargetTeam)
 		{
 			AddTeamButton(&pPopupContext->m_TeamJoinButton, Localize("Join"), [&]() {
 				char aCmdBuf[128];
 				str_format(aCmdBuf, sizeof(aCmdBuf), "say /team %d", TargetTeam);
-				pScoreboard->Console()->ExecuteLine(aCmdBuf);
+				pScoreboard->Console()->ExecuteLine(aCmdBuf, IConsole::CLIENT_ID_UNSPECIFIED);
 			});
 		}
 		if(LocalInTeam && TargetTeam != LocalTeam)
@@ -1371,7 +1371,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::PopupScoreboard(void *pContext, CUIRe
 			AddTeamButton(&pPopupContext->m_TeamInviteButton, Localize("Invite"), [&]() {
 				char aCmdBuf[128];
 				str_format(aCmdBuf, sizeof(aCmdBuf), "say /invite %s", Client.m_aName);
-				pScoreboard->Console()->ExecuteLine(aCmdBuf);
+				pScoreboard->Console()->ExecuteLine(aCmdBuf, IConsole::CLIENT_ID_UNSPECIFIED);
 			});
 		}
 		if(!LocalIsTarget && LocalInTeam && TargetTeam == LocalTeam)
@@ -1380,7 +1380,7 @@ CUi::EPopupMenuFunctionResult CScoreboard::PopupScoreboard(void *pContext, CUIRe
 		}
 		if(LocalInTeam && LocalTeam == TargetTeam)
 		{
-			AddTeamButton(&pPopupContext->m_TeamLockButton, Localize("Lock"), [&]() { pScoreboard->Console()->ExecuteLine("say /lock"); });
+			AddTeamButton(&pPopupContext->m_TeamLockButton, Localize("Lock"), [&]() { pScoreboard->Console()->ExecuteLine("say /lock", IConsole::CLIENT_ID_UNSPECIFIED); });
 		}
 	}
 
