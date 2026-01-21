@@ -609,8 +609,9 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 									     (Client()->DummyConnected() && GameClient()->m_aLocalIds[1] == pInfo->m_ClientId);
 					m_ScoreboardPopupContext.m_IsSpectating = false;
 
+					const bool ShowQuickActions = !m_ScoreboardPopupContext.m_IsLocal || g_Config.m_RiScoreboardAlwaysShowQuickActions;
 					Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), 110.0f,
-						m_ScoreboardPopupContext.m_IsLocal ? 58.5f : 87.5f, &m_ScoreboardPopupContext, PopupScoreboard);
+						GameClient()->m_RClient.GetScoreboardHeight(true, ShowQuickActions, m_ScoreboardPopupContext.m_ClientId), &m_ScoreboardPopupContext, PopupScoreboard);
 				}
 
 				if(Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_PlayerButtonId)
