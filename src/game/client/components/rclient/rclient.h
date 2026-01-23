@@ -35,6 +35,7 @@ class CRClient : public CComponent
 	static void ConSpecRight(IConsole::IResult *pResult, void *pUserData);
 	static void ConSpecUp(IConsole::IResult *pResult, void *pUserData);
 	static void ConSpecDown(IConsole::IResult *pResult, void *pUserData);
+	static void ConGotoTeleCursor(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConFindSkin(IConsole::IResult *pResult, void *pUserData);
 	static void ConCopySkin(IConsole::IResult *pResult, void *pUserData);

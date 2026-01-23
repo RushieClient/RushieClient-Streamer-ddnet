@@ -51,6 +51,7 @@ void CRClient::OnConsoleInit()
 	Console()->Register("+ri_spec_right", "", CFGFLAG_CLIENT, ConSpecRight, this, "move camera left in spec");
 	Console()->Register("+ri_spec_up", "", CFGFLAG_CLIENT, ConSpecUp, this, "move camera left in spec");
 	Console()->Register("+ri_spec_down", "", CFGFLAG_CLIENT, ConSpecDown, this, "move camera left in spec");
+	Console()->Register("ri_goto_tele_cursor", "", CFGFLAG_CLIENT, ConGotoTeleCursor, this, "View teleport destination/source near cursor");
 	Console()->Chain(
 		"ri_regex_player_whitelist", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
 			if(pResult->NumArguments() == 1)
@@ -1494,6 +1495,136 @@ void CRClient::ConSpecDown(IConsole::IResult *pResult, void *pUserData)
 {
 	CRClient *pSelf = static_cast<CRClient *>(pUserData);
 	pSelf->m_SpecMoveDown = pResult->GetInteger(0) != 0;
+}
+
+void CRClient::ConGotoTeleCursor(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	if(pSelf->GameClient()->m_Snap.m_SpecInfo.m_SpectatorId != SPEC_FREEVIEW || !pSelf->GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		pSelf->GameClient()->Echo("You're not in freeview spectating");
+		return;
+	}
+
+	CCollision *pCollision = pSelf->GameClient()->Collision();
+	if(!pCollision || pCollision->TeleLayer() == nullptr)
+		return;
+
+	const int Width = pCollision->GetWidth();
+	const int Height = pCollision->GetHeight();
+	const vec2 Center = pSelf->GameClient()->m_Camera.m_Center;
+	const ivec2 CenterTile = ivec2(std::clamp(round_to_int(Center.x / 32.0f), 0, Width - 1), std::clamp(round_to_int(Center.y / 32.0f), 0, Height - 1));
+
+	const CTeleTile *pTele = pCollision->TeleLayer();
+	bool FoundTele = false;
+	CTeleTile TeleTile{};
+	float BestTeleDist = -1.0f;
+	for(int y = CenterTile.y - 1; y <= CenterTile.y + 1; y++)
+	{
+		if(y < 0 || y >= Height)
+			continue;
+		for(int x = CenterTile.x - 1; x <= CenterTile.x + 1; x++)
+		{
+			if(x < 0 || x >= Width)
+				continue;
+			const int TileIndex = y * Width + x;
+			const CTeleTile &Tile = pTele[TileIndex];
+			if(Tile.m_Number <= 0 || Tile.m_Type <= 0)
+				continue;
+			const vec2 Pos = vec2(x * 32.0f + 16.0f, y * 32.0f + 16.0f);
+			const float Dist = distance(Pos, Center);
+			if(BestTeleDist < 0.0f || Dist < BestTeleDist)
+			{
+				BestTeleDist = Dist;
+				TeleTile = Tile;
+				FoundTele = true;
+			}
+		}
+	}
+
+	if(!FoundTele)
+	{
+		pSelf->GameClient()->Echo("No teleporter near cursor");
+		return;
+	}
+
+	const int Number = TeleTile.m_Number - 1;
+	const int Type = TeleTile.m_Type;
+
+	std::vector<ivec2> Targets;
+
+	auto IsTypeAny = [](int Value, std::initializer_list<int> Types) {
+		for(int T : Types)
+		{
+			if(Value == T)
+				return true;
+		}
+		return false;
+	};
+
+	auto CollectTargets = [&](std::initializer_list<int> Types) {
+		Targets.clear();
+		for(int y = 0; y < Height; y++)
+		{
+			for(int x = 0; x < Width; x++)
+			{
+				const int TileIndex = y * Width + x;
+				const CTeleTile &Tile = pTele[TileIndex];
+				if(Tile.m_Number == Number + 1 && IsTypeAny(Tile.m_Type, Types))
+					Targets.emplace_back(x, y);
+			}
+		}
+	};
+
+	const bool IsTeleOut = IsTypeAny(Type, {TILE_TELEOUT});
+	const bool IsTeleCheckOut = IsTypeAny(Type, {TILE_TELECHECKOUT});
+	const bool IsTeleIn = IsTypeAny(Type, {TILE_TELEIN, TILE_TELEINEVIL, TILE_TELEINWEAPON, TILE_TELEINHOOK});
+	const bool IsTeleCheckIn = IsTypeAny(Type, {TILE_TELECHECK, TILE_TELECHECKIN, TILE_TELECHECKINEVIL});
+
+	if(IsTeleOut)
+	{
+		CollectTargets({TILE_TELEIN, TILE_TELEINEVIL, TILE_TELEINWEAPON, TILE_TELEINHOOK});
+	}
+	else if(IsTeleCheckOut)
+	{
+		CollectTargets({TILE_TELECHECK, TILE_TELECHECKIN, TILE_TELECHECKINEVIL});
+		if(Targets.empty())
+			CollectTargets({TILE_TELEIN, TILE_TELEINEVIL, TILE_TELEINWEAPON, TILE_TELEINHOOK});
+	}
+	else if(IsTeleCheckIn)
+	{
+		CollectTargets({TILE_TELECHECKOUT});
+	}
+	else if(IsTeleIn)
+	{
+		CollectTargets({TILE_TELEOUT});
+		if(Targets.empty())
+			CollectTargets({TILE_TELECHECKOUT});
+	}
+
+	if(Targets.empty())
+	{
+		pSelf->GameClient()->Echo("No teleporter destination found");
+		return;
+	}
+
+	int BestIndex = 0;
+	float BestDist = -1.0f;
+	for(int i = 0; i < (int)Targets.size(); i++)
+	{
+		const vec2 Pos = vec2(Targets[i].x * 32.0f + 16.0f, Targets[i].y * 32.0f + 16.0f);
+		const float Dist = distance(Pos, Center);
+		if(BestDist < 0.0f || Dist < BestDist)
+		{
+			BestDist = Dist;
+			BestIndex = i;
+		}
+	}
+
+	const vec2 TargetPos = vec2(Targets[BestIndex].x * 32.0f + 16.0f, Targets[BestIndex].y * 32.0f + 16.0f);
+	pSelf->GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy] = TargetPos;
+	pSelf->GameClient()->m_Controls.m_aMouseInputType[g_Config.m_ClDummy] = CControls::EMouseInputType::AUTOMATED;
+	pSelf->GameClient()->m_Controls.ClampMousePos();
 }
 
 void CRClient::RclientOnDummyChange(bool DummyConnected)
