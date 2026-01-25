@@ -1042,8 +1042,10 @@ void CMenus::RenderSettingsRushieNameplatesEditor(CUIRect MainView)
 		const char *pIcon;
 	} s_aElems[] = {
 		{'n', "Nick", "N"},
+		{'C', "Country", "FL"},
 		{'c', "Clan", "C"},
 		{'m', "ID", "#"},
+		{'M', "ID Line", "#2"},
 		{'f', "Friend", "♥"},
 		{'d', "Dir", "⇄"},
 		{'p', "Ping", "P"},
@@ -1249,7 +1251,7 @@ void CMenus::RenderSettingsRushieNameplatesEditor(CUIRect MainView)
 	ClearCol.VSplitLeft(4.0f, &Spacer, &ClearCol);
 	if(DoButton_Menu(&s_ResetButton, RCLocalize("Reset to default"), 0, &ResetCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 14.0f, 0.0f, ColorRGBA(0.3f, 0.1f, 0.1f, 0.8f)))
 	{
-		str_copy(g_Config.m_RiNamePlateScheme, "IpifmnlclrlFHlsldlh", sizeof(g_Config.m_RiNamePlateScheme));
+		str_copy(g_Config.m_RiNamePlateScheme, "ICpifmnlclrlHFlslMlhldlV", sizeof(g_Config.m_RiNamePlateScheme));
 		GameClient()->m_NamePlates.RiResetNameplatesPos(*GameClient(), g_Config.m_RiNamePlateScheme);
 	}
 	if(DoButton_Menu(&s_ClearButton, RCLocalize("Clear all"), 0, &ClearCol, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 14.0f, 0.0f, ColorRGBA(0.3f, 0.1f, 0.1f, 0.8f)))

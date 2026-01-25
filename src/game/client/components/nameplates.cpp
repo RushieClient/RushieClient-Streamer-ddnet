@@ -973,6 +973,9 @@ public:
 			case 'm': // Mark (Client ID)
 				AddPart<CNamePlatePartClientId>(This, false);
 				break;
+			case 'M': // Mark (Client ID, separate line)
+				AddPart<CNamePlatePartClientId>(This, true);
+				break;
 			case 'n': // Name
 				AddPart<CNamePlatePartName>(This);
 				break;
