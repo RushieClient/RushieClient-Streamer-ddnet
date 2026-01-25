@@ -22,6 +22,7 @@ CRClient::CRClient()
 void CRClient::OnInit()
 {
 	FetchRclientVersionCheck();
+	m_Voice.Init(GameClient(), Client(), Console());
 }
 
 void CRClient::OnConsoleInit()
@@ -52,6 +53,12 @@ void CRClient::OnConsoleInit()
 	Console()->Register("+ri_spec_up", "", CFGFLAG_CLIENT, ConSpecUp, this, "move camera left in spec");
 	Console()->Register("+ri_spec_down", "", CFGFLAG_CLIENT, ConSpecDown, this, "move camera left in spec");
 	Console()->Register("ri_goto_tele_cursor", "", CFGFLAG_CLIENT, ConGotoTeleCursor, this, "View teleport destination/source near cursor");
+	Console()->Register("+ri_voice_ptt", "", CFGFLAG_CLIENT, ConVoicePtt, this, "Push-to-talk for voice chat");
+	Console()->Register("ri_voice_allow", "s[name]", CFGFLAG_CLIENT, ConVoiceAllow, this, "Add player to voice whitelist");
+	Console()->Register("ri_voice_block", "s[name]", CFGFLAG_CLIENT, ConVoiceBlock, this, "Add player to voice blacklist");
+	Console()->Register("ri_voice_list_devices", "", CFGFLAG_CLIENT, ConVoiceListDevices, this, "List voice input/output devices");
+	Console()->Register("ri_voice_clear_input", "", CFGFLAG_CLIENT, ConVoiceClearInput, this, "Use default voice input device");
+	Console()->Register("ri_voice_clear_output", "", CFGFLAG_CLIENT, ConVoiceClearOutput, this, "Use default voice output device");
 	Console()->Chain(
 		"ri_regex_player_whitelist", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
 			if(pResult->NumArguments() == 1)
@@ -126,6 +133,8 @@ void CRClient::OnRender()
 		if(m_SpecMoveRight)
 			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy].x += Speed * FrameTime;
 	}
+
+	m_Voice.OnRender();
 }
 
 void CRClient::FetchRclientDDstatsProfile()
@@ -1497,6 +1506,64 @@ void CRClient::ConSpecDown(IConsole::IResult *pResult, void *pUserData)
 	pSelf->m_SpecMoveDown = pResult->GetInteger(0) != 0;
 }
 
+void CRClient::ConVoicePtt(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	pSelf->m_Voice.SetPttActive(pResult->GetInteger(0) != 0);
+}
+
+void CRClient::AppendListItem(char *pList, int ListSize, const char *pItem)
+{
+	if(!pItem || pItem[0] == '\0')
+		return;
+	if(pList[0] == '\0')
+	{
+		str_copy(pList, pItem, ListSize);
+		return;
+	}
+	str_append(pList, ",", ListSize);
+	str_append(pList, pItem, ListSize);
+}
+
+void CRClient::ConVoiceAllow(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	const char *pItem = pResult->GetString(0);
+	pSelf->AppendListItem(g_Config.m_RiVoiceWhitelist, sizeof(g_Config.m_RiVoiceWhitelist), pItem);
+	pSelf->GameClient()->Echo("Voice whitelist updated");
+}
+
+void CRClient::ConVoiceBlock(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	const char *pItem = pResult->GetString(0);
+	pSelf->AppendListItem(g_Config.m_RiVoiceBlacklist, sizeof(g_Config.m_RiVoiceBlacklist), pItem);
+	pSelf->GameClient()->Echo("Voice blacklist updated");
+}
+
+void CRClient::ConVoiceListDevices(IConsole::IResult *pResult, void *pUserData)
+{
+	(void)pResult;
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	pSelf->m_Voice.ListDevices();
+}
+
+void CRClient::ConVoiceClearInput(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	(void)pResult;
+	g_Config.m_RiVoiceInputDevice[0] = '\0';
+	pSelf->GameClient()->Echo("Voice input device reset to default");
+}
+
+void CRClient::ConVoiceClearOutput(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	(void)pResult;
+	g_Config.m_RiVoiceOutputDevice[0] = '\0';
+	pSelf->GameClient()->Echo("Voice output device reset to default");
+}
+
 void CRClient::ConGotoTeleCursor(IConsole::IResult *pResult, void *pUserData)
 {
 	CRClient *pSelf = static_cast<CRClient *>(pUserData);
@@ -1701,6 +1768,11 @@ float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int Cli
 		ScoreboardHeight += ItemSpacing * 4.0f;
 
 	return ScoreboardHeight;
+}
+
+bool CRClient::IsVoiceActive(int ClientId) const
+{
+	return m_Voice.IsVoiceActive(ClientId);
 }
 
 const CNetObj_PlayerInfo *CRClient::GetSortingScoreSpec(int SwitchNum, int ClientId)

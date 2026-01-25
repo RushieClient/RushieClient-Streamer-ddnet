@@ -771,6 +771,55 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	EndSection(Column);
 
+	// ***** Voice ***** //
+	BeginSection(Column, MarginBetweenSections);
+	Column.HSplitTop(HeadlineHeight, &Label, &Column);
+	Ui()->DoLabel(&Label, RCLocalize("Voice"), HeadlineFontSize, TEXTALIGN_MC);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceEnable, RCLocalize("Enable voice chat"), &g_Config.m_RiVoiceEnable, &Column, LineSize);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceIgnoreDistance, RCLocalize("Ignore distance"), &g_Config.m_RiVoiceIgnoreDistance, &Column, LineSize);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowIndicator, RCLocalize("Show voice indicator"), &g_Config.m_RiVoiceShowIndicator, &Column, LineSize);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	if(g_Config.m_RiVoiceShowIndicator)
+	{
+		CUIRect Rightoffset;
+		Column.VSplitLeft(25.0f, &Label, &Rightoffset);
+		Column.HSplitTop(LineSize, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceIndicatorAboveSelf, RCLocalize("Show indicator above you"), &g_Config.m_RiVoiceIndicatorAboveSelf, &Rightoffset, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+	}
+	else
+	{
+		Column.HSplitTop(LineSize, nullptr, &Column);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+	}
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_RiVoiceRadius, &g_Config.m_RiVoiceRadius, &Button, RCLocalize("Voice radius (tiles)"), 1, 200);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Button, &Column);
+	Ui()->DoScrollbarOption(&g_Config.m_RiVoiceVolume, &g_Config.m_RiVoiceVolume, &Button, RCLocalize("Voice volume"), 0, 200);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	static CLineInput s_VoiceInput;
+	static CLineInput s_VoiceOutput;
+	s_VoiceInput.SetBuffer(g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice));
+	s_VoiceOutput.SetBuffer(g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice));
+	Column.HSplitTop(LineSize, &Label, &Column);
+	DoEditBoxWithLabel(&s_VoiceInput, &Label, RCLocalize("Input device"), "", g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice));
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
+	DoEditBoxWithLabel(&s_VoiceOutput, &Label, RCLocalize("Output device"), "", g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice));
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
+	Ui()->DoLabel(&Label, RCLocalize("Use ri_voice_list_devices in console"), FontSize, TEXTALIGN_ML);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	static CButtonContainer s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt;
+	Column.HSplitTop(LineSize, &Label, &Column);
+	DoLine_KeyReader(Label, s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt, RCLocalize("Voice PTT"), "+ri_voice_ptt");
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	EndSection(Column);
+
 	// ***** Laser Settings ***** //
 	BeginSection(Column, MarginBetweenSections);
 	Column.HSplitTop(HeadlineHeight, &Label, &Column);
@@ -986,6 +1035,7 @@ void CMenus::RenderSettingsRushieNameplatesEditor(CUIRect MainView)
 		{'H', "HookName", "HN"},
 		{'F', "FireName", "FN"},
 		{'I', "RC_User", "RI"},
+		{'V', "Voice", "🎙"},
 	};
 
 	// Улучшенные расчеты размеров кнопок с минимальными ограничениями

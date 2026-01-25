@@ -168,6 +168,7 @@ namespace FontIcons
 	[[maybe_unused]] static const char *FONT_ICON_SCULL = "\xEF\x95\x8C";
 	[[maybe_unused]] static const char *FONT_ICON_ANGLE_UP = "\xEF\x84\x86";
 	[[maybe_unused]] static const char *FONT_ICON_ANGLES_UP = "\xEF\x84\x82";
+	[[maybe_unused]] static const char *FONT_ICON_MICROPHONE = "\xEF\x84\xB0";
 	// TClient
 	[[maybe_unused]] static const char *FONT_ICON_USERS = "\xEF\x83\x80";
 }

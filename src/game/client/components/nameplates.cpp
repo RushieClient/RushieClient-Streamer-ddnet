@@ -59,6 +59,9 @@ public:
 	int m_ShowRClientIndicator;
 	float m_FontSizeRClientIndicator;
 	int m_IsUserRClientIndicator;
+	int m_ShowVoiceIcon;
+	float m_FontSizeVoiceIcon;
+	int m_IsVoiceActive;
 };
 
 // Part Types
@@ -699,6 +702,35 @@ public:
 		CNamePlatePartText(This) {}
 };
 
+class CNamePlatePartVoice : public CNamePlatePartText
+{
+private:
+	float m_FontSize = -INFINITY;
+
+protected:
+	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
+	{
+		m_Visible = Data.m_ShowVoiceIcon && Data.m_IsVoiceActive;
+		if(!m_Visible)
+			return false;
+		m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, Data.m_Color.a);
+		return m_FontSize != Data.m_FontSizeVoiceIcon;
+	}
+	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
+	{
+		m_FontSize = Data.m_FontSizeVoiceIcon;
+		CTextCursor Cursor;
+		This.TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		Cursor.m_FontSize = m_FontSize;
+		This.TextRender()->CreateOrAppendTextContainer(m_TextContainerIndex, &Cursor, FontIcons::FONT_ICON_MICROPHONE);
+		This.TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	}
+
+public:
+	CNamePlatePartVoice(CGameClient &This) :
+		CNamePlatePartText(This) {}
+};
+
 // ***** RClient Parts *****
 class CNamePlatePartFireDetector : public CNamePlatePartSprite
 {
@@ -977,6 +1009,9 @@ public:
 			case 'I': // RClient Indicator
 				AddPart<CNamePlatePartRClientIndicator>(This);
 				break;
+			case 'V': // Voice
+				AddPart<CNamePlatePartVoice>(This);
+				break;
 			}
 		}
 	}
@@ -1019,6 +1054,9 @@ public:
 		AddPart<CNamePlatePartDirection>(This, DIRECTION_LEFT);
 		AddPart<CNamePlatePartDirection>(This, DIRECTION_UP);
 		AddPart<CNamePlatePartDirection>(This, DIRECTION_RIGHT);
+		AddPart<CNamePlatePartNewLine>(This);
+
+		AddPart<CNamePlatePartVoice>(This);
 	}
 };
 
@@ -1067,6 +1105,7 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 	Data.m_FontSizeFireDetection = 18.0f + 20.0f * g_Config.m_RiFireDetectionSize / 100.0f;
 	Data.m_FontSizeHookDetection = 18.0f + 20.0f * g_Config.m_RiHookDetectionSize / 100.0f;
 	Data.m_FontSizeRClientIndicator = 18.0f + 20.0f * g_Config.m_RiRclientIndicatorSize / 100.0f;
+	Data.m_FontSizeVoiceIcon = Data.m_FontSize;
 
 	if(g_Config.m_ClNamePlatesAlways == 0)
 		Alpha *= std::clamp(1.0f - std::pow(distance(GameClient()->m_Controls.m_aTargetPos[g_Config.m_ClDummy], Position) / 200.0f, 16.0f), 0.0f, 1.0f);
@@ -1302,6 +1341,16 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 		Data.m_IsUserRClientIndicator = GameClient()->m_RClientIndicator.IsPlayerRClient(pPlayerInfo->m_ClientId);
 	}
 
+	Data.m_ShowVoiceIcon = g_Config.m_RiVoiceShowIndicator;
+	if(g_Config.m_RiVoiceShowIndicator)
+	{
+		if(g_Config.m_RiVoiceIndicatorAboveSelf)
+			Data.m_ShowVoiceIcon = true;
+		else
+			Data.m_ShowVoiceIcon = !pPlayerInfo->m_Local;
+	}
+	Data.m_IsVoiceActive = GameClient()->m_RClient.IsVoiceActive(pPlayerInfo->m_ClientId);
+
 	// TClient
 	if(g_Config.m_TcWarList && g_Config.m_TcWarListShowClan && GameClient()->m_WarList.GetWarData(pPlayerInfo->m_ClientId).m_WarClan)
 		Data.m_ShowClan = true;
@@ -1358,9 +1407,12 @@ void CNamePlates::RenderNamePlatePreview(vec2 Position, int Dummy)
 	Data.m_FontSizeFireDetection = FontSizeFireDetection;
 	Data.m_FontSizeHookDetection = FontSizeHookDetection;
 	Data.m_FontSizeRClientIndicator = FontSizeRClientIndicatorDetection;
+	Data.m_FontSizeVoiceIcon = FontSize;
 	Data.m_ShowFireDetection = g_Config.m_RiShowFire != 0 ? true : false;
 	Data.m_ShowHookDetection = g_Config.m_RiShowHook != 0 ? true : false;
 	Data.m_ShowRClientIndicator = g_Config.m_RiShowRclientIndicator != 0 ? true : false;
+	Data.m_ShowVoiceIcon = false;
+	Data.m_IsVoiceActive = false;
 
 	Data.m_FontSizeHookStrongWeak = FontSizeHookStrongWeak;
 	Data.m_HookStrongWeakId = Data.m_ClientId;

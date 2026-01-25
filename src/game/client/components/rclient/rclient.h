@@ -8,6 +8,8 @@
 
 #include <game/client/component.h>
 
+#include "voice.h"
+
 class CRClient : public CComponent
 {
 	static void ConFindPlayerFromDdstats(IConsole::IResult *pResult, void *pUserData);
@@ -45,6 +47,15 @@ class CRClient : public CComponent
 	static void ConTargetPlayerPosReset(IConsole::IResult *pResult, void *pUserData);
 	static void ConTargetPlayerPosRemove(IConsole::IResult *pResult, void *pUserData);
 	static void ConAddCensorList(IConsole::IResult *pResult, void *pUserData);
+
+	//Voice
+	static void ConVoiceAllow(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoiceBlock(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoicePtt(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoiceListDevices(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoiceClearInput(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoiceClearOutput(IConsole::IResult *pResult, void *pUserData);
+	void AppendListItem(char *pList, int ListSize, const char *pItem);
 
 	bool m_SpecMoveLeft = false;
 	bool m_SpecMoveRight = false;
@@ -110,6 +121,8 @@ class CRClient : public CComponent
 	bool m_WriteFindHoursInChat;
 	void FinishFindHours();
 	void ResetFindHours();
+
+	CRClientVoice m_Voice;
 public:
 
 	CRClient();
@@ -151,6 +164,7 @@ public:
 
 	// Scoreboard
 	float GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int ClientId = -1);
+	bool IsVoiceActive(int ClientId) const;
 
 	//Copy
 	void CopySkin(const char *Nickname);

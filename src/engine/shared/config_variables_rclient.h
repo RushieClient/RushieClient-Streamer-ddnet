@@ -36,6 +36,21 @@ MACRO_CONFIG_INT(RiChangePlayerColorWhenXTargetEqualXPlayer, ri_change_player_co
 //Others pages
 MACRO_CONFIG_INT(RiRClientSettingsTabs, ri_rclient_settings_tabs, 0, 0, 65536, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Bit flags to disable settings tabs")
 
+//Voice
+MACRO_CONFIG_INT(RiVoiceEnable, ri_voice_enable, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Enable external voice chat")
+MACRO_CONFIG_STR(RiVoiceServer, ri_voice_server, 128, "127.0.0.1:9001", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice server address host:port")
+MACRO_CONFIG_STR(RiVoiceInputDevice, ri_voice_input_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice input device name (empty = default)")
+MACRO_CONFIG_STR(RiVoiceOutputDevice, ri_voice_output_device, 128, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice output device name (empty = default)")
+MACRO_CONFIG_INT(RiVoiceRadius, ri_voice_radius, 10, 1, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice radius in tiles")
+MACRO_CONFIG_INT(RiVoiceVolume, ri_voice_volume, 100, 0, 200, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice volume in percent")
+MACRO_CONFIG_INT(RiVoiceIgnoreDistance, ri_voice_ignore_distance, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ignore distance attenuation for voice chat")
+MACRO_CONFIG_INT(RiVoiceListMode, ri_voice_list_mode, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice list mode (0=off, 1=whitelist, 2=blacklist)")
+MACRO_CONFIG_STR(RiVoiceWhitelist, ri_voice_whitelist, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice whitelist (comma-separated names)")
+MACRO_CONFIG_STR(RiVoiceBlacklist, ri_voice_blacklist, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice blacklist (comma-separated names)")
+MACRO_CONFIG_INT(RiVoiceShowIndicator, ri_voice_show_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice activity icon in nameplates")
+MACRO_CONFIG_INT(RiVoiceIndicatorAboveSelf, ri_voice_indicator_above_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice activity icon above yourself")
+MACRO_CONFIG_INT(RiVoiceDebug, ri_voice_debug, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Log voice chat debug info to console")
+
 //Controls
 MACRO_CONFIG_INT(RiPrevMouseMaxDistance45degrees, ri_prev_mouse_max_distance_45_degrees, 400, 0, 5000, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_INSENSITIVE, "Previous maximum cursor distance for 45 degrees")
 MACRO_CONFIG_INT(RiPrevInpMousesens45degrees, ri_prev_inp_mousesens_45_degrees, 200, 1, 100000, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Previous mouse sensitivity for 45 degrees")
