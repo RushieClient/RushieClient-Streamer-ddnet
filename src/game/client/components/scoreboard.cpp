@@ -143,6 +143,32 @@ bool CScoreboard::OnInput(const IInput::CEvent &Event)
 
 void CScoreboard::RenderTitle(CUIRect TitleLabel, int Team, const char *pTitle, float TitleFontSize)
 {
+	const bool IsMapTitle = !GameClient()->IsTeamPlay();
+	if(IsMapTitle && m_MouseUnlocked && GameClient()->m_aMapDescription[0] != '\0')
+	{
+		const int ButtonResult = Ui()->DoButtonLogic(&m_MapTitleButtonId, 0, &TitleLabel, BUTTONFLAG_LEFT | BUTTONFLAG_RIGHT);
+		if(ButtonResult != 0)
+		{
+			m_MapTitlePopupContext.m_pScoreboard = this;
+
+			m_MapTitlePopupContext.m_FontSize = 12.0f;
+			const float MaxWidth = 300.0f;
+			const float Margin = 5.0f;
+			const char *pDescription = GameClient()->m_aMapDescription;
+			const float TextWidth = minimum(std::ceil(TextRender()->TextWidth(m_MapTitlePopupContext.m_FontSize, pDescription) + 0.5f), MaxWidth);
+			float TextHeight = 0.0f;
+			STextSizeProperties TextSizeProps{};
+			TextSizeProps.m_pHeight = &TextHeight;
+			TextRender()->TextWidth(m_MapTitlePopupContext.m_FontSize, pDescription, -1, TextWidth, 0, TextSizeProps);
+
+			Ui()->DoPopupMenu(&m_MapTitlePopupContext, Ui()->MouseX(), Ui()->MouseY(), TextWidth + Margin * 2, TextHeight + Margin * 2, &m_MapTitlePopupContext, CMapTitlePopupContext::Render);
+		}
+		if(Ui()->HotItem() == &m_MapTitleButtonId)
+		{
+			TitleLabel.Draw(ColorRGBA(0.7f, 0.7f, 0.7f, 0.3f), IGraphics::CORNER_ALL, 5.0f);
+		}
+	}
+
 	SLabelProperties Props;
 	Props.m_MaxWidth = TitleLabel.w;
 	Props.m_EllipsisAtEnd = true;
@@ -204,6 +230,7 @@ void CScoreboard::RenderTitleBar(CUIRect TitleBar, int Team, const char *pTitle)
 
 	const float TitleFontSize = 20.0f;
 	const float ScoreTextWidth = TextRender()->TextWidth(TitleFontSize, "00:00:00");
+	const float TitleTextWidth = TextRender()->TextWidth(TitleFontSize, pTitle);
 
 	TitleBar.VMargin(10.0f, &TitleBar);
 	CUIRect TitleLabel, ScoreLabel;
@@ -211,11 +238,13 @@ void CScoreboard::RenderTitleBar(CUIRect TitleBar, int Team, const char *pTitle)
 	{
 		TitleBar.VSplitRight(ScoreTextWidth, &TitleLabel, &ScoreLabel);
 		TitleLabel.VSplitRight(5.0f, &TitleLabel, nullptr);
+		TitleLabel.VSplitLeft(minimum(TitleTextWidth + 2.0f, TitleLabel.w), &TitleLabel, nullptr);
 	}
 	else
 	{
 		TitleBar.VSplitLeft(ScoreTextWidth, &ScoreLabel, &TitleLabel);
 		TitleLabel.VSplitLeft(5.0f, nullptr, &TitleLabel);
+		TitleLabel.VSplitRight(minimum(TitleTextWidth + 2.0f, TitleLabel.w), nullptr, &TitleLabel);
 	}
 
 	RenderTitle(TitleLabel, Team, pTitle, TitleFontSize);
@@ -379,7 +408,7 @@ void CScoreboard::RenderSpectators(CUIRect Spectators)
 
 				const bool ShowQuickActions = !m_ScoreboardPopupContext.m_IsLocal || g_Config.m_RiScoreboardAlwaysShowQuickActions;
 				Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), 110.0f,
-					GameClient()->m_RClient.GetScoreboardHeight(false, ShowQuickActions, m_ScoreboardPopupContext.m_ClientId), &m_ScoreboardPopupContext, PopupScoreboard);
+					GameClient()->m_RClient.GetScoreboardHeight(false, ShowQuickActions, m_ScoreboardPopupContext.m_ClientId), &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
 			}
 
 			if(Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_PlayerButtonId || Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_SpectatorSecondLineButtonId)
@@ -632,7 +661,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 
 					const bool ShowQuickActions = !m_ScoreboardPopupContext.m_IsLocal || g_Config.m_RiScoreboardAlwaysShowQuickActions;
 					Ui()->DoPopupMenu(&m_ScoreboardPopupContext, Ui()->MouseX(), Ui()->MouseY(), 110.0f,
-						GameClient()->m_RClient.GetScoreboardHeight(true, ShowQuickActions, m_ScoreboardPopupContext.m_ClientId), &m_ScoreboardPopupContext, PopupScoreboard);
+						GameClient()->m_RClient.GetScoreboardHeight(true, ShowQuickActions, m_ScoreboardPopupContext.m_ClientId), &m_ScoreboardPopupContext, CScoreboardPopupContext::Render);
 				}
 
 				if(Ui()->HotItem() == &m_aPlayers[pInfo->m_ClientId].m_PlayerButtonId)
@@ -1077,7 +1106,7 @@ const char *CScoreboard::GetTeamName(int Team) const
 		return nullptr;
 }
 
-CUi::EPopupMenuFunctionResult CScoreboard::PopupScoreboard(void *pContext, CUIRect View, bool Active)
+CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void *pContext, CUIRect View, bool Active)
 {
 	CScoreboardPopupContext *pPopupContext = static_cast<CScoreboardPopupContext *>(pContext);
 	CScoreboard *pScoreboard = pPopupContext->m_pScoreboard;
@@ -1381,6 +1410,16 @@ CUi::EPopupMenuFunctionResult CScoreboard::PopupScoreboard(void *pContext, CUIRe
 			AddTeamButton(&pPopupContext->m_TeamLockButton, Localize("Lock"), [&]() { pScoreboard->Console()->ExecuteLine("say /lock", IConsole::CLIENT_ID_UNSPECIFIED); });
 		}
 	}
+
+	return CUi::POPUP_KEEP_OPEN;
+}
+
+CUi::EPopupMenuFunctionResult CScoreboard::CMapTitlePopupContext::Render(void *pContext, CUIRect View, bool Active)
+{
+	CMapTitlePopupContext *pPopupContext = static_cast<CMapTitlePopupContext *>(pContext);
+	CScoreboard *pScoreboard = pPopupContext->m_pScoreboard;
+
+	pScoreboard->TextRender()->Text(View.x, View.y, pPopupContext->m_FontSize, pScoreboard->GameClient()->m_aMapDescription, View.w);
 
 	return CUi::POPUP_KEEP_OPEN;
 }
