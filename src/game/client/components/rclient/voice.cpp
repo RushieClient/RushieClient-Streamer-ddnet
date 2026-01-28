@@ -120,6 +120,8 @@ static constexpr int VOICE_FRAME_SAMPLES = 960;
 static constexpr int VOICE_FRAME_BYTES = VOICE_FRAME_SAMPLES * sizeof(int16_t);
 static constexpr int VOICE_MAX_PACKET = 1500;
 
+static constexpr int VOICE_MAX_PLC_FRAMES = 3;
+
 static constexpr char VOICE_MAGIC[4] = {'R', 'V', '0', '1'};
 static constexpr uint8_t VOICE_VERSION = 1;
 static constexpr uint8_t VOICE_TYPE_AUDIO = 1;
@@ -655,24 +657,6 @@ void CRClientVoice::ProcessIncoming()
 			continue;
 		}
 
-		OpusDecoder *pDecoder = m_aPeers[SenderId].m_pDecoder;
-		if(!pDecoder)
-		{
-			int Error = 0;
-			pDecoder = opus_decoder_create(VOICE_SAMPLE_RATE, VOICE_CHANNELS, &Error);
-			if(!pDecoder || Error != OPUS_OK)
-			{
-				log_error("voice", "Failed to create Opus decoder: %d", Error);
-				continue;
-			}
-			m_aPeers[SenderId].m_pDecoder = pDecoder;
-		}
-
-		int16_t aPcm[VOICE_FRAME_SAMPLES];
-		const int Samples = opus_decode(pDecoder, pData + Offset, PayloadSize, aPcm, VOICE_FRAME_SAMPLES, 0);
-		if(Samples <= 0)
-			continue;
-
 		const float RadiusFactor = g_Config.m_RiVoiceIgnoreDistance ? 1.0f : (1.0f - (Dist / Radius));
 		float Volume = std::clamp(RadiusFactor * (g_Config.m_RiVoiceVolume / 100.0f), 0.0f, 2.0f);
 		if(Volume <= 0.0f)
@@ -691,6 +675,72 @@ void CRClientVoice::ProcessIncoming()
 		const float Pan = StereoEnabled ? std::clamp((SenderPos.x - LocalPos.x) / Radius, -1.0f, 1.0f) : 0.0f;
 		const float LeftGain = Volume * (Pan <= 0.0f ? 1.0f : (1.0f - Pan));
 		const float RightGain = Volume * (Pan >= 0.0f ? 1.0f : (1.0f + Pan));
+
+		SVoicePeer &Peer = m_aPeers[SenderId];
+		OpusDecoder *pDecoder = Peer.m_pDecoder;
+		if(!pDecoder)
+		{
+			int Error = 0;
+			pDecoder = opus_decoder_create(VOICE_SAMPLE_RATE, VOICE_CHANNELS, &Error);
+			if(!pDecoder || Error != OPUS_OK)
+			{
+				log_error("voice", "Failed to create Opus decoder: %d", Error);
+				continue;
+			}
+			Peer.m_pDecoder = pDecoder;
+			Peer.m_HasSeq = false;
+		}
+
+		int16_t aPcm[VOICE_FRAME_SAMPLES];
+		if(Peer.m_HasSeq)
+		{
+			uint16_t Expected = (uint16_t)(Peer.m_LastSeq + 1);
+			int PlcCount = 0;
+			while(Expected != Sequence && PlcCount < VOICE_MAX_PLC_FRAMES)
+			{
+				int PlcSamples = opus_decode(pDecoder, nullptr, 0, aPcm, VOICE_FRAME_SAMPLES, 1);
+				if(PlcSamples > 0)
+				{
+					if(OutputChannels >= 2)
+					{
+						std::vector<int16_t> aOut(PlcSamples * OutputChannels);
+						for(int i = 0; i < PlcSamples; i++)
+						{
+							const int LeftSample = (int)(aPcm[i] * LeftGain);
+							const int RightSample = (int)(aPcm[i] * RightGain);
+							aOut[i * OutputChannels] = (int16_t)std::clamp(LeftSample, -32768, 32767);
+							aOut[i * OutputChannels + 1] = (int16_t)std::clamp(RightSample, -32768, 32767);
+							for(int ch = 2; ch < OutputChannels; ch++)
+								aOut[i * OutputChannels + ch] = aOut[i * OutputChannels];
+						}
+						const int MaxQueued = VOICE_SAMPLE_RATE * sizeof(int16_t) * OutputChannels * 2;
+						if((int)SDL_GetQueuedAudioSize(m_OutputDevice) > MaxQueued)
+							SDL_ClearQueuedAudio(m_OutputDevice);
+						SDL_QueueAudio(m_OutputDevice, aOut.data(), (int)aOut.size() * sizeof(int16_t));
+					}
+					else
+					{
+						for(int i = 0; i < PlcSamples; i++)
+						{
+							const int Sample = (int)(aPcm[i] * Volume);
+							aPcm[i] = (int16_t)std::clamp(Sample, -32768, 32767);
+						}
+						const int MaxQueued = VOICE_SAMPLE_RATE * sizeof(int16_t) * 2;
+						if((int)SDL_GetQueuedAudioSize(m_OutputDevice) > MaxQueued)
+							SDL_ClearQueuedAudio(m_OutputDevice);
+						SDL_QueueAudio(m_OutputDevice, aPcm, PlcSamples * sizeof(int16_t));
+					}
+				}
+				Expected = (uint16_t)(Expected + 1);
+				PlcCount++;
+			}
+		}
+
+		const int Samples = opus_decode(pDecoder, pData + Offset, PayloadSize, aPcm, VOICE_FRAME_SAMPLES, 0);
+		if(Samples <= 0)
+			continue;
+		Peer.m_LastSeq = Sequence;
+		Peer.m_HasSeq = true;
 
 		if(OutputChannels >= 2)
 		{

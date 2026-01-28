@@ -21,6 +21,8 @@ class CRClientVoice
 	struct SVoicePeer
 	{
 		OpusDecoder *m_pDecoder = nullptr;
+		uint16_t m_LastSeq = 0;
+		bool m_HasSeq = false;
 	};
 
 	CGameClient *m_pGameClient = nullptr;
@@ -42,6 +44,10 @@ class CRClientVoice
 	float m_HpfPrevIn = 0.0f;
 	float m_HpfPrevOut = 0.0f;
 	float m_CompEnv = 0.0f;
+
+	static constexpr int VOICE_MIX_BUFFER_CHANNELS = 8;
+	static constexpr int VOICE_MIX_BUFFER_SAMPLES = 960 * VOICE_MIX_BUFFER_CHANNELS;
+	int16_t m_aMixingBuffer[VOICE_MIX_BUFFER_SAMPLES] = {};
 
 	OpusEncoder *m_pEncoder = nullptr;
 	std::array<SVoicePeer, MAX_CLIENTS> m_aPeers = {};
