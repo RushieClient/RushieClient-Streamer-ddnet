@@ -1437,6 +1437,7 @@ set(EXPECTED_DATA
   countryflags/X-CAMMO.png
   countryflags/X-CAMMOSTRIPES.png
   countryflags/X-COALA.png
+  countryflags/X-ENTITY.png
   countryflags/X-FINISH.png
   countryflags/X-GAY.png
   countryflags/X-LESBIAN.png
