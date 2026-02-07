@@ -44,7 +44,9 @@ And to build use guide from ddnet
 
 ## Community & Links
 
-* **Discord:** https://discord.gg/wUFTVAGVGa
+
+* **Discord(write if u need me):** 1Voix1
+* **Discord server:** https://discord.gg/wUFTVAGVGa
 * **Website:** https://rushie-client.ru/
 * **Tater Client:** https://github.com/sjrc6/TaterClient-ddnet
 * **Entity Client:** https://github.com/qxdFox/Entity-Client-DDNet
