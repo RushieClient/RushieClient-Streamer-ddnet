@@ -713,3 +713,6 @@ Plays sound at exec command
 
 The command is ran in console not chat
 == Команда выполняется в консоли, а не в чате
+
+Show when microphone active
+== Показывать когда включен микро

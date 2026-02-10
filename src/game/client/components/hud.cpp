@@ -1976,6 +1976,33 @@ void CHud::RenderLocalTime(float x)
 	// TextRender()->Text(x - 25.0f, (12.5f - 5.f) / 2.f, 5.0f, aTimeStr, -1.0f);
 }
 
+void CHud::RenderVoiceIndicator()
+{
+	if(!g_Config.m_RiVoiceShowWhenActive)
+		return;
+
+	if(!g_Config.m_RiVoiceEnable || !g_Config.m_RiVoiceShowIndicator)
+		return;
+
+	const int LocalId = GameClient()->m_Snap.m_LocalClientId;
+	if(LocalId < 0 || LocalId >= MAX_CLIENTS)
+		return;
+	if(!GameClient()->m_RClient.IsVoiceActive(LocalId))
+		return;
+
+	const float FontSize = 6.0f;
+	const float Padding = 3.0f;
+	const float BoxWidth = FontSize + Padding * 2.0f;
+	const float BoxHeight = 12.0f;
+	const float X = 5.0f;
+	const float Y = m_Height - BoxHeight - 10.0f;
+
+	Graphics()->DrawRect(X, Y, BoxWidth, BoxHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_ALL, 3.0f);
+	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+	TextRender()->Text(X + Padding, Y + (BoxHeight - FontSize) / 2.0f, FontSize, FontIcons::FONT_ICON_MICROPHONE, -1.0f);
+	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+}
+
 void CHud::OnNewSnapshot()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
@@ -2084,6 +2111,7 @@ void CHud::OnRender()
 		RenderTextInfo();
 		GameClient()->m_TClient.RenderCenterLines();
 		RenderLocalTime((m_Width / 7) * 3);
+		RenderVoiceIndicator();
 		if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
 			RenderConnectionWarning();
 		RenderTeambalanceWarning();
