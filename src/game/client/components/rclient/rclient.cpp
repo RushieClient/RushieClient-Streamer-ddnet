@@ -25,6 +25,7 @@ CRClient::CRClient()
 void CRClient::OnInit()
 {
 	FetchRclientVersionCheck();
+	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
 	m_Voice.Init(GameClient(), Client(), Console());
 }
 
@@ -138,6 +139,40 @@ void CRClient::OnRender()
 			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy].x -= Speed * FrameTime;
 		if(m_SpecMoveRight)
 			GameClient()->m_Controls.m_aMousePos[g_Config.m_ClDummy].x += Speed * FrameTime;
+	}
+
+
+	if(g_Config.m_RiPlayOnMoveNonInactive)
+	{
+		if(!m_pGraphics->WindowActive())
+		{
+			const bool LocalCharacterMoved = GameClient()->m_Snap.m_pLocalCharacter &&
+			GameClient()->m_Snap.m_pLocalPrevCharacter &&
+			(GameClient()->m_Snap.m_pLocalCharacter->m_X != GameClient()->m_Snap.m_pLocalPrevCharacter->m_X ||
+				GameClient()->m_Snap.m_pLocalCharacter->m_Y != GameClient()->m_Snap.m_pLocalPrevCharacter->m_Y);
+
+			if(!m_SoundPlayed && LocalCharacterMoved)
+			{
+				switch(g_Config.m_RiSoundOnMoveNonInactive)
+				{
+				case 0:
+					GameClient()->m_Sounds.Play(CSounds::CHN_GUI, SOUND_RI_INACTIVE_MOVE_WAKEUP, 1.0f);
+					break;
+				case 1:
+					GameClient()->m_Sounds.Play(CSounds::CHN_GUI, SOUND_GRENADE_EXPLODE, 1.0f);
+					break;
+				case 2:
+					GameClient()->m_Sounds.Play(CSounds::CHN_GUI, SOUND_CHAT_HIGHLIGHT, 1.0f);
+					break;
+				default:;
+				}
+				m_SoundPlayed = true;
+			}
+		}
+		else
+		{
+			m_SoundPlayed = false;
+		}
 	}
 
 	m_Voice.OnRender();

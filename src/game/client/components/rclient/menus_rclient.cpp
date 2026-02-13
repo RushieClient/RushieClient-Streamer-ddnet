@@ -937,6 +937,25 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		{0, 1, 2},
 		g_Config.m_RiShowHammerHit);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	// static SDropDownSimple s_MyDrop;
+	// g_Config.m_RiShowHammerHit = DoSimpleDropDown(
+	// 	Ui(),
+	// 	Column,
+	// 	RCLocalize("My setting:"),
+	// 	g_Config.m_RiShowHammerHit,
+	// 	{"Off", "On", "Auto"},
+	// 	"My setting",
+	// 	s_MyDrop);
+	static SDropDownSimple s_DropSoundChoose;
+	g_Config.m_RiSoundOnMoveNonInactive = DoSimpleDropDown(
+		Ui(),
+		Column,
+		RCLocalize("My setting:"),
+		g_Config.m_RiSoundOnMoveNonInactive,
+		{"WakeUp", "Grenade", "Tag"},
+		"My setting",
+		s_DropSoundChoose);
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	EndSection(Column);
 
 	// Right column - Tracker pos

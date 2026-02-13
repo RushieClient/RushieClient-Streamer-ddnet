@@ -59,6 +59,7 @@ class CRClient : public CComponent
 	static void ConVoiceClearVolume(IConsole::IResult *pResult, void *pUserData);
 	static void ConVoiceListVolumes(IConsole::IResult *pResult, void *pUserData);
 	void AppendListItem(char *pList, int ListSize, const char *pItem);
+	CRClientVoice m_Voice;
 
 	bool m_SpecMoveLeft = false;
 	bool m_SpecMoveRight = false;
@@ -125,7 +126,11 @@ class CRClient : public CComponent
 	void FinishFindHours();
 	void ResetFindHours();
 
-	CRClientVoice m_Voice;
+	//Sound when moves inactive
+	class IEngineGraphics *m_pGraphics = nullptr;
+	bool m_SoundPlayed = false;
+
+
 public:
 
 	CRClient();

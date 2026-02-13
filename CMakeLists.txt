@@ -1646,6 +1646,7 @@ set(EXPECTED_DATA
   menuimages/settings.png
   particles.png
   race_flag.png
+  rclient/audio/nonactive_wakeup.wv
   rclient/languages/index.txt
   rclient/languages/russian.txt
   rclient/menu_afk.png
