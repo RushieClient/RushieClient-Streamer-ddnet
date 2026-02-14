@@ -112,5 +112,7 @@ static CBindChat::CBindRclient s_aDefaultBindChatRclientTrackerHistory[] = {
 static CBindChat::CBindRclient s_aDefaultBindChatRclientVoice[] = {
 	{"Add in blacklist", ".vcwhitelist", "ri_voice_allow"},
 	{"Add in whitelist", ".vcblacklist", "ri_voice_block"},
+	{"Add in mute", ".vcmute", "ri_voice_mute_add"},
+	{"Add in whitelist", ".vcunmute", "ri_voice_mute_remove"},
 };
 #endif

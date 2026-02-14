@@ -66,6 +66,8 @@ void CRClient::OnConsoleInit()
 	Console()->Register("ri_voice_set_volume", "s[name] i[percent]", CFGFLAG_CLIENT, ConVoiceSetVolume, this, "Set per-name voice volume (0-200)");
 	Console()->Register("ri_voice_clear_volume", "s[name]", CFGFLAG_CLIENT, ConVoiceClearVolume, this, "Remove per-name voice volume");
 	Console()->Register("ri_voice_list_volumes", "", CFGFLAG_CLIENT, ConVoiceListVolumes, this, "List per-name voice volumes");
+	Console()->Register("ri_voice_mute_add", "s[name]", CFGFLAG_CLIENT, ConVoiceMuteAdd, this, "Add player to voice mute list");
+	Console()->Register("ri_voice_mute_remove", "s[name]", CFGFLAG_CLIENT, ConVoiceMuteRemove, this, "Remove player from voice mute list");
 	Console()->Chain(
 		"ri_regex_player_whitelist", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
 			if(pResult->NumArguments() == 1)
@@ -1636,6 +1638,124 @@ static void RemoveVoiceNameVolume(char *pList, int ListSize, const char *pName)
 	str_copy(pList, aNew, ListSize);
 }
 
+static bool VoiceListTrimName(const char *pName, char *pOut, int OutSize)
+{
+	if(!pName)
+		return false;
+
+	while(std::isspace((unsigned char)*pName))
+		pName++;
+	const char *pEnd = pName + str_length(pName);
+	while(pEnd > pName && std::isspace((unsigned char)pEnd[-1]))
+		pEnd--;
+
+	const int Len = (int)(pEnd - pName);
+	if(Len <= 0)
+		return false;
+
+	str_truncate(pOut, OutSize, pName, Len);
+	return pOut[0] != '\0';
+}
+
+bool CRClient::VoiceListHasName(const char *pList, const char *pName)
+{
+	char aNeedle[MAX_NAME_LENGTH];
+	if(!pList || !VoiceListTrimName(pName, aNeedle, sizeof(aNeedle)))
+		return false;
+
+	const char *p = pList;
+	while(*p)
+	{
+		while(*p == ',' || std::isspace((unsigned char)*p))
+			p++;
+		if(*p == '\0')
+			break;
+
+		const char *pStart = p;
+		while(*p && *p != ',')
+			p++;
+		const char *pEnd = p;
+		while(pEnd > pStart && std::isspace((unsigned char)pEnd[-1]))
+			pEnd--;
+		while(pStart < pEnd && std::isspace((unsigned char)*pStart))
+			pStart++;
+
+		const int Len = (int)(pEnd - pStart);
+		if(Len <= 0)
+			continue;
+
+		char aToken[MAX_NAME_LENGTH];
+		str_truncate(aToken, sizeof(aToken), pStart, Len);
+		if(str_comp_nocase(aToken, aNeedle) == 0)
+			return true;
+	}
+
+	return false;
+}
+
+bool CRClient::VoiceListRemoveName(char *pList, int ListSize, const char *pName)
+{
+	char aNeedle[MAX_NAME_LENGTH];
+	if(!pList || !VoiceListTrimName(pName, aNeedle, sizeof(aNeedle)))
+		return false;
+
+	bool Removed = false;
+	char aNew[512];
+	aNew[0] = '\0';
+
+	const char *p = pList;
+	while(*p)
+	{
+		while(*p == ',' || std::isspace((unsigned char)*p))
+			p++;
+		if(*p == '\0')
+			break;
+
+		const char *pStart = p;
+		while(*p && *p != ',')
+			p++;
+		const char *pEnd = p;
+		while(pEnd > pStart && std::isspace((unsigned char)pEnd[-1]))
+			pEnd--;
+		while(pStart < pEnd && std::isspace((unsigned char)*pStart))
+			pStart++;
+
+		const int Len = (int)(pEnd - pStart);
+		if(Len <= 0)
+			continue;
+
+		char aToken[MAX_NAME_LENGTH];
+		str_truncate(aToken, sizeof(aToken), pStart, Len);
+		if(str_comp_nocase(aToken, aNeedle) == 0)
+		{
+			Removed = true;
+			continue;
+		}
+
+		if(aNew[0] != '\0')
+			str_append(aNew, ",", sizeof(aNew));
+		str_append(aNew, aToken, sizeof(aNew));
+	}
+
+	if(Removed)
+		str_copy(pList, aNew, ListSize);
+	return Removed;
+}
+
+bool CRClient::VoiceListAddName(char *pList, int ListSize, const char *pName)
+{
+	char aName[MAX_NAME_LENGTH];
+	if(!pList || !VoiceListTrimName(pName, aName, sizeof(aName)))
+		return false;
+	if(VoiceListHasName(pList, aName))
+		return false;
+
+	if(pList[0] != '\0')
+		str_append(pList, ",", ListSize);
+	str_append(pList, aName, ListSize);
+	return true;
+}
+
 void CRClient::ConVoiceAllow(IConsole::IResult *pResult, void *pUserData)
 {
 	CRClient *pSelf = static_cast<CRClient *>(pUserData);
@@ -1691,6 +1811,54 @@ void CRClient::ConVoiceListVolumes(IConsole::IResult *pResult, void *pUserData)
 	}
 	pSelf->GameClient()->Echo("Voice name volumes:");
 	pSelf->GameClient()->Echo(g_Config.m_RiVoiceNameVolumes);
+}
+
+void CRClient::ConVoiceMuteAdd(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	const char *pName = pResult->GetString(0);
+
+	char aName[MAX_NAME_LENGTH];
+	if(!VoiceListTrimName(pName, aName, sizeof(aName)))
+	{
+		pSelf->GameClient()->Echo("Voice mute add failed: empty name");
+		return;
+	}
+
+	if(VoiceListAddName(g_Config.m_RiVoiceMute, sizeof(g_Config.m_RiVoiceMute), aName))
+	{
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "Voice mute added: %s", aName);
+		pSelf->GameClient()->Echo(aBuf);
+	}
+	else
+	{
+		pSelf->GameClient()->Echo("Voice mute: already muted");
+	}
+}
+
+void CRClient::ConVoiceMuteRemove(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = static_cast<CRClient *>(pUserData);
+	const char *pName = pResult->GetString(0);
+
+	char aName[MAX_NAME_LENGTH];
+	if(!VoiceListTrimName(pName, aName, sizeof(aName)))
+	{
+		pSelf->GameClient()->Echo("Voice mute remove failed: empty name");
+		return;
+	}
+
+	if(VoiceListRemoveName(g_Config.m_RiVoiceMute, sizeof(g_Config.m_RiVoiceMute), aName))
+	{
+		char aBuf[128];
+		str_format(aBuf, sizeof(aBuf), "Voice mute removed: %s", aName);
+		pSelf->GameClient()->Echo(aBuf);
+	}
+	else
+	{
+		pSelf->GameClient()->Echo("Voice mute: name not found");
+	}
 }
 
 void CRClient::ConVoiceListDevices(IConsole::IResult *pResult, void *pUserData)
@@ -1907,7 +2075,7 @@ float CRClient::GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int Cli
 		ExtraButtonRows++; // Lock
 
 	// Both popup entry points currently render the same stack of buttons.
-	const int ButtonRows = (IsDefaultRender ? 8 : 7) + ExtraButtonRows;
+	const int ButtonRows = (IsDefaultRender ? 9 : 8) + ExtraButtonRows;
 
 	float ScoreboardHeight = OuterPopupPadding + InnerMargin + LabelHeight;
 	if(IsBigger)

@@ -782,11 +782,13 @@ void CRClientVoice::ProcessIncoming()
 			continue;
 		if(g_Config.m_ClShowOthers != SHOW_OTHERS_ON && m_pGameClient->IsOtherTeam(SenderId))
 			continue;
-		if(g_Config.m_RiVoiceListMode == 1 && !VoiceListMatch(g_Config.m_RiVoiceWhitelist, m_pGameClient->m_aClients[SenderId].m_aName))
+		const char *pSenderName = m_pGameClient->m_aClients[SenderId].m_aName;
+		if(VoiceListMatch(g_Config.m_RiVoiceMute, pSenderName))
 			continue;
-		if(g_Config.m_RiVoiceListMode == 2 && VoiceListMatch(g_Config.m_RiVoiceBlacklist, m_pGameClient->m_aClients[SenderId].m_aName))
+		if(g_Config.m_RiVoiceListMode == 1 && !VoiceListMatch(g_Config.m_RiVoiceWhitelist, pSenderName))
 			continue;
-
+		if(g_Config.m_RiVoiceListMode == 2 && VoiceListMatch(g_Config.m_RiVoiceBlacklist, pSenderName))
+			continue;
 		m_aLastHeard[SenderId] = time_get();
 
 		if(Offset + PayloadSize > (size_t)Bytes)
@@ -808,7 +810,7 @@ void CRClientVoice::ProcessIncoming()
 			continue;
 
 		int NameVolume = 100;
-		if(VoiceNameVolume(g_Config.m_RiVoiceNameVolumes, m_pGameClient->m_aClients[SenderId].m_aName, NameVolume))
+		if(VoiceNameVolume(g_Config.m_RiVoiceNameVolumes, pSenderName, NameVolume))
 		{
 			Volume *= (NameVolume / 100.0f);
 			if(Volume <= 0.0f)

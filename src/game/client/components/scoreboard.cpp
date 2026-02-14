@@ -1352,6 +1352,19 @@ CUi::EPopupMenuFunctionResult CScoreboard::CScoreboardPopupContext::Render(void 
 		pScoreboard->Console()->ExecuteLine(aSwapBuf, IConsole::CLIENT_ID_UNSPECIFIED);
 	}
 
+	View.HSplitTop(ItemSpacing * 2, nullptr, &View);
+	View.HSplitTop(ButtonSize, &Container, &View);
+
+	ColorRGBA VcMuteButtonColor = CRClient::VoiceListHasName(g_Config.m_RiVoiceMute, Client.m_aName) ? ColorRGBA(1.0f, 0.42f, 0.42f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_VcMuteButton)) : ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f * pUi->ButtonColorMul(&pPopupContext->m_VcMuteButton));
+	if(pUi->DoButton_PopupMenu(&pPopupContext->m_VcMuteButton, CRClient::VoiceListHasName(g_Config.m_RiVoiceMute, Client.m_aName) ? Localize("Unmute") : Localize("Mute"), &Container, FontSize, TEXTALIGN_MC, 0.0f, false, true, VcMuteButtonColor))
+	{
+		if(CRClient::VoiceListHasName(g_Config.m_RiVoiceMute, Client.m_aName))
+			CRClient::VoiceListRemoveName(g_Config.m_RiVoiceMute, sizeof(g_Config.m_RiVoiceMute), Client.m_aName);
+		else
+			CRClient::VoiceListAddName(g_Config.m_RiVoiceMute, sizeof(g_Config.m_RiVoiceMute), Client.m_aName);
+
+	}
+
 	View.HSplitTop(ItemSpacing * 4, nullptr, &View);
 
 	const int LocalId = pScoreboard->GameClient()->m_aLocalIds[g_Config.m_ClDummy];

@@ -58,6 +58,8 @@ class CRClient : public CComponent
 	static void ConVoiceSetVolume(IConsole::IResult *pResult, void *pUserData);
 	static void ConVoiceClearVolume(IConsole::IResult *pResult, void *pUserData);
 	static void ConVoiceListVolumes(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoiceMuteAdd(IConsole::IResult *pResult, void *pUserData);
+	static void ConVoiceMuteRemove(IConsole::IResult *pResult, void *pUserData);
 	void AppendListItem(char *pList, int ListSize, const char *pItem);
 	CRClientVoice m_Voice;
 
@@ -172,13 +174,18 @@ public:
 
 	// Scoreboard
 	float GetScoreboardHeight(bool IsDefaultRender ,bool IsBigger, int ClientId = -1);
-	bool IsVoiceActive(int ClientId) const;
 
 	//Copy
 	void CopySkin(const char *Nickname);
 
 	//Sorting Scoreboard and speactator
 	const CNetObj_PlayerInfo *GetSortingScoreSpec(int SwitchNum = 0, int ClientId = -1);
+
+	//Voice public
+	bool IsVoiceActive(int ClientId) const;
+	static bool VoiceListHasName(const char *pList, const char *pName);
+	static bool VoiceListAddName(char *pList, int ListSize, const char *pName);
+	static bool VoiceListRemoveName(char *pList, int ListSize, const char *pName);
 };
 
 #endif
