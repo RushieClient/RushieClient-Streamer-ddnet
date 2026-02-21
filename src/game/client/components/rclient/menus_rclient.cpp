@@ -1165,6 +1165,10 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	static CButtonContainer s_ReaderButtonFindTp, s_ClearButtonFindTp;
 	DoLine_KeyReader(Label, s_ReaderButtonFindTp, s_ClearButtonFindTp, RCLocalize("Find teleport"), "ri_goto_tele_cursor");
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
+	static CButtonContainer s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu;
+	DoLine_KeyReader(Label, s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu, RCLocalize("Player menu"), "toggle_playermenu");
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	EndSection(Column);
 
 	// ***** Chat Bubbles ***** //
