@@ -248,8 +248,6 @@ struct SDropDownSimple
 
 static int DoSimpleDropDown(CUi *pUi, CUIRect &Column, const char *pLabel, int CurrentValue, const std::vector<const char *> &vKeys, const char *pLocalizeContext, SDropDownSimple &Helper)
 {
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
-
 	Helper.m_vNames.clear();
 	Helper.m_vNames.reserve(vKeys.size());
 	for(const char *pKey : vKeys)
@@ -262,8 +260,6 @@ static int DoSimpleDropDown(CUi *pUi, CUIRect &Column, const char *pLabel, int C
 	DropDownRect.VSplitLeft(120.0f, &Label, &DropDownRect);
 	pUi->DoLabel(&Label, pLabel, FontSize, TEXTALIGN_ML);
 	CurrentValue = pUi->DoDropDown(&DropDownRect, CurrentValue, Helper.m_vNames.data(), Helper.m_vNames.size(), Helper.m_State);
-
-	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	return CurrentValue;
 }
 
@@ -953,9 +949,9 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	BeginSectionHeader(Column, MarginBetweenSections, RCLIENT_SETTINGS_SECTION_EFFECTS, RCLocalize("Effects"));
 	if(s_aSectionExpanded[RCLIENT_SETTINGS_SECTION_EFFECTS])
 	{
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowSparkleTrail, TCLocalize("Show sparkle trail"), &g_Config.m_RiShowSparkleTrail, &Column, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowSparkleTrail, RCLocalize("Show sparkle trail"), &g_Config.m_RiShowSparkleTrail, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowFrozenFlakes, TCLocalize("Show frozen flakes in freeze"), &g_Config.m_RiShowFrozenFlakes, &Column, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowFrozenFlakes, RCLocalize("Show frozen flakes in freeze"), &g_Config.m_RiShowFrozenFlakes, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowAfkEmoteInMenu, RCLocalize("Show sleep emote in menu (ONLY CLIENT OTHER DON'T SEE THAT)"), &g_Config.m_RiShowAfkEmoteInMenu, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -990,20 +986,30 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		static std::vector<CButtonContainer> s_vHammerHitEffectsButtonContainers = {{}, {}, {}};
 		DoLine_RadioMenu(Column, RCLocalize("Show Hammer Hit:", "HammerHit"),
 			s_vHammerHitEffectsButtonContainers,
-			{RCLocalize("No effect", "HammerHit"), RCLocalize("Default", "HammerHit"), RCLocalize("No Sound", "HammerHit")},
+			{RCLocalize("No effect", "HammerHit"), RCLocalize("Normal", "HammerHit"), RCLocalize("No Sound", "HammerHit")},
 			{0, 1, 2},
 			g_Config.m_RiShowHammerHit);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		static SDropDownSimple s_DropSoundChoose;
-		g_Config.m_RiSoundOnMoveNonInactive = DoSimpleDropDown(
-			Ui(),
-			Column,
-			RCLocalize("My setting:"),
-			g_Config.m_RiSoundOnMoveNonInactive,
-			{"WakeUp", "Grenade", "Tag"},
-			"My setting",
-			s_DropSoundChoose);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiPlayOnMoveNonInactive, RCLocalize("Play sound on move when window inactive"), &g_Config.m_RiPlayOnMoveNonInactive, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		static SDropDownSimple s_DropSoundChoose;
+		if(g_Config.m_RiPlayOnMoveNonInactive)
+		{
+			g_Config.m_RiSoundOnMoveNonInactive = DoSimpleDropDown(
+				Ui(),
+				Column,
+				RCLocalize("Choose sound:"),
+				g_Config.m_RiSoundOnMoveNonInactive,
+				{"WakeUp", "Grenade", "Tag"},
+				"My setting",
+				s_DropSoundChoose);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+		}
+		else
+		{
+			Column.HSplitTop(LineSize, nullptr, &Column);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+		}
 	}
 	EndSection(Column);
 

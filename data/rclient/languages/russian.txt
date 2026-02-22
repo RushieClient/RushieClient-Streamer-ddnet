@@ -719,3 +719,25 @@ Show when microphone active
 
 Find checkpoint
 == Найти чекпоинт
+
+Play sound on move when window inactive
+== Проигрывать звук при движение когда свернут
+
+Choose sound:
+== Выбрать звук:
+
+[HammerHit]
+Show Hammer Hit:
+== Показывать удар хаммером
+
+[HammerHit]
+No effect
+== Без эффекта
+
+[HammerHit]
+No Sound
+== Без звука
+
+[HammerHit]
+Normal
+== Обычно
