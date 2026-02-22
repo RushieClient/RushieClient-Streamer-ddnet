@@ -716,3 +716,6 @@ The command is ran in console not chat
 
 Show when microphone active
 == Показывать когда включен микро
+
+Find checkpoint
+== Найти чекпоинт

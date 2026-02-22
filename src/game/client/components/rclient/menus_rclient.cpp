@@ -1218,6 +1218,9 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	static CButtonContainer s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu;
 	DoLine_KeyReader(Label, s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu, RCLocalize("Player menu"), "toggle_playermenu");
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	static CButtonContainer s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId;
+	DoLine_KeyReader(Label, s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId, RCLocalize("Find checkpoint"), "ri_get_checkpoint_id");
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	}
 	EndSection(Column);
 

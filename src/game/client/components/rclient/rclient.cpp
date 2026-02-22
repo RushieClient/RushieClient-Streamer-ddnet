@@ -76,6 +76,7 @@ void CRClient::OnConsoleInit()
 	Console()->Register("ri_voice_list_volumes", "", CFGFLAG_CLIENT, ConVoiceListVolumes, this, "List per-name voice volumes");
 	Console()->Register("ri_voice_mute_add", "s[name]", CFGFLAG_CLIENT, ConVoiceMuteAdd, this, "Add player to voice mute list");
 	Console()->Register("ri_voice_mute_remove", "s[name]", CFGFLAG_CLIENT, ConVoiceMuteRemove, this, "Remove player from voice mute list");
+	Console()->Register("ri_get_checkpoint_id", "", CFGFLAG_CLIENT, ConGetCheckpointId, this, "Get id of checkpoint (write id or nickname player)");
 	Console()->Chain(
 		"ri_regex_player_whitelist", [](IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData) {
 			if(pResult->NumArguments() == 1)
@@ -1282,7 +1283,6 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 	str_copy(aInput, pInput, sizeof(aInput));
 	str_utf8_trim_right(aInput);
 	int ClientID = -1;
-	// First try to find by name
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(str_comp_nocase(pSelf->GameClient()->m_aClients[i].m_aName, aInput) == 0)
@@ -1292,13 +1292,11 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 		}
 	}
 
-	// If not found by name, try to use input as ID
 	if(ClientID == -1)
 	{
 		ClientID = str_toint(aInput);
 	}
 
-	// Validate client ID
 	if(ClientID >= 0 && ClientID < MAX_CLIENTS)
 	{
 		const CGameClient::CClientData &ClientData = pSelf->GameClient()->m_aClients[ClientID];
@@ -1360,6 +1358,40 @@ void CRClient::ConCopyColor(IConsole::IResult *pResult, void *pUserData)
 	{
 		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", "Invalid client ID");
 		pSelf->GameClient()->Echo("No that player on server");
+	}
+}
+
+void CRClient::ConGetCheckpointId(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = (CRClient *)pUserData;
+	int PlayerId = -1;
+	if(pSelf->GameClient()->m_Snap.m_SpecInfo.m_SpectatorId != SPEC_FREEVIEW && pSelf->GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		const auto &Player = pSelf->GameClient()->m_aClients[pSelf->GameClient()->m_Snap.m_SpecInfo.m_SpectatorId];
+		PlayerId = Player.ClientId();
+	}
+	else if(!pSelf->GameClient()->m_Snap.m_SpecInfo.m_Active)
+		PlayerId = pSelf->GameClient()->m_Snap.m_LocalClientId;
+	else
+		pSelf->GameClient()->Echo("Spec for player or unspec");
+
+	if(PlayerId != -1)
+	{
+		const auto &Char = pSelf->GameClient()->m_Snap.m_aCharacters[PlayerId];
+		if(!Char.m_Active || !Char.m_HasExtendedData)
+		{
+			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", "No checkpoint data for this client");
+			return;
+		}
+		const int TeleCheckpoint = Char.m_ExtendedData.m_TeleCheckpoint;
+		const char *pName = pSelf->GameClient()->m_aClients[PlayerId].m_aName;
+		char aBuf[128];
+		if(pName[0] != '\0')
+			str_format(aBuf, sizeof(aBuf), "Tele checkpoint of %s (%d): %d", pName, PlayerId, TeleCheckpoint);
+		else
+			str_format(aBuf, sizeof(aBuf), "Tele checkpoint of client %d: %d", PlayerId, TeleCheckpoint);
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "game", aBuf);
+		pSelf->GameClient()->Echo(aBuf);
 	}
 }
 

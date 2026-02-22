@@ -63,6 +63,9 @@ class CRClient : public CComponent
 	void AppendListItem(char *pList, int ListSize, const char *pItem);
 	CRClientVoice m_Voice;
 
+	//Checkpoint
+	static void ConGetCheckpointId(IConsole::IResult *pResult, void *pUserData);
+
 	bool m_SpecMoveLeft = false;
 	bool m_SpecMoveRight = false;
 	bool m_SpecMoveUp = false;
