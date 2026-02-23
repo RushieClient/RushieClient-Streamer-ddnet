@@ -689,7 +689,29 @@ void CHud::RenderTextInfo()
 
 		if(g_Config.m_TcShowFrozenHud > 0 && !GameClient()->m_Scoreboard.IsActive() && !(LocalTeamID == 0 && g_Config.m_TcFrozenHudTeamOnly))
 		{
-			CTeeRenderInfo FreezeInfo;
+			const bool FilterWarlistTeamOnly = g_Config.m_RiFrozenHudWarlistTeamOnly != 0;
+			constexpr int WarlistTeamGroupIndex = 2;
+			auto IsShownInFrozenHud = [&](int ClientId) {
+				if(!FilterWarlistTeamOnly)
+					return true;
+				const auto &WarData = GameClient()->m_WarList.GetWarData(ClientId);
+				return static_cast<int>(WarData.m_WarGroupMatches.size()) > WarlistTeamGroupIndex && WarData.m_WarGroupMatches[WarlistTeamGroupIndex];
+			};
+
+			int NumInTeamHud = 0;
+			for(int i = 0; i < MAX_CLIENTS; i++)
+			{
+				if(!GameClient()->m_Snap.m_apPlayerInfos[i])
+					continue;
+				if(GameClient()->m_Teams.Team(i) != LocalTeamID)
+					continue;
+				if(!IsShownInFrozenHud(i))
+					continue;
+				NumInTeamHud++;
+			}
+			if(NumInTeamHud > 0)
+			{
+				CTeeRenderInfo FreezeInfo;
 			const CSkin *pSkin = GameClient()->m_Skins.Find("x_ninja");
 			FreezeInfo.m_OriginalRenderSkin = pSkin->m_OriginalSkin;
 			FreezeInfo.m_ColorableRenderSkin = pSkin->m_ColorableSkin;
@@ -707,14 +729,14 @@ void CHud::RenderTextInfo()
 			int MaxRows = g_Config.m_TcFrozenMaxRows;
 			float StartPos = (m_Width / 2.0f + 38.0f * (m_Width / m_Height) / 1.78f) * ((g_Config.m_RiFrozenHudPosX + 50.0f) / 100.0f);
 
-			int TotalRows = std::min(MaxRows, (NumInTeam + MaxTees - 1) / MaxTees);
+			int TotalRows = std::min(MaxRows, (NumInTeamHud + MaxTees - 1) / MaxTees);
 			Graphics()->TextureClear();
 			Graphics()->QuadsBegin();
 			Graphics()->SetColor(0.0f, 0.0f, 0.0f, 0.4f);
-			Graphics()->DrawRectExt(StartPos - TeeSize / 2.0f, 0.0f, TeeSize * std::min(NumInTeam, MaxTees), TeeSize + 3.0f + (TotalRows - 1) * TeeSize, 5.0f, IGraphics::CORNER_B);
+			Graphics()->DrawRectExt(StartPos - TeeSize / 2.0f, 0.0f, TeeSize * std::min(NumInTeamHud, MaxTees), TeeSize + 3.0f + (TotalRows - 1) * TeeSize, 5.0f, IGraphics::CORNER_B);
 			Graphics()->QuadsEnd();
 
-			bool Overflow = NumInTeam > MaxTees * MaxRows;
+			bool Overflow = NumInTeamHud > MaxTees * MaxRows;
 
 			int NumDisplayed = 0;
 			int NumInRow = 0;
@@ -728,6 +750,9 @@ void CHud::RenderTextInfo()
 						continue;
 					if(GameClient()->m_Teams.Team(i) == LocalTeamID)
 					{
+						if(!IsShownInFrozenHud(i))
+							continue;
+
 						bool Frozen = false;
 						CTeeRenderInfo TeeInfo = GameClient()->m_aClients[i].m_RenderInfo;
 						if(GameClient()->m_aClients[i].m_FreezeEnd > 0 || GameClient()->m_aClients[i].m_DeepFrozen)
@@ -775,6 +800,7 @@ void CHud::RenderTextInfo()
 						ProgressiveOffset += TeeSize;
 					}
 				}
+			}
 			}
 		}
 	}

@@ -741,3 +741,6 @@ No Sound
 [HammerHit]
 Normal
 == Обычно
+
+Show frozen HUD only for warlist teammates
+== Показывать худ замороженных только для тимлиста

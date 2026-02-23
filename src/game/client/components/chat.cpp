@@ -1440,14 +1440,12 @@ void CChat::OnRender()
 		if(y < HeightLimit)
 			break;
 
-		// --- Анимация появления новой строки ---
 		float Blend = Now > Line.m_Time + 14 * time_freq() && !m_PrevShowChat ? 1.0f - (Now - Line.m_Time - 14 * time_freq()) / (2.0f * time_freq()) : 1.0f;
 
 		float AppearAlpha = 1.0f;
 		float SlideOffset = 0.0f;
 		if(g_Config.m_RiChatAnim)
 		{
-			// Длительность анимации (ограничиваем разумными пределами)
 			int animMs = g_Config.m_RiChatAnimMs;
 			float animSec = animMs / 1000.0f;
 
@@ -1455,10 +1453,9 @@ void CChat::OnRender()
 			float progress = appearTime / animSec;
 			if(progress < 1.0f)
 			{
-				// Можно использовать плавную функцию (например, QuadEaseOut)
 				float ease = progress < 1.0f ? (1.0f - (1.0f - progress) * (1.0f - progress)) : 1.0f;
 				AppearAlpha = ease;
-				SlideOffset = (1.0f - ease) * 24.0f; // 24px вниз, потом выезжает вверх
+				SlideOffset = (1.0f - ease) * 24.0f;
 			}
 		}
 
