@@ -1001,7 +1001,8 @@ void CRClientVoice::ProcessIncoming()
 		}
 
 		const bool StereoEnabled = Config.m_RiVoiceStereo != 0;
-		const float Pan = StereoEnabled ? std::clamp((SenderPos.x - LocalPos.x) / Radius, -1.0f, 1.0f) : 0.0f;
+		const float StereoWidth = std::clamp(Config.m_RiVoiceStereoWidth / 100.0f, 0.0f, 2.0f);
+		const float Pan = StereoEnabled ? std::clamp(((SenderPos.x - LocalPos.x) / Radius) * StereoWidth, -1.0f, 1.0f) : 0.0f;
 		const float LeftGain = Volume * (Pan <= 0.0f ? 1.0f : (1.0f - Pan));
 		const float RightGain = Volume * (Pan >= 0.0f ? 1.0f : (1.0f + Pan));
 
@@ -1077,6 +1078,7 @@ void CRClientVoice::UpdateConfigSnapshot()
 	m_ConfigSnapshot.m_RiVoiceCompMakeup = g_Config.m_RiVoiceCompMakeup;
 	m_ConfigSnapshot.m_RiVoiceLimiter = g_Config.m_RiVoiceLimiter;
 	m_ConfigSnapshot.m_RiVoiceStereo = g_Config.m_RiVoiceStereo;
+	m_ConfigSnapshot.m_RiVoiceStereoWidth = g_Config.m_RiVoiceStereoWidth;
 	m_ConfigSnapshot.m_RiVoiceRadius = g_Config.m_RiVoiceRadius;
 	m_ConfigSnapshot.m_RiVoiceVolume = g_Config.m_RiVoiceVolume;
 	m_ConfigSnapshot.m_RiVoiceIgnoreDistance = g_Config.m_RiVoiceIgnoreDistance;

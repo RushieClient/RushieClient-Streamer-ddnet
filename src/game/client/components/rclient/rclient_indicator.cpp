@@ -24,7 +24,9 @@ static const char *GetRclientTokenUrl()
 	return g_Config.m_RiRclientIndicatorTokenUrl[0] != '\0' ? g_Config.m_RiRclientIndicatorTokenUrl : nullptr;
 }
 
-CRClientIndicator::CRClientIndicator() = default;
+CRClientIndicator::CRClientIndicator()
+{
+};
 
 void CRClientIndicator::OnInit()
 {
