@@ -1,4 +1,4 @@
-#ifndef RCLIENT_RCLIENT_INDICATOR_H
+﻿#ifndef RCLIENT_RCLIENT_INDICATOR_H
 #define RCLIENT_RCLIENT_INDICATOR_H
 
 #include <game/client/component.h>
@@ -6,36 +6,48 @@
 #include <engine/shared/console.h>
 #include <engine/shared/http.h>
 
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 class CRClientIndicator : public CComponent
 {
 	std::shared_ptr<CHttpRequest> m_pAuthTokenTask = nullptr;
 	void FetchAuthToken();
 	void FinishAuthToken();
 	void ResetAuthToken();
+
 	char m_aAuthToken[128] = {0};
 
-	static constexpr const char *RCLIENT_URL_USERS = "https://server.rushie-client.ru/users.json";
-	static constexpr const char *RCLIENT_TOKEN_URL = "https://server.rushie-client.ru/token";
-	// Server and Player Info Collection
 	std::shared_ptr<CHttpRequest> m_pRClientUsersTaskSend = nullptr;
-	void SendServerPlayerInfo();
-	void SendPlayerData(const char *pServerAddress, int ClientId, int DummyClientId = -1);
-	void FetchRClientUsers();
-	void FinishRClientUsers();
-	void ResetRClientUsers();
-	// void FinishRClientUsersSend();
-	void ResetRClientUsersSend();
 	std::shared_ptr<CHttpRequest> m_pRClientUsersTask = nullptr;
+
+	void SendPlayerData(const char *pServerAddress, int ClientId, int DummyClientId, bool Online);
+	void FetchRClientUsers(const char *pServerAddress, int ClientId, int DummyClientId);
+	void FinishRClientUsers();
+	void FinishRClientUsersSend();
+	void ResetRClientUsers();
+	void ResetRClientUsersSend();
+
+	void ApplyPollHeaders(CHttpRequest &Request, const char *pServerAddress, int ClientId, int DummyClientId);
+	void ClearUsers();
+
 	std::vector<std::pair<std::string, int>> m_vRClientUsers; // server address, player id
-	void SyncRClientUsers();
-	int64_t s_LastFetch = 0;
-	bool s_InitialFetchDone = false;
-	int s_RclientIndicatorCount = 0;
+
+	int64_t m_LastTokenAttempt = 0;
+	int64_t m_LastPollAttempt = 0;
+
+	bool m_WasOnline = false;
+	std::string m_LastServerAddress;
+	int m_LastLocalId = -1;
+	int m_LastDummyId = -1;
+	int m_ServerRev = 0;
+
 public:
 	CRClientIndicator();
 	int Sizeof() const override { return sizeof(*this); }
 	void OnInit() override;
-
 	void OnRender() override;
 
 	bool IsPlayerRClient(int ClientId);

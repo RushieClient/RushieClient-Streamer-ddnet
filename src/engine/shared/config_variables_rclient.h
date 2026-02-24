@@ -130,6 +130,8 @@ MACRO_CONFIG_INT(RiBrFilterPlayers, ri_br_filter_players, 0, 0, 1, CFGFLAG_CLIEN
 
 //RClient Nameplates
 MACRO_CONFIG_INT(RiShowRclientIndicator, ri_show_rclient_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Rclient player indicator in nameplates")
+MACRO_CONFIG_STR(RiRclientIndicatorUsersUrl, ri_rclient_indicator_users_url, 256, "https://server.rushie-client.ru/users.json", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rclient indicator users URL")
+MACRO_CONFIG_STR(RiRclientIndicatorTokenUrl, ri_rclient_indicator_token_url, 256, "https://server.rushie-client.ru/token", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rclient indicator token URL")
 
 //Config tab
 MACRO_CONFIG_INT(RiUiShowRClient, ri_ui_show_rclient, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show RClient domain in Configs tab")

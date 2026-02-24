@@ -1,14 +1,30 @@
-#include "rclient_indicator.h"
+﻿#include "rclient_indicator.h"
+
+#include <base/system.h>
 
 #include "engine/client.h"
 #include "engine/external/json-parser/json.h"
 #include "engine/serverbrowser.h"
 #include "game/client/gameclient.h"
 
+static constexpr int POLL_TIMEOUT_SECONDS = 20;
+static constexpr int POLL_RETRY_SECONDS = 1;
+static constexpr int TOKEN_RETRY_SECONDS = 10;
+static constexpr int HTTP_TIMEOUT_MS = 25000;
+static constexpr int HTTP_CONNECT_TIMEOUT_MS = 10000;
+static constexpr int LONGPOLL_TIMEOUT_MS = (POLL_TIMEOUT_SECONDS + 5) * 1000;
 
-CRClientIndicator::CRClientIndicator()
+static const char *GetRclientUsersUrl()
 {
+	return g_Config.m_RiRclientIndicatorUsersUrl[0] != '\0' ? g_Config.m_RiRclientIndicatorUsersUrl : nullptr;
 }
+
+static const char *GetRclientTokenUrl()
+{
+	return g_Config.m_RiRclientIndicatorTokenUrl[0] != '\0' ? g_Config.m_RiRclientIndicatorTokenUrl : nullptr;
+}
+
+CRClientIndicator::CRClientIndicator() = default;
 
 void CRClientIndicator::OnInit()
 {
@@ -24,80 +40,115 @@ void CRClientIndicator::OnRender()
 		Finish();
 		Reset();
 	};
+
 	HandleTaskDone(m_pAuthTokenTask, [this]() { FinishAuthToken(); }, [this]() { ResetAuthToken(); });
 	HandleTaskDone(m_pRClientUsersTask, [this]() { FinishRClientUsers(); }, [this]() { ResetRClientUsers(); });
-	HandleTaskDone(m_pRClientUsersTaskSend, []() {}, [this]() { ResetRClientUsersSend(); });
+	HandleTaskDone(m_pRClientUsersTaskSend, [this]() { FinishRClientUsersSend(); }, [this]() { ResetRClientUsersSend(); });
 
 	if(!g_Config.m_RiShowRclientIndicator)
-		return;
-
-	// Do initial fetch when first connected
-	if(Client()->State() == IClient::STATE_ONLINE && !s_InitialFetchDone)
 	{
-		s_InitialFetchDone = true;
-		GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Send/Get RClient Players for indicator on init");
-		SyncRClientUsers();
+		if(m_WasOnline && !m_LastServerAddress.empty() && m_LastLocalId >= 0)
+			SendPlayerData(m_LastServerAddress.c_str(), m_LastLocalId, m_LastDummyId, false);
+
+		ResetRClientUsers();
+		ClearUsers();
+		m_WasOnline = false;
+		m_LastServerAddress.clear();
+		m_LastLocalId = -1;
+		m_LastDummyId = -1;
+		m_LastPollAttempt = 0;
+		m_ServerRev = 0;
 		return;
 	}
-
-	if(Client()->State() != IClient::STATE_ONLINE)
-	{
-		s_InitialFetchDone = false;
-		return;
-	}
-
-	if(m_pRClientUsersTask && !m_pRClientUsersTask->Done())
-		return;
 
 	const int64_t Now = time_get();
-	static constexpr int FETCH_INTERVAL_SECONDS = 30;
-	if(Now - s_LastFetch > time_freq() * FETCH_INTERVAL_SECONDS)
+	if(m_aAuthToken[0] == '\0' && Now - m_LastTokenAttempt > time_freq() * TOKEN_RETRY_SECONDS)
 	{
-		if(s_RclientIndicatorCount == 10)
-		{
-			GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Send/Get RClient Players for indicator x10");
-			s_RclientIndicatorCount = 0;
-		}
-		else
-			s_RclientIndicatorCount++;
-
-		SyncRClientUsers();
+		m_LastTokenAttempt = Now;
+		FetchAuthToken();
 	}
-}
-// Server and Player Info Collection
-void CRClientIndicator::SendServerPlayerInfo()
-{
-	if(Client()->State() != IClient::STATE_ONLINE)
-		return;
 
-	// Get server address
+	const bool Online = Client()->State() == IClient::STATE_ONLINE;
+	if(!Online)
+	{
+		if(m_WasOnline && !m_LastServerAddress.empty() && m_LastLocalId >= 0)
+			SendPlayerData(m_LastServerAddress.c_str(), m_LastLocalId, m_LastDummyId, false);
+
+		ResetRClientUsers();
+		m_WasOnline = false;
+		ClearUsers();
+		m_LastPollAttempt = 0;
+		m_ServerRev = 0;
+		return;
+	}
+
+	if(!m_WasOnline)
+	{
+		m_WasOnline = true;
+		m_LastPollAttempt = 0;
+	}
+
 	CServerInfo CurrentServerInfo;
 	Client()->GetServerInfo(&CurrentServerInfo);
+	const char *pServerAddress = CurrentServerInfo.m_aAddress;
 
-	// Send data for main player
 	int LocalClientId = GameClient()->m_aLocalIds[0];
 	int DummyClientId = -1;
 	if(Client()->DummyConnected())
-	{
 		DummyClientId = GameClient()->m_aLocalIds[1];
-	}
-	if(LocalClientId >= 0)
+
+	bool ForceSync = false;
+	if(m_LastServerAddress != pServerAddress)
 	{
-		SendPlayerData(CurrentServerInfo.m_aAddress, LocalClientId, DummyClientId);
+		if(!m_LastServerAddress.empty() && m_LastLocalId >= 0)
+			SendPlayerData(m_LastServerAddress.c_str(), m_LastLocalId, m_LastDummyId, false);
+
+		ResetRClientUsers();
+		ClearUsers();
+		m_LastServerAddress = pServerAddress;
+		m_ServerRev = 0;
+		ForceSync = true;
 	}
-	// Store current server info for comparison
+
+	if(m_LastLocalId != LocalClientId || m_LastDummyId != DummyClientId)
+	{
+		if(m_LastLocalId >= 0 && !m_LastServerAddress.empty())
+			SendPlayerData(m_LastServerAddress.c_str(), m_LastLocalId, m_LastDummyId, false);
+
+		m_LastLocalId = LocalClientId;
+		m_LastDummyId = DummyClientId;
+		m_ServerRev = 0;
+		ForceSync = true;
+	}
+
+	if(m_aAuthToken[0] == '\0')
+		return;
+
+	const int64_t PollRetry = time_freq() * POLL_RETRY_SECONDS;
+	if(!m_pRClientUsersTask && (ForceSync || Now - m_LastPollAttempt >= PollRetry))
+	{
+		if(LocalClientId >= 0)
+			FetchRClientUsers(pServerAddress, LocalClientId, DummyClientId);
+		m_LastPollAttempt = Now;
+	}
 }
 
-void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId, int DummyClientId)
+void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId, int DummyClientId, bool Online)
 {
 	if(m_aAuthToken[0] == '\0')
 	{
-		// Token not yet fetched, try again later.
 		if(!m_pAuthTokenTask)
 			FetchAuthToken();
 		return;
 	}
-	// Create JSON data for this specific player
+
+	const char *pUsersUrl = GetRclientUsersUrl();
+	if(!pUsersUrl)
+		return;
+
+	ResetRClientUsersSend();
+
+	const char *pOnlineStr = Online ? "true" : "false";
 	char aJsonData[512];
 
 	if(DummyClientId >= 0)
@@ -106,51 +157,50 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			"\"server_address\":\"%s\","
 			"\"player_id\":%d,"
 			"\"dummy_id\":%d,"
-			"\"auth_token\":\"%s\","
-			"\"timestamp\":%lld"
+			"\"online\":%s,"
+			"\"auth_token\":\"%s\""
 			"}",
 			pServerAddress,
 			ClientId,
 			DummyClientId,
-			m_aAuthToken,
-			(long long)time_get());
+			pOnlineStr,
+			m_aAuthToken);
 	else
 		str_format(aJsonData, sizeof(aJsonData),
 			"{"
 			"\"server_address\":\"%s\","
 			"\"player_id\":%d,"
-			"\"auth_token\":\"%s\","
-			"\"timestamp\":%lld"
+			"\"online\":%s,"
+			"\"auth_token\":\"%s\""
 			"}",
 			pServerAddress,
 			ClientId,
-			m_aAuthToken,
-			(long long)time_get());
+			pOnlineStr,
+			m_aAuthToken);
 
-	// Create and send HTTP request
-	m_pRClientUsersTaskSend = std::make_shared<CHttpRequest>(CRClientIndicator::RCLIENT_URL_USERS);
+	m_pRClientUsersTaskSend = std::make_shared<CHttpRequest>(pUsersUrl);
 	m_pRClientUsersTaskSend->PostJson(aJsonData);
-	m_pRClientUsersTaskSend->Timeout(CTimeout{10000, 0, 500, 5});
+	m_pRClientUsersTaskSend->Timeout(CTimeout{HTTP_TIMEOUT_MS, 0, 500, 5});
 	m_pRClientUsersTaskSend->IpResolve(IPRESOLVE::V4);
+	m_pRClientUsersTaskSend->LogProgress(HTTPLOG::FAILURE);
 	Http()->Run(m_pRClientUsersTaskSend);
 }
 
-void CRClientIndicator::FetchRClientUsers()
+void CRClientIndicator::FetchRClientUsers(const char *pServerAddress, int ClientId, int DummyClientId)
 {
 	if(m_pRClientUsersTask && !m_pRClientUsersTask->Done())
 		return;
 
-	m_pRClientUsersTask = HttpGet(CRClientIndicator::RCLIENT_URL_USERS);
-	m_pRClientUsersTask->Timeout(CTimeout{10000, 0, 500, 5});
-	m_pRClientUsersTask->IpResolve(IPRESOLVE::V4);
-	Http()->Run(m_pRClientUsersTask);
-}
+	const char *pUsersUrl = GetRclientUsersUrl();
+	if(!pUsersUrl)
+		return;
 
-void CRClientIndicator::SyncRClientUsers()
-{
-	SendServerPlayerInfo();
-	FetchRClientUsers();
-	s_LastFetch = time_get();
+	m_pRClientUsersTask = HttpGet(pUsersUrl);
+	ApplyPollHeaders(*m_pRClientUsersTask, pServerAddress, ClientId, DummyClientId);
+	m_pRClientUsersTask->Timeout(CTimeout{HTTP_CONNECT_TIMEOUT_MS, LONGPOLL_TIMEOUT_MS, 0, 0});
+	m_pRClientUsersTask->IpResolve(IPRESOLVE::V4);
+	m_pRClientUsersTask->LogProgress(HTTPLOG::FAILURE);
+	Http()->Run(m_pRClientUsersTask);
 }
 
 void CRClientIndicator::FetchAuthToken()
@@ -158,8 +208,12 @@ void CRClientIndicator::FetchAuthToken()
 	if(m_pAuthTokenTask && !m_pAuthTokenTask->Done())
 		return;
 
-	m_pAuthTokenTask = HttpGet(CRClientIndicator::RCLIENT_TOKEN_URL);
-	m_pAuthTokenTask->Timeout(CTimeout{10000, 0, 500, 5});
+	const char *pTokenUrl = GetRclientTokenUrl();
+	if(!pTokenUrl)
+		return;
+
+	m_pAuthTokenTask = HttpGet(pTokenUrl);
+	m_pAuthTokenTask->Timeout(CTimeout{HTTP_TIMEOUT_MS, 0, 500, 5});
 	m_pAuthTokenTask->IpResolve(IPRESOLVE::V4);
 	Http()->Run(m_pAuthTokenTask);
 }
@@ -182,8 +236,8 @@ void CRClientIndicator::FinishAuthToken()
 	if(Token.type == json_string)
 	{
 		str_copy(m_aAuthToken, Token.u.string.ptr, sizeof(m_aAuthToken));
-		// The token might have a newline at the end
 		str_utf8_trim_right(m_aAuthToken);
+		m_LastPollAttempt = 0;
 		GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "RClient", "Fetched auth token");
 	}
 	else
@@ -202,6 +256,19 @@ void CRClientIndicator::ResetAuthToken()
 	}
 }
 
+void CRClientIndicator::FinishRClientUsersSend()
+{
+	if(!m_pRClientUsersTaskSend)
+		return;
+
+	const int Status = m_pRClientUsersTaskSend->StatusCode();
+	if(Status == 401 || Status == 403)
+	{
+		m_aAuthToken[0] = '\0';
+		FetchAuthToken();
+	}
+}
+
 void CRClientIndicator::ResetRClientUsersSend()
 {
 	if(m_pRClientUsersTaskSend)
@@ -213,45 +280,66 @@ void CRClientIndicator::ResetRClientUsersSend()
 
 void CRClientIndicator::FinishRClientUsers()
 {
+	if(!m_pRClientUsersTask)
+		return;
+
+	const int Status = m_pRClientUsersTask->StatusCode();
+	if(Status == 401 || Status == 403)
+	{
+		m_aAuthToken[0] = '\0';
+		FetchAuthToken();
+		return;
+	}
+
 	json_value *pJson = m_pRClientUsersTask->ResultJson();
 	if(!pJson)
 		return;
 
 	const json_value &Json = *pJson;
+	const json_value &Error = Json["error"];
+	if(Error.type == json_string)
+	{
+		json_value_free(pJson);
+		return;
+	}
+
 	m_vRClientUsers.clear();
 
-	// Parse the JSON response to get list of RClient users
 	if(Json.type == json_object)
 	{
-		// The response format is: {"server_address": {"player_id": {...}}}
+		const json_value &Rev = Json["_rev"];
+		if(Rev.type == json_integer)
+			m_ServerRev = (int)Rev.u.integer;
+
 		for(unsigned int i = 0; i < Json.u.object.length; i++)
 		{
 			const char *pServerAddr = Json.u.object.values[i].name;
 			const json_value &PlayersObj = *Json.u.object.values[i].value;
 
-			if(PlayersObj.type == json_object)
+			if(pServerAddr[0] == '_')
+				continue;
+
+			if(PlayersObj.type != json_object)
+				continue;
+
+			for(unsigned int j = 0; j < PlayersObj.u.object.length; j++)
 			{
-				for(unsigned int j = 0; j < PlayersObj.u.object.length; j++)
+				const char *pPlayerIdStr = PlayersObj.u.object.values[j].name;
+				int PlayerId = atoi(pPlayerIdStr);
+				const json_value &PlayerData = *PlayersObj.u.object.values[j].value;
+
+				m_vRClientUsers.emplace_back(std::string(pServerAddr), PlayerId);
+
+				if(PlayerData.type == json_object)
 				{
-					const char *pPlayerIdStr = PlayersObj.u.object.values[j].name;
-					int PlayerId = atoi(pPlayerIdStr);
-					const json_value &PlayerData = *PlayersObj.u.object.values[j].value;
-
-					// Add main player ID
-					m_vRClientUsers.emplace_back(std::string(pServerAddr), PlayerId);
-
-					// Check if this player has a dummy and add dummy ID too
-					if(PlayerData.type == json_object)
+					for(unsigned int k = 0; k < PlayerData.u.object.length; k++)
 					{
-						for(unsigned int k = 0; k < PlayerData.u.object.length; k++)
+						if(str_comp(PlayerData.u.object.values[k].name, "dummy_id") == 0 &&
+							PlayerData.u.object.values[k].value->type == json_integer)
 						{
-							if(str_comp(PlayerData.u.object.values[k].name, "dummy_id") == 0 &&
-								PlayerData.u.object.values[k].value->type == json_integer)
-							{
-								int DummyId = PlayerData.u.object.values[k].value->u.integer;
-								m_vRClientUsers.emplace_back(std::string(pServerAddr), DummyId);
-								break;
-							}
+							int DummyId = PlayerData.u.object.values[k].value->u.integer;
+							m_vRClientUsers.emplace_back(std::string(pServerAddr), DummyId);
+							break;
 						}
 					}
 				}
@@ -271,23 +359,31 @@ void CRClientIndicator::ResetRClientUsers()
 	}
 }
 
+void CRClientIndicator::ApplyPollHeaders(CHttpRequest &Request, const char *pServerAddress, int ClientId, int DummyClientId)
+{
+	Request.HeaderString("X-RClient-Token", m_aAuthToken);
+	Request.HeaderString("X-RClient-Server", pServerAddress);
+	Request.HeaderInt("X-RClient-Since", m_ServerRev);
+	Request.HeaderInt("X-RClient-Timeout", POLL_TIMEOUT_SECONDS);
+	if(ClientId >= 0)
+		Request.HeaderInt("X-RClient-Player", ClientId);
+	if(DummyClientId >= 0)
+		Request.HeaderInt("X-RClient-Dummy", DummyClientId);
+}
+
+void CRClientIndicator::ClearUsers()
+{
+	m_vRClientUsers.clear();
+}
+
 bool CRClientIndicator::IsPlayerRClient(int ClientId)
 {
 	if(Client()->State() != IClient::STATE_ONLINE)
 		return false;
 
-	// // Always show RClient indicator for local players (main and dummy)
-	// if(GameClient()->m_Snap.m_apPlayerInfos[ClientId] && GameClient()->m_Snap.m_apPlayerInfos[ClientId]->m_Local)
-	// 	return true;
-	//
-	// // Also check if this is our dummy using m_aLocalIds
-	// if(ClientId == GameClient()->m_aLocalIds[0] || ClientId == GameClient()->m_aLocalIds[1])
-	// 	return true;
-
 	CServerInfo CurrentServerInfo;
 	Client()->GetServerInfo(&CurrentServerInfo);
 
-	// Check if this player is in our RClient users list
 	for(const auto &User : m_vRClientUsers)
 	{
 		if(str_comp(User.first.c_str(), CurrentServerInfo.m_aAddress) == 0 && User.second == ClientId)
