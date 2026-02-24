@@ -131,8 +131,6 @@ static constexpr int VOICE_MAX_PACKET = 1200;
 static constexpr int VOICE_HEADER_SIZE = sizeof(VOICE_MAGIC) + 1 + 1 + 2 + 4 + 4 + 2 + 2 + 4 + 4;
 static constexpr int VOICE_MAX_PAYLOAD = VOICE_MAX_PACKET - VOICE_HEADER_SIZE;
 
-static constexpr int VOICE_MAX_PLC_FRAMES = 3;
-
 static void WriteU16(uint8_t *pBuf, uint16_t Value)
 {
 	pBuf[0] = Value & 0xff;
