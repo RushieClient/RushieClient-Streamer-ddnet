@@ -1055,7 +1055,6 @@ void CRClientVoice::ProcessIncoming()
 
 		if(Config.m_RiVoiceDebug)
 		{
-			const int64_t Now = time_get();
 			s_RxPackets++;
 			if(Now - s_RxLastLog > time_freq())
 			{
