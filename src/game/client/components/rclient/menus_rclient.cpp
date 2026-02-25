@@ -839,7 +839,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiColorFreezeNoYourself, RCLocalize("No colored frozen tee skins for yourself"), &g_Config.m_RiColorFreezeNoYourself, &Column, LineSize);
 		static std::vector<CButtonContainer> s_vFastInputVerButtonContainers = {{}, {}};
-		DoLine_RadioMenu(Column, RCLocalize("FastInput version: ", ""),
+		DoLine_RadioMenu(Column, RCLocalize("FastInput version:", ""),
 			s_vFastInputVerButtonContainers,
 			{RCLocalize("Tater's old", ""), RCLocalize("Tater's new", "")},
 			{0, 1},
@@ -1230,6 +1230,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	static CButtonContainer s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu;
 	DoLine_KeyReader(Label, s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu, RCLocalize("Player menu"), "toggle_playermenu");
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
 	static CButtonContainer s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId;
 	DoLine_KeyReader(Label, s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId, RCLocalize("Find checkpoint"), "ri_get_checkpoint_id");
 	Column.HSplitTop(MarginSmall, nullptr, &Column);

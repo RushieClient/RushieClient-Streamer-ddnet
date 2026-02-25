@@ -750,3 +750,9 @@ Group mode
 
 Group token
 == Токен группы
+
+FastInput version:
+== Версия ФастИнпута:
+
+Hear group members everywhere
+== Слышать участников группы везде
