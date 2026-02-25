@@ -2646,7 +2646,15 @@ void CGameClient::OnPredict()
 	// predict
 	// prediction actually happens here
 
-	int FastInputTicks = ((g_Config.m_TcFastInputAmount - 1) / 20 + 1) * g_Config.m_TcFastInput;
+	const bool UseNewFastInput = g_Config.m_RiFastInputVersion != 0;
+	int FastInputTicks = 0;
+	if(g_Config.m_TcFastInput)
+	{
+		if(UseNewFastInput)
+			FastInputTicks = ((g_Config.m_TcFastInputAmount - 1) / 20 + 1);
+		else
+			FastInputTicks = g_Config.m_TcFastInput;
+	}
 
 	int FinalTickRegular = Client()->PredGameTick(g_Config.m_ClDummy); // The vanilla final tick disregarding fast input
 
@@ -2692,25 +2700,35 @@ void CGameClient::OnPredict()
 		CNetObj_PlayerInput *pDummyInputData = !pDummyChar ? nullptr : (CNetObj_PlayerInput *)Client()->GetInput(Tick, m_IsDummySwapping ^ 1);
 		bool DummyFirst = pInputData && pDummyInputData && pDummyChar->GetCid() < pLocalChar->GetCid();
 
-		if(g_Config.m_TcFastInput && Tick > FinalTickRegular)
+		if(g_Config.m_TcFastInput)
 		{
-			pInputData = &m_Controls.m_aFastInput[LocalTee];
-			if(g_Config.m_ClDummyCopyMoves && PredictDummy() && pDummyChar)
+			if(UseNewFastInput)
 			{
-				CNetObj_PlayerInput DummyFastInput;
-				if(g_Config.m_ClDummyHammer)
+				if(Tick > FinalTickRegular)
 				{
-					DummyFastInput = m_HammerInput;
+					pInputData = &m_Controls.m_aFastInput[LocalTee];
+					if(g_Config.m_ClDummyCopyMoves && PredictDummy() && pDummyChar)
+					{
+						CNetObj_PlayerInput DummyFastInput;
+						if(g_Config.m_ClDummyHammer)
+						{
+							DummyFastInput = m_HammerInput;
+						}
+						else
+						{
+							DummyFastInput = m_Controls.m_aFastInput[LocalTee];
+							DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
+							DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
+							DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
+							DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
+						}
+						pDummyInputData = &DummyFastInput;
+					}
 				}
-				else
-				{
-					DummyFastInput = m_Controls.m_aFastInput[LocalTee];
-					DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
-					DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
-					DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
-					DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
-				}
-				pDummyInputData = &DummyFastInput;
+			}
+			else if(Tick == FinalTickSelf)
+			{
+				pInputData = &m_Controls.m_aFastInput[LocalTee];
 			}
 		}
 
@@ -4113,7 +4131,7 @@ void CGameClient::UpdateRenderedCharacters()
 
 			if(g_Config.m_TcRemoveAnti)
 				Pos = GetFreezePos(i);
-			else if(g_Config.m_TcFastInput && (i == m_Snap.m_LocalClientId || (PredictDummy() && i == m_aLocalIds[!g_Config.m_ClDummy])))
+			else if(g_Config.m_TcFastInput && g_Config.m_RiFastInputVersion && (i == m_Snap.m_LocalClientId || (PredictDummy() && i == m_aLocalIds[!g_Config.m_ClDummy])))
 				Pos = GetFastInputPos(i);
 
 			if(i == m_Snap.m_LocalClientId || (PredictDummy() && i == m_aLocalIds[!g_Config.m_ClDummy]))
@@ -4140,7 +4158,7 @@ void CGameClient::UpdateRenderedCharacters()
 
 				if(g_Config.m_TcRemoveAnti && m_pClient->m_IsLocalFrozen)
 					Pos = GetFreezePos(i);
-				else if(g_Config.m_TcFastInput && g_Config.m_TcFastInputOthers && !g_Config.m_TcAntiPingImproved)
+				else if(g_Config.m_TcFastInput && g_Config.m_RiFastInputVersion && g_Config.m_TcFastInputOthers && !g_Config.m_TcAntiPingImproved)
 					Pos = GetFastInputPos(i);
 
 				if(g_Config.m_TcShowOthersGhosts && g_Config.m_TcSwapGhosts && !(m_aClients[i].m_FreezeEnd > 0 && g_Config.m_TcHideFrozenGhosts))
@@ -4382,27 +4400,41 @@ vec2 CGameClient::GetFreezePos(int ClientId)
 	m_SmoothTick = SmoothTick;
 	m_SmoothIntraTick = SmoothIntra;
 
-	float FastInputIntra = (g_Config.m_TcFastInputAmount % 20) / 20.0f;
-	int FastInputTicks = g_Config.m_TcFastInputAmount / 20;
-
-	float CombinedIntra = SmoothIntra + FastInputIntra;
-
-	float IntraRemainder = 0.0f;
-	float FinalIntra = std::modf(CombinedIntra, &IntraRemainder);
-	int CarryOverTicks = static_cast<int>(IntraRemainder);
-
-	FastInputTicks += CarryOverTicks;
-		 
+	const bool UseNewFastInput = g_Config.m_RiFastInputVersion != 0;
 	const bool IsLocal = ClientId == m_Snap.m_LocalClientId || (PredictDummy() && ClientId == m_aLocalIds[!g_Config.m_ClDummy]);
-	if(IsLocal && g_Config.m_TcFastInput)
+	int FastInputTicks = 0;
+
+	if(UseNewFastInput)
 	{
-		SmoothTick += FastInputTicks;
-		SmoothIntra = FinalIntra;
+		float FastInputIntra = (g_Config.m_TcFastInputAmount % 20) / 20.0f;
+		FastInputTicks = g_Config.m_TcFastInputAmount / 20;
+
+		float CombinedIntra = SmoothIntra + FastInputIntra;
+
+		float IntraRemainder = 0.0f;
+		float FinalIntra = std::modf(CombinedIntra, &IntraRemainder);
+		int CarryOverTicks = static_cast<int>(IntraRemainder);
+
+		FastInputTicks += CarryOverTicks;
+
+		if(IsLocal && g_Config.m_TcFastInput)
+		{
+			SmoothTick += FastInputTicks;
+			SmoothIntra = FinalIntra;
+		}
+		else if(!IsLocal && g_Config.m_TcFastInputOthers && g_Config.m_TcFastInput)
+		{
+			SmoothTick += FastInputTicks;
+			SmoothIntra = FinalIntra;
+		}
 	}
-	else if(!IsLocal && g_Config.m_TcFastInputOthers && g_Config.m_TcFastInput)
+	else
 	{
-		SmoothTick += FastInputTicks;
-		SmoothIntra = FinalIntra;
+		FastInputTicks = g_Config.m_TcFastInput;
+		if(IsLocal && g_Config.m_TcFastInput)
+			SmoothTick += g_Config.m_TcFastInput;
+		else if(!IsLocal && g_Config.m_TcFastInputOthers && g_Config.m_TcFastInput)
+			SmoothTick += g_Config.m_TcFastInput;
 	}
 
 	if(SmoothTick > 0 &&

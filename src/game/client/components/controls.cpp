@@ -504,6 +504,43 @@ float CControls::GetMaxMouseDistance() const
 
 bool CControls::CheckNewInput()
 {
+	if(g_Config.m_RiFastInputVersion == 0)
+	{
+		const int Dummy = g_Config.m_ClDummy;
+		CNetObj_PlayerInput TestInput = m_aInputData[Dummy];
+		TestInput.m_Direction = 0;
+		if(m_aInputDirectionLeft[Dummy] && !m_aInputDirectionRight[Dummy])
+			TestInput.m_Direction = -1;
+		if(!m_aInputDirectionLeft[Dummy] && m_aInputDirectionRight[Dummy])
+			TestInput.m_Direction = 1;
+
+		bool NewInput = false;
+		if(m_aFastInput[Dummy].m_Direction != TestInput.m_Direction)
+			NewInput = true;
+		if(m_aFastInput[Dummy].m_Hook != TestInput.m_Hook)
+			NewInput = true;
+		if(m_aFastInput[Dummy].m_Fire != TestInput.m_Fire)
+			NewInput = true;
+		if(m_aFastInput[Dummy].m_Jump != TestInput.m_Jump)
+			NewInput = true;
+		if(m_aFastInput[Dummy].m_NextWeapon != TestInput.m_NextWeapon)
+			NewInput = true;
+		if(m_aFastInput[Dummy].m_PrevWeapon != TestInput.m_PrevWeapon)
+			NewInput = true;
+		if(m_aFastInput[Dummy].m_WantedWeapon != TestInput.m_WantedWeapon)
+			NewInput = true;
+
+		if(g_Config.m_ClSubTickAiming)
+		{
+			TestInput.m_TargetX = (int)m_aMousePos[Dummy].x;
+			TestInput.m_TargetY = (int)m_aMousePos[Dummy].y;
+		}
+
+		m_aFastInput[Dummy] = TestInput;
+
+		return NewInput;
+	}
+
 	bool NewInput = false;
 	for(int Dummy = 0; Dummy < NUM_DUMMIES; Dummy++)
 	{
