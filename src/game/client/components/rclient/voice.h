@@ -18,6 +18,7 @@
 class CGameClient;
 class IClient;
 class IConsole;
+class IEngineGraphics;
 struct OpusDecoder;
 struct OpusEncoder;
 
@@ -97,6 +98,7 @@ class CRClientVoice
 	CGameClient *m_pGameClient = nullptr;
 	IClient *m_pClient = nullptr;
 	IConsole *m_pConsole = nullptr;
+	IEngineGraphics *m_pGraphics = nullptr;
 
 	NETSOCKET m_Socket = nullptr;
 	NETADDR m_ServerAddr = NETADDR_ZEROED;

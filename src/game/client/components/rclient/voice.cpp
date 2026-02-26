@@ -6,6 +6,7 @@
 #include <base/vmath.h>
 
 #include <engine/client.h>
+#include <engine/graphics.h>
 #include <engine/shared/config.h>
 #include <engine/shared/console.h>
 
@@ -319,6 +320,7 @@ void CRClientVoice::Init(CGameClient *pGameClient, IClient *pClient, IConsole *p
 	m_pGameClient = pGameClient;
 	m_pClient = pClient;
 	m_pConsole = pConsole;
+	m_pGraphics = m_pGameClient ? m_pGameClient->Kernel()->RequestInterface<IEngineGraphics>() : nullptr;
 	m_ShutdownDone = false;
 }
 
@@ -1446,6 +1448,24 @@ void CRClientVoice::OnRender()
 		return;
 	}
 	m_ShutdownDone = false;
+
+	if(g_Config.m_RiVoiceOffNonActive && m_pGraphics && !m_pGraphics->WindowActive())
+	{
+		StopWorker();
+		if(m_CaptureDevice)
+		{
+			SDL_ClearQueuedAudio(m_CaptureDevice);
+			SDL_PauseAudioDevice(m_CaptureDevice, 1);
+		}
+		if(m_OutputDevice)
+			SDL_PauseAudioDevice(m_OutputDevice, 1);
+		ClearPeerFrames();
+		return;
+	}
+	if(m_CaptureDevice)
+		SDL_PauseAudioDevice(m_CaptureDevice, 0);
+	if(m_OutputDevice)
+		SDL_PauseAudioDevice(m_OutputDevice, 0);
 
 	UpdateServerAddr();
 	const bool ContextChanged = UpdateContext();

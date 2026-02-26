@@ -759,3 +759,6 @@ Hear group members everywhere
 
 Microphone volume
 == Громкость микрофона
+
+Off voice when window nonactive
+== Выключать войс когда окно не активно
