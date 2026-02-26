@@ -16,6 +16,8 @@
 
 #include <opus/opus.h>
 
+#include <SDL.h>
+
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -388,6 +390,78 @@ bool CRClientVoice::EnsureAudio()
 	WantOutput.callback = SDLAudioCallback;
 	WantOutput.userdata = this;
 
+	const bool BackendChanged = str_comp(m_aAudioBackend, g_Config.m_RiVoiceAudioBackend) != 0;
+	if(BackendChanged)
+	{
+		if(m_CaptureDevice)
+		{
+			SDL_CloseAudioDevice(m_CaptureDevice);
+			m_CaptureDevice = 0;
+		}
+		if(m_OutputDevice)
+		{
+			SDL_CloseAudioDevice(m_OutputDevice);
+			m_OutputDevice = 0;
+		}
+		m_CaptureSpec = {};
+		m_OutputSpec = {};
+		m_OutputChannels.store(0);
+		m_MixBuffer.clear();
+		str_copy(m_aAudioBackend, g_Config.m_RiVoiceAudioBackend, sizeof(m_aAudioBackend));
+		m_aAudioBackendMismatchReq[0] = '\0';
+		m_aAudioBackendMismatchCur[0] = '\0';
+		m_aAudioInitLoggedBackend[0] = '\0';
+		m_LogDeviceChange = true;
+	}
+
+	const char *pRequestedBackend = g_Config.m_RiVoiceAudioBackend[0] ? g_Config.m_RiVoiceAudioBackend : nullptr;
+	if((SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO) == 0)
+	{
+		if(SDL_AudioInit(pRequestedBackend) < 0)
+		{
+			if(pRequestedBackend)
+				log_error("voice", "Failed to init audio backend '%s': %s", pRequestedBackend, SDL_GetError());
+			else
+				log_error("voice", "Failed to init audio: %s", SDL_GetError());
+			return false;
+		}
+		m_AudioSubsystemInitializedByVoice = true;
+		const char *pDriver = SDL_GetCurrentAudioDriver();
+		if(pDriver && pDriver[0] != '\0')
+		{
+			if(str_comp_nocase(m_aAudioInitLoggedBackend, pDriver) != 0)
+			{
+				log_info("voice", "audio initialized using backend '%s'", pDriver);
+				str_copy(m_aAudioInitLoggedBackend, pDriver, sizeof(m_aAudioInitLoggedBackend));
+			}
+		}
+		else if(m_aAudioInitLoggedBackend[0] == '\0')
+		{
+			log_info("voice", "audio initialized");
+			str_copy(m_aAudioInitLoggedBackend, "<unknown>", sizeof(m_aAudioInitLoggedBackend));
+		}
+	}
+	else if(pRequestedBackend && pRequestedBackend[0] != '\0')
+	{
+		const char *pDriver = SDL_GetCurrentAudioDriver();
+		if(pDriver && str_comp_nocase(pDriver, pRequestedBackend) != 0)
+		{
+			const bool ReqChanged = str_comp_nocase(m_aAudioBackendMismatchReq, pRequestedBackend) != 0;
+			const bool CurChanged = str_comp_nocase(m_aAudioBackendMismatchCur, pDriver) != 0;
+			if(ReqChanged || CurChanged)
+			{
+				log_info("voice", "audio backend already initialized as '%s' (requested '%s')", pDriver, pRequestedBackend);
+				str_copy(m_aAudioBackendMismatchReq, pRequestedBackend, sizeof(m_aAudioBackendMismatchReq));
+				str_copy(m_aAudioBackendMismatchCur, pDriver, sizeof(m_aAudioBackendMismatchCur));
+			}
+		}
+		else
+		{
+			m_aAudioBackendMismatchReq[0] = '\0';
+			m_aAudioBackendMismatchCur[0] = '\0';
+		}
+	}
+
 	const bool HadCapture = m_CaptureDevice != 0;
 	const bool HadOutput = m_OutputDevice != 0;
 	const bool HadEncoder = m_pEncoder != nullptr;
@@ -758,6 +832,11 @@ void CRClientVoice::Shutdown()
 	m_HpfPrevIn = 0.0f;
 	m_HpfPrevOut = 0.0f;
 	m_CompEnv = 0.0f;
+	m_aAudioBackend[0] = '\0';
+	m_aAudioBackendMismatchReq[0] = '\0';
+	m_aAudioBackendMismatchCur[0] = '\0';
+	m_aAudioInitLoggedBackend[0] = '\0';
+	m_AudioSubsystemInitializedByVoice = false;
 }
 
 void CRClientVoice::UpdateServerAddr()
@@ -1475,6 +1554,8 @@ void CRClientVoice::OnRender()
 	const bool WantStereo = g_Config.m_RiVoiceStereo != 0;
 	const int DesiredChannels = WantStereo ? 2 : 1;
 	bool NeedReinit = false;
+	if(str_comp(m_aAudioBackend, g_Config.m_RiVoiceAudioBackend) != 0)
+		NeedReinit = true;
 	if(str_comp(m_aInputDeviceName, g_Config.m_RiVoiceInputDevice) != 0)
 		NeedReinit = true;
 	if(str_comp(m_aOutputDeviceName, g_Config.m_RiVoiceOutputDevice) != 0)

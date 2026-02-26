@@ -109,6 +109,11 @@ class CRClientVoice
 	SDL_AudioDeviceID m_OutputDevice = 0;
 	SDL_AudioSpec m_CaptureSpec = {};
 	SDL_AudioSpec m_OutputSpec = {};
+	char m_aAudioBackend[64] = {0};
+	char m_aAudioBackendMismatchReq[64] = {0};
+	char m_aAudioBackendMismatchCur[64] = {0};
+	char m_aAudioInitLoggedBackend[64] = {0};
+	bool m_AudioSubsystemInitializedByVoice = false;
 	char m_aInputDeviceName[128] = {0};
 	char m_aOutputDeviceName[128] = {0};
 	bool m_OutputStereo = true;

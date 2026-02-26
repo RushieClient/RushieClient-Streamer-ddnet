@@ -208,10 +208,33 @@ int CSound::Init()
 	if(!g_Config.m_SndEnable)
 		return 0;
 
-	if(SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
+	//RClient
+	const char *pRequestedBackend = g_Config.m_RiVoiceAudioBackend[0] ? g_Config.m_RiVoiceAudioBackend : nullptr;
+	if((SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO) == 0)
 	{
-		dbg_msg("sound", "unable to init SDL audio: %s", SDL_GetError());
-		return -1;
+		if(pRequestedBackend)
+		{
+			if(SDL_AudioInit(pRequestedBackend) < 0)
+			{
+				dbg_msg("sound", "unable to init SDL audio backend '%s': %s", pRequestedBackend, SDL_GetError());
+				if(SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
+				{
+					dbg_msg("sound", "unable to init SDL audio: %s", SDL_GetError());
+					return -1;
+				}
+			}
+		}
+		else if(SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
+		{
+			dbg_msg("sound", "unable to init SDL audio: %s", SDL_GetError());
+			return -1;
+		}
+	}
+	else if(pRequestedBackend)
+	{
+		const char *pDriver = SDL_GetCurrentAudioDriver();
+		if(pDriver && str_comp_nocase(pDriver, pRequestedBackend) != 0)
+			dbg_msg("sound", "audio backend already initialized as '%s' (requested '%s')", pDriver, pRequestedBackend);
 	}
 
 	SDL_AudioSpec Format, FormatOut;
