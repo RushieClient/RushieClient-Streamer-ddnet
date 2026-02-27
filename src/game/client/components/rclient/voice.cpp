@@ -328,7 +328,21 @@ void CRClientVoice::Init(CGameClient *pGameClient, IClient *pClient, IConsole *p
 
 void CRClientVoice::SetPttActive(bool Active)
 {
-	m_PttActive.store(Active);
+	const bool WasActive = m_PttActive.exchange(Active);
+	if(Active)
+	{
+		m_PttReleaseDeadline.store(0);
+		return;
+	}
+
+	if(WasActive)
+	{
+		const int DelayMs = std::clamp(g_Config.m_RiVoicePttReleaseDelayMs, 0, 1000);
+		if(DelayMs > 0)
+			m_PttReleaseDeadline.store(time_get() + (int64_t)time_freq() * DelayMs / 1000);
+		else
+			m_PttReleaseDeadline.store(0);
+	}
 }
 
 static int ClampJitterTarget(float JitterMs)
@@ -948,9 +962,11 @@ void CRClientVoice::ProcessCapture()
 		return;
 
 	const int64_t Now = time_get();
+	const int64_t ReleaseDeadline = m_PttReleaseDeadline.load();
+	const bool PttHeld = m_PttActive.load() || (ReleaseDeadline != 0 && Now < ReleaseDeadline);
 	const bool TokenChanged = Config.m_RiVoiceTokenHash != m_LastTokenHashSent;
 	const bool NeedKeepalive = m_LastKeepalive == 0 || Now - m_LastKeepalive > time_freq() * 2;
-	if(TokenChanged || (!m_PttActive.load() && NeedKeepalive))
+	if(TokenChanged || (!PttHeld && NeedKeepalive))
 	{
 		NETADDR ServerAddrLocal = NETADDR_ZEROED;
 		{
@@ -982,8 +998,10 @@ void CRClientVoice::ProcessCapture()
 		m_LastTokenHashSent = Config.m_RiVoiceTokenHash;
 	}
 
-	if(!m_PttActive.load())
+	if(!PttHeld)
 	{
+		if(ReleaseDeadline != 0 && Now >= ReleaseDeadline)
+			m_PttReleaseDeadline.store(0);
 		SDL_ClearQueuedAudio(m_CaptureDevice);
 		return;
 	}
@@ -1485,7 +1503,8 @@ bool CRClientVoice::IsVoiceActive(int ClientId) const
 	const int64_t LastHeard = m_aLastHeard[ClientId].load();
 	if(LastHeard == 0)
 		return false;
-	return time_get() - LastHeard < time_freq() / 2;
+	constexpr int64_t ACTIVE_WINDOW_MS = 40;
+	return time_get() - LastHeard < (int64_t)time_freq() * ACTIVE_WINDOW_MS / 1000;
 }
 
 void CRClientVoice::StartWorker()

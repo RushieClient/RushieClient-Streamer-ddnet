@@ -768,3 +768,6 @@ Audio backend
 
 If change backend u need restart game
 == Если меняешь бекенд тебе надо перезапустить игру
+
+PTT release delay (ms)
+== PTT задержка после отпускания (мс)

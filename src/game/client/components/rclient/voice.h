@@ -134,6 +134,7 @@ class CRClientVoice
 	std::array<std::atomic<int64_t>, MAX_CLIENTS> m_aLastHeard = {};
 
 	std::atomic<bool> m_PttActive = false;
+	std::atomic<int64_t> m_PttReleaseDeadline = 0;
 	uint16_t m_Sequence = 0;
 	std::atomic<uint32_t> m_ContextHash = 0;
 	int64_t m_LastKeepalive = 0;
