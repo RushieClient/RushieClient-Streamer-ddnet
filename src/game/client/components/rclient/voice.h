@@ -42,6 +42,7 @@ struct SRClientVoiceConfigSnapshot
 	int m_RiVoiceListMode = 0;
 	int m_RiVoiceDebug = 0;
 	int m_RiVoiceGroupMode = 0;
+	int m_RiVoiceHearOnSpecPos = 0;
 	int m_ClShowOthers = 0;
 	uint32_t m_RiVoiceTokenHash = 0;
 	char m_aRiVoiceWhitelist[512] = {};
@@ -154,6 +155,8 @@ class CRClientVoice
 	std::mutex m_SnapshotMutex;
 	int m_LocalClientIdSnap = -1;
 	bool m_OnlineSnap = false;
+	bool m_SpecActiveSnap = false;
+	vec2 m_SpecPosSnap = vec2(0.0f, 0.0f);
 	std::array<vec2, MAX_CLIENTS> m_aClientPosSnap = {};
 	std::array<std::array<char, MAX_NAME_LENGTH>, MAX_CLIENTS> m_aClientNameSnap = {};
 	std::array<uint8_t, MAX_CLIENTS> m_aClientOtherTeamSnap = {};

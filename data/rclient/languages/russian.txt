@@ -783,3 +783,6 @@ You see
 [VoiceChat]
 In team
 == В команде
+
+Hear from camera center while spectating
+== Слышать от центра камеры при наблюдении

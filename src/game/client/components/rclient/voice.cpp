@@ -927,15 +927,22 @@ void CRClientVoice::UpdateClientSnapshot()
 	{
 		m_OnlineSnap = false;
 		m_LocalClientIdSnap = -1;
+		m_SpecActiveSnap = false;
+		m_SpecPosSnap = vec2(0.0f, 0.0f);
 		return;
 	}
 
 	m_OnlineSnap = true;
 	m_LocalClientIdSnap = m_pGameClient->m_Snap.m_LocalClientId;
+	m_SpecActiveSnap = m_pGameClient->m_Snap.m_SpecInfo.m_Active;
+	if(m_SpecActiveSnap)
+		m_SpecPosSnap = m_pGameClient->m_Camera.m_Center;
 	if(m_LocalClientIdSnap < 0 || m_LocalClientIdSnap >= MAX_CLIENTS)
 	{
 		m_OnlineSnap = false;
 		m_LocalClientIdSnap = -1;
+		m_SpecActiveSnap = false;
+		m_SpecPosSnap = vec2(0.0f, 0.0f);
 		return;
 	}
 	for(int i = 0; i < MAX_CLIENTS; i++)
@@ -1165,6 +1172,8 @@ void CRClientVoice::ProcessIncoming()
 
 		int LocalId = -1;
 		vec2 LocalPos = vec2(0.0f, 0.0f);
+		bool SpecActive = false;
+		vec2 SpecPos = vec2(0.0f, 0.0f);
 		char aSenderName[MAX_NAME_LENGTH];
 		bool SenderOtherTeam = false;
 		bool SenderActive = false;
@@ -1176,10 +1185,15 @@ void CRClientVoice::ProcessIncoming()
 			if(LocalId < 0 || LocalId >= MAX_CLIENTS)
 				continue;
 			LocalPos = m_aClientPosSnap[LocalId];
+			SpecActive = m_SpecActiveSnap;
+			SpecPos = m_SpecPosSnap;
 			str_copy(aSenderName, m_aClientNameSnap[SenderId].data(), sizeof(aSenderName));
 			SenderOtherTeam = m_aClientOtherTeamSnap[SenderId] != 0;
 			SenderActive = m_aClientActiveSnap[SenderId] != 0;
 		}
+
+		if(SpecActive && Config.m_RiVoiceHearOnSpecPos)
+			LocalPos = SpecPos;
 
 		if(SenderId == LocalId)
 			continue;
@@ -1336,6 +1350,7 @@ void CRClientVoice::UpdateConfigSnapshot()
 	m_ConfigSnapshot.m_RiVoiceListMode = g_Config.m_RiVoiceListMode;
 	m_ConfigSnapshot.m_RiVoiceDebug = g_Config.m_RiVoiceDebug;
 	m_ConfigSnapshot.m_RiVoiceGroupMode = g_Config.m_RiVoiceGroupMode;
+	m_ConfigSnapshot.m_RiVoiceHearOnSpecPos = g_Config.m_RiVoiceHearOnSpecPos;
 	m_ConfigSnapshot.m_ClShowOthers = g_Config.m_ClShowOthers;
 	uint32_t GroupHash = g_Config.m_RiVoiceToken[0] != '\0' ? str_quickhash(g_Config.m_RiVoiceToken) : 0;
 	uint32_t Mode = (uint32_t)std::clamp(g_Config.m_RiVoiceGroupMode, 0, 3);
