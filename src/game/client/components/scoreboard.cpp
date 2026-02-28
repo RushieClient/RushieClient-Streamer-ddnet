@@ -9,6 +9,7 @@
 #include <engine/shared/config.h>
 #include <engine/textrender.h>
 
+#include <generated/client_data.h>
 #include <generated/client_data7.h>
 #include <generated/protocol.h>
 
@@ -737,6 +738,9 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 
 			// name
 			{
+				const bool ShowRClientIndicator = g_Config.m_RiShowRclientIndicator && g_Config.m_RiScoreboardShowRclientIndicator &&
+					GameClient()->m_RClientIndicator.IsPlayerRClient(pInfo->m_ClientId) &&
+					(g_Config.m_RiRclientIndicatorAboveSelf || !pInfo->m_Local);
 				CTextCursor Cursor;
 				Cursor.SetPosition(vec2(NameOffset, Row.y + (Row.h - FontSize) / 2.0f));
 				Cursor.m_FontSize = FontSize;
@@ -751,6 +755,27 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					char aClientId[16];
 					GameClient()->FormatClientId(pInfo->m_ClientId, aClientId, EClientIdFormat::INDENT_AUTO);
 					TextRender()->TextEx(&Cursor, aClientId);
+				}
+
+				if(ShowRClientIndicator && Cursor.m_LineWidth > 0.0f)
+				{
+					const float IndicatorScale = 1.0f + g_Config.m_RiScoreboardRclientIndicatorSize / 100.0f;
+					float IndicatorSize = (FontSize * 0.75f) * IndicatorScale;
+					IndicatorSize = std::clamp(IndicatorSize, 4.0f, Row.h - 2.0f);
+					const float IndicatorPadding = 2.0f;
+					const float IndicatorAdvance = IndicatorSize + IndicatorPadding;
+					if(Cursor.m_LineWidth > IndicatorAdvance)
+					{
+						Graphics()->TextureSet(g_pData->m_aImages[IMAGE_RIICON].m_Id);
+						Graphics()->QuadsBegin();
+						Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, TextColor.a));
+						Graphics()->SelectSprite(SPRITE_RI_ICON);
+						Graphics()->DrawSprite(Cursor.m_X + IndicatorSize / 2.0f, Row.y + Row.h / 2.0f, IndicatorSize, IndicatorSize);
+						Graphics()->QuadsEnd();
+
+						Cursor.m_X += IndicatorAdvance;
+						Cursor.m_LineWidth = maximum(0.0f, Cursor.m_LineWidth - IndicatorAdvance);
+					}
 				}
 
 				if(pInfo->m_ClientId >= 0 && GameClient()->m_aClients[pInfo->m_ClientId].m_Friend && g_Config.m_RiScoreboardFriendMark)
