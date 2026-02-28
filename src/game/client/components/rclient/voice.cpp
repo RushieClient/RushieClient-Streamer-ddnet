@@ -123,7 +123,7 @@ static bool VoiceNameVolume(const char *pList, const char *pName, int &OutPercen
 }
 
 static constexpr char VOICE_MAGIC[4] = {'R', 'V', '0', '1'};
-static constexpr uint8_t VOICE_VERSION = 3;
+static constexpr uint8_t VOICE_VERSION = 2;
 static constexpr uint8_t VOICE_TYPE_AUDIO = 1;
 static constexpr uint8_t VOICE_TYPE_PING = 2;
 static constexpr int VOICE_SAMPLE_RATE = 48000;
