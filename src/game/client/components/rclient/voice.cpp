@@ -932,6 +932,12 @@ void CRClientVoice::UpdateClientSnapshot()
 
 	m_OnlineSnap = true;
 	m_LocalClientIdSnap = m_pGameClient->m_Snap.m_LocalClientId;
+	if(m_LocalClientIdSnap < 0 || m_LocalClientIdSnap >= MAX_CLIENTS)
+	{
+		m_OnlineSnap = false;
+		m_LocalClientIdSnap = -1;
+		return;
+	}
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		m_aClientPosSnap[i] = m_pGameClient->m_aClients[i].m_RenderPos;
