@@ -33,7 +33,14 @@ class CRClientIndicator : public CComponent
 	void ApplyPollHeaders(CHttpRequest &Request, const char *pServerAddress, int ClientId, int DummyClientId);
 	void ClearUsers();
 
-	std::vector<std::pair<std::string, int>> m_vRClientUsers; // server address, player id
+	struct SRClientUserInfo
+	{
+		std::string m_ServerAddress;
+		int m_PlayerId;
+		bool m_VoiceEnabled;
+	};
+
+	std::vector<SRClientUserInfo> m_vRClientUsers; // server address, player id, voice enabled
 
 	int64_t m_LastTokenAttempt = 0;
 	int64_t m_LastPollAttempt = 0;
@@ -51,6 +58,7 @@ public:
 	void OnRender() override;
 
 	bool IsPlayerRClient(int ClientId);
+	bool IsPlayerRClientVoiceEnabled(int ClientId);
 };
 
 #endif // RCLIENT_RCLIENT_INDICATOR_H

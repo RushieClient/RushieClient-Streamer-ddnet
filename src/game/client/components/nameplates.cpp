@@ -60,6 +60,7 @@ public:
 	int m_ShowRClientIndicator;
 	float m_FontSizeRClientIndicator;
 	int m_IsUserRClientIndicator;
+	int m_IsUserRClientVoiceEnabled;
 	int m_ShowVoiceIcon;
 	float m_FontSizeVoiceIcon;
 	int m_IsVoiceActive;
@@ -798,8 +799,18 @@ protected:
 		}
 		m_ShiftOnInvis = !g_Config.m_RiShowIndicatorDynamic; // Only shift (horizontally) the other parts if directions as a whole is visible
 		m_Size = vec2(Data.m_FontSizeRClientIndicator + DEFAULT_PADDING, Data.m_FontSizeRClientIndicator + DEFAULT_PADDING);
-		m_Sprite = SPRITE_RI_ICON;
 		m_Visible = Data.m_IsUserRClientIndicator;
+
+		if(Data.m_IsUserRClientVoiceEnabled)
+		{
+			m_Texture = g_pData->m_aImages[IMAGE_RIICON].m_Id;
+			m_Sprite = SPRITE_RI_ICON;
+		}
+		else
+		{
+			m_Texture = g_pData->m_aImages[IMAGE_RIICON_RED].m_Id;
+			m_Sprite = SPRITE_RI_ICON_RED;
+		}
 
 		m_Color.a = Data.m_Color.a;
 	}
@@ -1329,6 +1340,7 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 
 	Data.m_ShowRClientIndicator = false;
 	Data.m_IsUserRClientIndicator = false;
+	Data.m_IsUserRClientVoiceEnabled = false;
 	Data.m_ShowRClientIndicator = g_Config.m_RiShowRclientIndicator;
 	if(g_Config.m_RiShowRclientIndicator)
 	{
@@ -1341,6 +1353,8 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 	{
 		// Check if this player is using RClient
 		Data.m_IsUserRClientIndicator = GameClient()->m_RClientIndicator.IsPlayerRClient(pPlayerInfo->m_ClientId);
+		if(Data.m_IsUserRClientIndicator)
+			Data.m_IsUserRClientVoiceEnabled = GameClient()->m_RClientIndicator.IsPlayerRClientVoiceEnabled(pPlayerInfo->m_ClientId);
 	}
 
 	Data.m_ShowVoiceIcon = g_Config.m_RiVoiceShowIndicator;
@@ -1413,6 +1427,8 @@ void CNamePlates::RenderNamePlatePreview(vec2 Position, int Dummy)
 	Data.m_ShowFireDetection = g_Config.m_RiShowFire != 0 ? true : false;
 	Data.m_ShowHookDetection = g_Config.m_RiShowHook != 0 ? true : false;
 	Data.m_ShowRClientIndicator = g_Config.m_RiShowRclientIndicator != 0 ? true : false;
+	Data.m_IsUserRClientIndicator = Data.m_ShowRClientIndicator;
+	Data.m_IsUserRClientVoiceEnabled = g_Config.m_RiVoiceEnable != 0;
 	Data.m_ShowVoiceIcon = false;
 	Data.m_IsVoiceActive = false;
 

@@ -330,21 +330,35 @@ void CRClientIndicator::FinishRClientUsers()
 				int PlayerId = atoi(pPlayerIdStr);
 				const json_value &PlayerData = *PlayersObj.u.object.values[j].value;
 
-				m_vRClientUsers.emplace_back(std::string(pServerAddr), PlayerId);
+				bool VoiceEnabled = false;
+				int DummyId = -1;
+				bool HasDummy = false;
 
 				if(PlayerData.type == json_object)
 				{
 					for(unsigned int k = 0; k < PlayerData.u.object.length; k++)
 					{
-						if(str_comp(PlayerData.u.object.values[k].name, "dummy_id") == 0 &&
-							PlayerData.u.object.values[k].value->type == json_integer)
+						const char *pKey = PlayerData.u.object.values[k].name;
+						const json_value &Value = *PlayerData.u.object.values[k].value;
+						if(str_comp(pKey, "dummy_id") == 0 && Value.type == json_integer)
 						{
-							int DummyId = PlayerData.u.object.values[k].value->u.integer;
-							m_vRClientUsers.emplace_back(std::string(pServerAddr), DummyId);
-							break;
+							DummyId = Value.u.integer;
+							HasDummy = true;
+						}
+						else if(str_comp(pKey, "voice_enabled") == 0)
+						{
+							if(Value.type == json_boolean)
+								VoiceEnabled = Value.u.boolean != 0;
+							else if(Value.type == json_integer)
+								VoiceEnabled = Value.u.integer != 0;
 						}
 					}
 				}
+
+				m_vRClientUsers.push_back({std::string(pServerAddr), PlayerId, VoiceEnabled});
+
+				if(HasDummy)
+					m_vRClientUsers.push_back({std::string(pServerAddr), DummyId, VoiceEnabled});
 			}
 		}
 	}
@@ -367,6 +381,7 @@ void CRClientIndicator::ApplyPollHeaders(CHttpRequest &Request, const char *pSer
 	Request.HeaderString("X-RClient-Server", pServerAddress);
 	Request.HeaderInt("X-RClient-Since", m_ServerRev);
 	Request.HeaderInt("X-RClient-Timeout", POLL_TIMEOUT_SECONDS);
+	Request.HeaderInt("X-RClient-Voice", g_Config.m_RiVoiceEnable);
 	if(ClientId >= 0)
 		Request.HeaderInt("X-RClient-Player", ClientId);
 	if(DummyClientId >= 0)
@@ -388,8 +403,25 @@ bool CRClientIndicator::IsPlayerRClient(int ClientId)
 
 	for(const auto &User : m_vRClientUsers)
 	{
-		if(str_comp(User.first.c_str(), CurrentServerInfo.m_aAddress) == 0 && User.second == ClientId)
+		if(str_comp(User.m_ServerAddress.c_str(), CurrentServerInfo.m_aAddress) == 0 && User.m_PlayerId == ClientId)
 			return true;
+	}
+
+	return false;
+}
+
+bool CRClientIndicator::IsPlayerRClientVoiceEnabled(int ClientId)
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return false;
+
+	CServerInfo CurrentServerInfo;
+	Client()->GetServerInfo(&CurrentServerInfo);
+
+	for(const auto &User : m_vRClientUsers)
+	{
+		if(str_comp(User.m_ServerAddress.c_str(), CurrentServerInfo.m_aAddress) == 0 && User.m_PlayerId == ClientId)
+			return User.m_VoiceEnabled;
 	}
 
 	return false;
