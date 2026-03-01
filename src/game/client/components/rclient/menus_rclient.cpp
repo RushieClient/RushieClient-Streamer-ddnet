@@ -374,18 +374,32 @@ void CMenus::RenderSettingsRushieVoiceVolumes(CUIRect MainView)
 	Ui()->DoLabel(&Header, RCLocalize("Voice mix"), HeadlineFontSize, TEXTALIGN_MC);
 	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
 
-	int VisibleCount = 0;
+	CUIRect SearchRect;
+	MainView.HSplitTop(25.0f, &SearchRect, &MainView);
+	SearchRect.HSplitTop(MarginSmall, nullptr, &SearchRect);
+	static CLineInputBuffered<64> s_VoiceSearchInput;
+	s_VoiceSearchInput.SetEmptyText(RCLocalize("Search"));
+	Ui()->DoEditBox_Search(&s_VoiceSearchInput, &SearchRect, 14.0f, !Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive());
+	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+
+	const char *pSearch = s_VoiceSearchInput.GetString();
+	const bool HasSearch = pSearch && pSearch[0] != '\0';
+	int ActiveCount = 0;
+	int MatchCount = 0;
 	const float RowHeight = LineSize * 2.0f;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		const auto &Client = GameClient()->m_aClients[i];
 		if(!Client.m_Active || Client.m_aName[0] == '\0')
 			continue;
+		ActiveCount++;
+		if(HasSearch && !str_find_nocase(Client.m_aName, pSearch) && !str_find_nocase(Client.m_aSkinName, pSearch))
+			continue;
+		MatchCount++;
 
 		MainView.HSplitTop(RowHeight, &Row, &MainView);
 		if(!s_ScrollRegion.AddRect(Row))
 			continue;
-		VisibleCount++;
 
 		Row.VSplitLeft(RowHeight, &SkinRect, &RightRect);
 		RightRect.HSplitMid(&TextRect, &SliderRect);
@@ -411,10 +425,15 @@ void CMenus::RenderSettingsRushieVoiceVolumes(CUIRect MainView)
 		MainView.HSplitTop(MarginSmall, nullptr, &MainView);
 	}
 
-	if(VisibleCount == 0)
+	if(ActiveCount == 0)
 	{
 		MainView.HSplitTop(LineSize, &Header, &MainView);
 		Ui()->DoLabel(&Header, RCLocalize("No active players"), FontSize, TEXTALIGN_ML);
+	}
+	else if(MatchCount == 0)
+	{
+		MainView.HSplitTop(LineSize, &Header, &MainView);
+		Ui()->DoLabel(&Header, RCLocalize("No matching players"), FontSize, TEXTALIGN_ML);
 	}
 
 	CUIRect ScrollRegion;
