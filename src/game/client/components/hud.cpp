@@ -2065,7 +2065,7 @@ void CHud::RenderVoiceSpeakerOverlay()
 	int SpeakerCount = 0;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
-		if(i == LocalId || g_Config.m_RiVoiceIndicatorAboveSelf)
+		if(i == LocalId && !g_Config.m_RiVoiceIndicatorAboveSelf)
 			continue;
 		if(!GameClient()->m_RClient.IsVoiceActive(i))
 			continue;
