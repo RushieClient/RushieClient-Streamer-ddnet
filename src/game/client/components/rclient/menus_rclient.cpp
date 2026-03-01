@@ -1227,6 +1227,10 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	DoLine_KeyReader(Label, s_ReaderButtonFindTp, s_ClearButtonFindTp, RCLocalize("Find teleport"), "ri_goto_tele_cursor");
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	Column.HSplitTop(LineSize, &Label, &Column);
+	static CButtonContainer s_ReaderButtonFindFinish, s_ClearButtonFindFinish;
+	DoLine_KeyReader(Label, s_ReaderButtonFindFinish, s_ClearButtonFindFinish, RCLocalize("Find finish"), "ri_goto_finish_cursor");
+	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	Column.HSplitTop(LineSize, &Label, &Column);
 	static CButtonContainer s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu;
 	DoLine_KeyReader(Label, s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu, RCLocalize("Player menu"), "toggle_playermenu");
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
