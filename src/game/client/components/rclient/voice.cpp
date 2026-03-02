@@ -470,6 +470,11 @@ void CRClientVoice::Init(CGameClient *pGameClient, IClient *pClient, IConsole *p
 	m_ShutdownDone = false;
 }
 
+void CRClientVoice::OnShutdown()
+{
+	Shutdown();
+}
+
 void CRClientVoice::SetPttActive(bool Active)
 {
 	const bool WasActive = m_PttActive.exchange(Active);

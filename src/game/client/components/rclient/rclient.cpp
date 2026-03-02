@@ -35,6 +35,8 @@ void CRClient::OnShutdown()
 		g_Config.m_InpMousesens = m_45degreesDistanceOld == 0 ? m_45degreesDistanceOld : m_SmallsensOld;
 	if(m_45degreesEnabled)
 		g_Config.m_ClMouseMaxDistance = m_45degreesDistanceOld;
+
+	m_Voice.OnShutdown();
 }
 
 void CRClient::OnConsoleInit()

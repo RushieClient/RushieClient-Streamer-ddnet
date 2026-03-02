@@ -205,6 +205,7 @@ class CRClientVoice
 
 public:
 	void Init(CGameClient *pGameClient, IClient *pClient, IConsole *pConsole);
+	void OnShutdown();
 	void OnRender();
 	void SetPttActive(bool Active);
 	void ListDevices();
