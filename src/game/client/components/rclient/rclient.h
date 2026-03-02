@@ -200,6 +200,8 @@ public:
 	//Voice public
 	bool IsVoiceActive(int ClientId) const;
 	int VoicePingMs() const;
+	bool IsVoiceInputUnavailable() const;
+	bool IsVoiceOutputUnavailable() const;
 	static bool VoiceListHasName(const char *pList, const char *pName);
 	static bool VoiceListAddName(char *pList, int ListSize, const char *pName);
 	static bool VoiceListRemoveName(char *pList, int ListSize, const char *pName);

@@ -213,6 +213,8 @@ public:
 	void ListDevices();
 	bool IsVoiceActive(int ClientId) const;
 	int PingMs() const { return m_PingMs.load(); }
+	bool IsCaptureUnavailable() const { return m_CaptureUnavailable; }
+	bool IsOutputUnavailable() const { return m_OutputUnavailable; }
 };
 
 #endif // GAME_CLIENT_COMPONENTS_RCLIENT_VOICE_H

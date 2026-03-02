@@ -2299,6 +2299,16 @@ int CRClient::VoicePingMs() const
 	return m_Voice.PingMs();
 }
 
+bool CRClient::IsVoiceInputUnavailable() const
+{
+	return m_Voice.IsCaptureUnavailable();
+}
+
+bool CRClient::IsVoiceOutputUnavailable() const
+{
+	return m_Voice.IsOutputUnavailable();
+}
+
 int CRClient::VoiceNameVolume(const char *pName, int DefaultPercent) const
 {
 	char aNeedle[MAX_NAME_LENGTH];

@@ -1350,6 +1350,22 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	CUIRect Rightoffset;
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceEnable, RCLocalize("Enable voice chat"), &g_Config.m_RiVoiceEnable, &Column, LineSize);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
+	if(g_Config.m_RiVoiceEnable)
+	{
+		const bool InputMissing = GameClient()->m_RClient.IsVoiceInputUnavailable();
+		const bool OutputMissing = GameClient()->m_RClient.IsVoiceOutputUnavailable();
+		if(InputMissing || OutputMissing)
+		{
+			Column.HSplitTop(LineSize, &Label, &Column);
+			if(InputMissing && OutputMissing)
+				Ui()->DoLabel(&Label, RCLocalize("Voice devices not available (input/output)"), FontSize * 0.9f, TEXTALIGN_ML);
+			else if(InputMissing)
+				Ui()->DoLabel(&Label, RCLocalize("Voice input device not available"), FontSize * 0.9f, TEXTALIGN_ML);
+			else
+				Ui()->DoLabel(&Label, RCLocalize("Voice output device not available"), FontSize * 0.9f, TEXTALIGN_ML);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+		}
+	}
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceOffNonActive, RCLocalize("Off voice when window nonactive"), &g_Config.m_RiVoiceOffNonActive, &Column, LineSize);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowOverlay, RCLocalize("Show overlay"), &g_Config.m_RiVoiceShowOverlay, &Column, LineSize);
@@ -1719,9 +1735,31 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	Label.VSplitLeft(LineSize, nullptr, &Label);
 	Ui()->DoLabel(&Label, RCLocalize("If change backend u need restart game"), FontSize - 4, TEXTALIGN_ML);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	DoVoiceDeviceDropDown(Column, RCLocalize("Input device"), g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice), true, s_VoiceInputDropDownState);
+	if(g_Config.m_RiVoiceEnable)
+	{
+		if(GameClient()->m_RClient.IsVoiceInputUnavailable())
+		{
+			Column.HSplitTop(LineSize, &Label, &Column);
+			Ui()->DoLabel(&Label, RCLocalize("Voice input device not available"), FontSize * 0.9f, TEXTALIGN_ML);
+		}
+		else
+			DoVoiceDeviceDropDown(Column, RCLocalize("Input device"), g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice), true, s_VoiceInputDropDownState);
+	}
+	else
+		DoVoiceDeviceDropDown(Column, RCLocalize("Input device"), g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice), true, s_VoiceInputDropDownState);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
-	DoVoiceDeviceDropDown(Column, RCLocalize("Output device"), g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice), false, s_VoiceOutputDropDownState);
+	if(g_Config.m_RiVoiceEnable)
+	{
+		if(GameClient()->m_RClient.IsVoiceOutputUnavailable())
+		{
+			Column.HSplitTop(LineSize, &Label, &Column);
+			Ui()->DoLabel(&Label, RCLocalize("Voice output device not available"), FontSize * 0.9f, TEXTALIGN_ML);
+		}
+		else
+			DoVoiceDeviceDropDown(Column, RCLocalize("Output device"), g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice), false, s_VoiceOutputDropDownState);
+	}
+	else
+		DoVoiceDeviceDropDown(Column, RCLocalize("Output device"), g_Config.m_RiVoiceOutputDevice, sizeof(g_Config.m_RiVoiceOutputDevice), false, s_VoiceOutputDropDownState);
 	Column.HSplitTop(MarginSmall, nullptr, &Column);
 	static CButtonContainer s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt;
 	if(!g_Config.m_RiVoiceVadEnable)
