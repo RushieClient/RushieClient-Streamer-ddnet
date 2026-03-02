@@ -828,3 +828,37 @@ Find finish
 
 Player menu
 == Найти меню
+
+Devices
+== Девайсы
+
+Listening & Groups
+== Прослушивание и группы
+
+Mix & Processing
+== Микс и обработка
+
+[VoiceChat]
+Test mode
+== Тест мод
+
+[VoiceChat]
+Off
+== Выключено
+
+[VoiceChat]
+Local
+== Локально
+
+[VoiceChat]
+Server
+== Сервер
+
+Overlay
+== Оверлей
+
+Noise suppressor (RNNoise)
+== Шумодав (RNNoise)
+
+Noise suppressor
+== Шумодав
