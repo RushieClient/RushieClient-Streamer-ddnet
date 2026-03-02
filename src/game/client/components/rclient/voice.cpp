@@ -244,7 +244,7 @@ static float VoiceFramePeak(const int16_t *pSamples, int Count)
 
 static void ApplyMicGain(const SRClientVoiceConfigSnapshot &Config, int16_t *pSamples, int Count)
 {
-	const float Gain = std::clamp(Config.m_RiVoiceMicVolume / 100.0f, 0.0f, 2.0f);
+	const float Gain = std::clamp(Config.m_RiVoiceMicVolume / 100.0f, 0.0f, 3.0f);
 	if(Gain == 1.0f)
 		return;
 
@@ -1173,7 +1173,7 @@ void CRClientVoice::ProcessCapture()
 	GetConfigSnapshot(Config);
 	const int TestMode = std::clamp(Config.m_RiVoiceTestMode, 0, 2);
 	const bool TestLocal = TestMode == 1;
-	const float TestGain = std::clamp(Config.m_RiVoiceVolume / 100.0f, 0.0f, 2.0f);
+	const float TestGain = std::clamp(Config.m_RiVoiceVolume / 100.0f, 0.0f, 4.0f);
 
 	int LocalClientId = -1;
 	vec2 LocalPos = vec2(0.0f, 0.0f);
@@ -1547,7 +1547,7 @@ void CRClientVoice::ProcessIncoming()
 		}
 
 		const float RadiusFactor = IgnoreDistance ? 1.0f : (1.0f - (Dist / Radius));
-		float Volume = std::clamp(RadiusFactor * (Config.m_RiVoiceVolume / 100.0f), 0.0f, 2.0f);
+		float Volume = std::clamp(RadiusFactor * (Config.m_RiVoiceVolume / 100.0f), 0.0f, 4.0f);
 		if(Volume <= 0.0f)
 			continue;
 
