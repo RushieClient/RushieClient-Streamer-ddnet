@@ -1672,6 +1672,7 @@ set(EXPECTED_DATA
   rclient/languages/index.txt
   rclient/languages/russian.txt
   rclient/menu_afk.png
+  rclient/rclient_big_logo.png
   rclient/rclient_icon.png
   rclient/rclient_icon_red.png
   rclient/riactions.png
@@ -2633,6 +2634,8 @@ if(CLIENT)
     components/rclient/chat_bubbles.h
     components/rclient/edgehelper.cpp
     components/rclient/edgehelper.h
+    components/rclient/menu/menus_start_rclient.cpp
+    components/rclient/menu/menus_start_rclient.h
     components/rclient/menus_rclient.cpp
     components/rclient/playermenu.cpp
     components/rclient/playermenu.h

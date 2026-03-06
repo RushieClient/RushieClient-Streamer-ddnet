@@ -847,6 +847,7 @@ void CMenus::OnInterfacesInit(CGameClient *pClient)
 	m_MenusIngameTouchControls.OnInterfacesInit(pClient);
 	m_MenusSettingsControls.OnInterfacesInit(pClient);
 	m_MenusStart.OnInterfacesInit(pClient);
+	m_MenusStartRClient.OnInterfacesInit(pClient);
 	m_CommunityIcons.OnInterfacesInit(pClient);
 }
 
@@ -1104,7 +1105,11 @@ void CMenus::Render()
 		}
 		else if(m_ShowStart)
 		{
-			m_MenusStart.RenderStartMenu(Screen);
+			if(!g_Config.m_RiUiShowRClient)
+				m_MenusStart.RenderStartMenu(Screen);
+			else
+				m_MenusStartRClient.RenderStartMenu(Screen);
+
 		}
 		else
 		{
@@ -2573,6 +2578,19 @@ void CMenus::RenderBackground()
 	const float ScreenHeight = 300.0f;
 	const float ScreenWidth = ScreenHeight * Graphics()->ScreenAspect();
 	Graphics()->MapScreen(0.0f, 0.0f, ScreenWidth, ScreenHeight);
+
+	if(g_Config.m_RiUiCustomBg)
+	{
+		Graphics()->TextureClear();
+		Graphics()->QuadsBegin();
+		Graphics()->SetColor(0.0f, 0.0f, 0.0f, 1.0f);
+		const IGraphics::CQuadItem BackgroundQuadItem = IGraphics::CQuadItem(0, 0, ScreenWidth, ScreenHeight);
+		Graphics()->QuadsDrawTL(&BackgroundQuadItem, 1);
+		Graphics()->QuadsEnd();
+
+		Ui()->MapScreen();
+		return;
+	}
 
 	// render background color
 	Graphics()->TextureClear();

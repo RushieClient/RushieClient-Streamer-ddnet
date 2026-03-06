@@ -3,6 +3,8 @@
 #ifndef GAME_CLIENT_COMPONENTS_MENUS_H
 #define GAME_CLIENT_COMPONENTS_MENUS_H
 
+#include "rclient/menu/menus_start_rclient.h"
+
 #include <base/bytes.h>
 #include <base/types.h>
 #include <base/vmath.h>
@@ -837,6 +839,7 @@ private:
 	CMenusSettingsControls m_MenusSettingsControls;
 	friend CMenusSettingsControls;
 	CMenusStart m_MenusStart;
+	CMenusStartRClient m_MenusStartRClient;
 
 	static int GhostlistFetchCallback(const CFsFileInfo *pInfo, int IsDir, int StorageType, void *pUser);
 
