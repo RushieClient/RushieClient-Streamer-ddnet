@@ -759,14 +759,14 @@ void CMenus::RenderLoading(const char *pCaption, const char *pContent, int Incre
 
 	Ui()->MapScreen();
 
-	if(GameClient()->m_MenuBackground.IsLoading())
+	if(!g_Config.m_RiUiCustomBg && GameClient()->m_MenuBackground.IsLoading())
 	{
 		// Avoid rendering while loading the menu background as this would otherwise
 		// cause the regular menu background to be rendered for a few frames while
 		// the menu background is not loaded yet.
 		return;
 	}
-	if(!GameClient()->m_MenuBackground.Render())
+	if(g_Config.m_RiUiCustomBg || !GameClient()->m_MenuBackground.Render())
 	{
 		RenderBackground();
 	}
@@ -1068,7 +1068,7 @@ void CMenus::Render()
 	}
 	else
 	{
-		if(!GameClient()->m_MenuBackground.Render())
+		if(g_Config.m_RiUiCustomBg || !GameClient()->m_MenuBackground.Render())
 		{
 			RenderBackground();
 		}
