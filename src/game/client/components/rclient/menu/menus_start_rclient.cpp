@@ -98,7 +98,7 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 			RibbonY,
 			LeftReveal + RightReveal,
 			RibbonHeight};
-		Ribbon.Draw(ColorRGBA(0.32f, 0.32f, 0.34f, 1.0f), IGraphics::CORNER_NONE, 0.0f);
+		Ribbon.Draw(ColorRGBA(0.12f, 0.12f, 0.18f, 1.0f), IGraphics::CORNER_NONE, 0.0f);
 	}
 
 	if(Ui()->DoButtonLogic(&s_LogoButton, 0, &LogoCircle, BUTTONFLAG_LEFT))
@@ -115,7 +115,7 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	BottomStatus.y += BottomStatus.h - 30.0f;
 	BottomStatus.h = 30.0f;
 	TopStatus = *pScreen;
-	TopStatus.h = 25.0f;
+	TopStatus.h = 30.0f;
 
 	const float ButtonWidthTarget = std::clamp(View.w * 0.115f, 108.0f, 150.0f);
 	const float ButtonHeight = RibbonHeight;
@@ -304,6 +304,7 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 
 	CUIRect TopBar, AboutClient, ClientVersions, TClientVersion, RClientVersion, CurVersion;
 	TopBar = BottomStatus;
+	TopBar.Draw(ColorRGBA(0.12f, 0.12f, 0.18f, 1.0f), IGraphics::CORNER_NONE, 0);
 	TopBar.VSplitRight(390.0f, &AboutClient, &ClientVersions);
 	ClientVersions.VSplitRight(130.0f, &TClientVersion, &RClientVersion);
 	TClientVersion.VSplitMid(&CurVersion, &TClientVersion);
@@ -333,6 +334,8 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	// render console
 	CUIRect Button, ExtBar;
 	ExtBar = TopStatus;
+	ExtBar.Draw(ColorRGBA(0.12f, 0.12f, 0.18f, 1.0f), IGraphics::CORNER_NONE, 0);
+	ExtBar.HSplitBottom(5.0f, &ExtBar, nullptr);
 	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
 	ExtBar.HSplitTop(5.0f, nullptr, &ExtBar);
 	ExtBar.VSplitLeft(80.0f, &Button, &ExtBar);
@@ -342,7 +345,7 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
 	ExtBar.VSplitLeft(60.0f, &Button, &ExtBar);
 	static CButtonContainer s_DiscordDDButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordDDButton, "DDNet", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.5f, 0.0f, 0.0f, 0.5f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordDDButton, "DDNet", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f)))
 	{
 		Client()->ViewLink(Localize("https://ddnet.org/discord"));
 	}
@@ -350,7 +353,7 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
 	ExtBar.VSplitLeft(60.0f, &Button, &ExtBar);
 	static CButtonContainer s_DiscordTCButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordTCButton, "TClient", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.5f, 0.0f, 0.0f, 0.5f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordTCButton, "TClient", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f)))
 	{
 		Client()->ViewLink(Localize("https://discord.gg/BgPSapKRkZ"));
 	}
@@ -358,7 +361,7 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
 	ExtBar.VSplitLeft(60.0f, &Button, &ExtBar);
 	static CButtonContainer s_DiscordRCButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordRCButton, "RClient", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.5f, 0.0f, 0.0f, 0.5f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_DiscordRCButton, "RClient", 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f)))
 	{
 		Client()->ViewLink(Localize("https://discord.gg/wUFTVAGVGa"));
 	}
@@ -370,7 +373,7 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
 	ExtBar.VSplitLeft(60.0f, &Button, &ExtBar);
 	static CButtonContainer s_LearnButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_LearnButton, Localize("Learn"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_LearnButton, Localize("Learn"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f)))
 	{
 		Client()->ViewLink(Localize("https://wiki.ddnet.org/"));
 	}
@@ -378,7 +381,7 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
 	ExtBar.VSplitLeft(60.0f, &Button, &ExtBar);
 	static CButtonContainer s_TutorialButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_TutorialButton, Localize("Tutorial"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_TutorialButton, Localize("Tutorial"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f)))
 	{
 		GameClient()->m_Menus.JoinTutorial();
 	}
@@ -386,15 +389,15 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
 	ExtBar.VSplitLeft(60.0f, &Button, &ExtBar);
 	static CButtonContainer s_WebsiteButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_WebsiteButton, Localize("Website"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_WebsiteButton, Localize("Website"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f)))
 	{
-		Client()->ViewLink("https://ddnet.org/");
+		Client()->ViewLink("https://rushie-client.ru/");
 	}
 
 	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
 	ExtBar.VSplitLeft(60.0f, &Button, &ExtBar);
 	static CButtonContainer s_NewsButton;
-	if(GameClient()->m_Menus.DoButton_Menu(&s_NewsButton, Localize("News"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, g_Config.m_UiUnreadNews ? ColorRGBA(0.0f, 1.0f, 0.0f, 0.25f) : ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)) || CheckHotKey(KEY_N))
+	if(GameClient()->m_Menus.DoButton_Menu(&s_NewsButton, Localize("News"), 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, g_Config.m_UiUnreadNews ? ColorRGBA(0.0f, 1.0f, 0.0f, 0.25f) : ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f)) || CheckHotKey(KEY_N))
 		NewPage = CMenus::PAGE_NEWS;
 
 

@@ -1105,7 +1105,7 @@ void CMenus::Render()
 		}
 		else if(m_ShowStart)
 		{
-			if(!g_Config.m_RiUiShowRClient)
+			if(!g_Config.m_RiUiNewMenu)
 				m_MenusStart.RenderStartMenu(Screen);
 			else
 				m_MenusStartRClient.RenderStartMenu(Screen);
