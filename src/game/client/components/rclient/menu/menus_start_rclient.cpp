@@ -36,9 +36,8 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	// render logo
 	const float LogoCircleSizeCollapsed = 170.0f;
 	const float LogoCircleSizeExpanded = 118.0f;
-	const float LogoBorderSize = 4.0f;
-	const float LogoSizeCollapsed = 120.0f;
-	const float LogoSizeExpanded = 80.0f;
+	const float LogoSizeCollapsed = LogoCircleSizeCollapsed;
+	const float LogoSizeExpanded = LogoCircleSizeExpanded;
 	const float ViewCenterX = View.x + View.w / 2.0f;
 	const float LogoCenterYCollapsed = View.y + View.h / 2.0f - 10.0f;
 	const float LogoCenterYExpanded = LogoCenterYCollapsed;
@@ -66,19 +65,13 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 	const float LogoSizeHovered = LogoSize * LogoHoverScale;
 	CUIRect LogoCircle = {LogoCenterX - LogoCircleSizeHovered / 2.0f, LogoCenterY - LogoCircleSizeHovered / 2.0f, LogoCircleSizeHovered, LogoCircleSizeHovered};
 	const auto RenderLogo = [&]() {
-		const float LogoShade = LogoActive ? 0.92f : (LogoHovered ? 1.0f : 0.97f);
-		LogoCircle.Draw(ColorRGBA(LogoShade, LogoShade, LogoShade, 1.0f), IGraphics::CORNER_ALL, LogoCircle.h / 2.0f);
-
-		CUIRect LogoCircleInner;
-		LogoCircle.Margin(LogoBorderSize, &LogoCircleInner);
-		LogoCircleInner.Draw(ColorRGBA(0.12f, 0.12f, 0.12f, 1.0f), IGraphics::CORNER_ALL, LogoCircleInner.h / 2.0f);
-
 		CUIRect LogoRect;
-		LogoCircleInner.Margin((LogoCircleInner.w - LogoSizeHovered) / 2.0f, &LogoRect);
+		LogoCircle.Margin((LogoCircle.w - LogoSizeHovered) / 2.0f, &LogoRect);
 
 		Graphics()->TextureSet(g_pData->m_aImages[IMAGE_RCLIENT_BIG_LOGO].m_Id);
 		Graphics()->QuadsBegin();
-		Graphics()->SetColor(1, 1, 1, 1);
+		const float LogoShade = LogoActive ? 0.92f : (LogoHovered ? 1.0f : 0.97f);
+		Graphics()->SetColor(LogoShade, LogoShade, LogoShade, 1.0f);
 		IGraphics::CQuadItem QuadItem(LogoRect.x, LogoRect.y, LogoRect.w, LogoRect.h);
 		Graphics()->QuadsDrawTL(&QuadItem, 1);
 		Graphics()->QuadsEnd();
