@@ -1560,13 +1560,15 @@ void CRClientVoice::ProcessIncoming()
 		if(IsSelf && !TestServer)
 			continue;
 
+		const bool SameGroup = LocalGroup != 0 && SenderGroup == LocalGroup;
+		const bool IgnoreDistance = Config.m_RiVoiceIgnoreDistance || (Config.m_RiVoiceGroupGlobal && SameGroup);
 		const char *pSenderName = aSenderName;
 		if(!IsSelf)
 		{
 			const bool AllowObserver = Config.m_RiVoiceHearPeoplesInSpectate && !SenderActive && !SenderSpec;
 			if(Config.m_RiVoiceVisibilityMode == 0)
 			{
-				if(!SenderActive && !AllowObserver)
+				if(!IgnoreDistance && !SenderActive && !AllowObserver)
 					continue;
 			}
 			else if(Config.m_RiVoiceVisibilityMode == 1)
@@ -1593,8 +1595,6 @@ void CRClientVoice::ProcessIncoming()
 			continue;
 
 		const vec2 SenderPos = vec2(PosX, PosY);
-		const bool SameGroup = LocalGroup != 0 && SenderGroup == LocalGroup;
-		const bool IgnoreDistance = Config.m_RiVoiceIgnoreDistance || (Config.m_RiVoiceGroupGlobal && SameGroup);
 		const float Radius = std::max(1, Config.m_RiVoiceRadius) * 32.0f;
 		const float Dist = distance(LocalPos, SenderPos);
 		if(!IgnoreDistance && Dist > Radius)

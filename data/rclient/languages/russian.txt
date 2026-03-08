@@ -862,3 +862,7 @@ Noise suppressor (RNNoise)
 
 Noise suppressor
 == Шумодав
+
+[VoiceChat]
+All
+== Всех

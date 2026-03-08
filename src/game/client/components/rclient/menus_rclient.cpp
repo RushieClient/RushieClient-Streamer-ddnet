@@ -1606,12 +1606,12 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceHearVad, RCLocalize("Hear players using voice activation"), &g_Config.m_RiVoiceHearVad, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		static std::vector<CButtonContainer> s_vVoiceTeamVisibilityButtonContainers = {{}, {}};
+		static std::vector<CButtonContainer> s_vVoiceTeamVisibilityButtonContainers = {{}, {}, {}};
 		DoLine_RadioMenu(Column, RCLocalize("Hear people that:", "VoiceChat"),
 			s_vVoiceTeamVisibilityButtonContainers,
-			{RCLocalize("You see", "VoiceChat"), RCLocalize("In team", "VoiceChat")},
-			{0, 1},
-			g_Config.m_RiVoiceListMode);
+			{RCLocalize("You see", "VoiceChat"), RCLocalize("In team", "VoiceChat"), RCLocalize("All", "VoiceChat")},
+			{0, 1, 2},
+			g_Config.m_RiVoiceVisibilityMode);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		static SDropDownSimple s_VoiceGroupModeDrop;
 		g_Config.m_RiVoiceGroupMode = DoSimpleDropDown(
