@@ -152,6 +152,8 @@ MACRO_CONFIG_INT(RiEdgeInfoPosY, ri_edge_info_pos_y, 56, 0, 100, CFGFLAG_CLIENT 
 MACRO_CONFIG_INT(RiBrFilterPlayers, ri_br_filter_players, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show only empty servers")
 MACRO_CONFIG_INT(RiUiNewMenu, ri_ui_new_menu, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show new RClient's menu")
 MACRO_CONFIG_INT(RiUiCustomBg, ri_ui_custom_bg, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "custom RClient's menu background")
+MACRO_CONFIG_INT(RiUiShowTopBar, ri_ui_show_topbar, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "show RClient's menu topbar")
+MACRO_CONFIG_INT(RiUiShowBottomBar, ri_ui_show_bottombar, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "show RClient's menu bottombar")
 
 //RClient Nameplates
 MACRO_CONFIG_INT(RiShowRclientIndicator, ri_show_rclient_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Rclient player indicator in nameplates")
