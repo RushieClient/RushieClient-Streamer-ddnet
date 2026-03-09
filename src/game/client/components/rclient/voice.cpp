@@ -2111,6 +2111,16 @@ void CRClientVoice::OnRender()
 	}
 	m_ShutdownDone = false;
 
+#if defined(CONF_PLATFORM_EMSCRIPTEN)
+	if(!m_UnsupportedPlatformLogged)
+	{
+		log_info("voice", "voice runtime is unavailable on emscripten, skipping voice initialization");
+		m_UnsupportedPlatformLogged = true;
+	}
+	Shutdown();
+	return;
+#endif
+
 	if(g_Config.m_RiVoiceOffNonActive && m_pGraphics && !m_pGraphics->WindowActive())
 	{
 		StopWorker();
