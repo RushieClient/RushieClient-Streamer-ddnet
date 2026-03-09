@@ -163,13 +163,13 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 		bool m_FillLeftGap = false;
 		bool m_FillRightGap = false;
 	};
-	const auto GetVisualButtonRect = [&](const CUIRect &HitRect, float HoverProgress, bool FillLeftGap, bool FillRightGap) {
+	const auto GetVisualButtonRect = [&](const CUIRect &HitRect, float ButtonHoverProgress, bool FillLeftGap, bool FillRightGap) {
 		CUIRect VisualRect = HitRect;
-		const float GapFillLeft = FillLeftGap ? ButtonSpacing * HoverProgress : 0.0f;
-		const float GapFillRight = FillRightGap ? ButtonSpacing * HoverProgress : 0.0f;
+		const float GapFillLeft = FillLeftGap ? ButtonSpacing * ButtonHoverProgress : 0.0f;
+		const float GapFillRight = FillRightGap ? ButtonSpacing * ButtonHoverProgress : 0.0f;
 		VisualRect.x -= GapFillLeft;
 		VisualRect.w += GapFillLeft + GapFillRight;
-		VisualRect.y -= ButtonFloatOffset * HoverProgress;
+		VisualRect.y -= ButtonFloatOffset * ButtonHoverProgress;
 		return VisualRect;
 	};
 	const auto UpdateButtonHover = [&](int Slot, CButtonContainer *pButton, const CUIRect &HitRect) {
