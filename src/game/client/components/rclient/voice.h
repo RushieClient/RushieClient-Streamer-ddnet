@@ -39,6 +39,7 @@ struct SRClientVoiceConfigSnapshot
 	int m_RiVoiceRadius = 0;
 	int m_RiVoiceVolume = 0;
 	int m_RiVoiceMicVolume = 0;
+	int m_RiVoiceMicMute = 0;
 	int m_RiVoiceTestMode = 0;
 	int m_RiVoiceVadEnable = 0;
 	int m_RiVoiceVadThreshold = 0;

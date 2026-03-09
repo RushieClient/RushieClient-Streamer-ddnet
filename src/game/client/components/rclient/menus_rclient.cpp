@@ -1559,6 +1559,8 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Column.HSplitTop(LineSize, nullptr, &Column);
 
 		DoVoiceSubHeader(RCLocalize("Input"));
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceMicMute, RCLocalize("Mute microphone"), &g_Config.m_RiVoiceMicMute, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceVadEnable, RCLocalize("Voice activation (VAD)"), &g_Config.m_RiVoiceVadEnable, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		if(g_Config.m_RiVoiceVadEnable)
@@ -1570,7 +1572,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 			Ui()->DoScrollbarOption(&g_Config.m_RiVoiceVadReleaseDelayMs, &g_Config.m_RiVoiceVadReleaseDelayMs, &Button, RCLocalize("VAD release delay (ms)"), 0, 1000);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
-		static CButtonContainer s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt;
+		static CButtonContainer s_ReaderButtonVoicePtt, s_ClearButtonVoicePtt, s_ReaderButtonVoiceMuteToggle, s_ClearButtonVoiceMuteToggle;
 		if(!g_Config.m_RiVoiceVadEnable)
 		{
 			Column.HSplitTop(LineSize, &Label, &Column);
@@ -1586,6 +1588,9 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 			Ui()->DoLabel(&Label, RCLocalize("PTT disabled while voice activation is enabled"), FontSize * 0.9f, TEXTALIGN_ML);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
+		Column.HSplitTop(LineSize, &Label, &Column);
+		DoLine_KeyReader(Label, s_ReaderButtonVoiceMuteToggle, s_ClearButtonVoiceMuteToggle, RCLocalize("Mic Mute toggle"), "toggle ri_voice_mic_mute 1 0");
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Button, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_RiVoiceMicVolume, &g_Config.m_RiVoiceMicVolume, &Button, RCLocalize("Microphone volume"), 0, 300);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);

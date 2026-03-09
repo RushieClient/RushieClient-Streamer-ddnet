@@ -863,6 +863,12 @@ Noise suppressor (RNNoise)
 Noise suppressor
 == Шумодав
 
+Mute microphone
+== Мут микрофона
+
+Mic Mute toggle
+== вкл/выкл мут микрофона
+
 [VoiceChat]
 All
 == Всех

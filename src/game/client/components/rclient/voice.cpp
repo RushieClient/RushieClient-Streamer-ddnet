@@ -1263,6 +1263,7 @@ void CRClientVoice::ProcessCapture()
 	const int TestMode = std::clamp(Config.m_RiVoiceTestMode, 0, 2);
 	const bool TestLocal = TestMode == 1;
 	const bool ShowMicLevel = TestMode != 0;
+	const bool MicMuted = Config.m_RiVoiceMicMute != 0;
 	const float TestGain = std::clamp(Config.m_RiVoiceVolume / 100.0f, 0.0f, 4.0f);
 
 	int LocalClientId = -1;
@@ -1337,6 +1338,17 @@ void CRClientVoice::ProcessCapture()
 		m_LastPingSeq = m_Sequence;
 		m_LastKeepalive = Now;
 		m_LastTokenHashSent = Config.m_RiVoiceTokenHash;
+	}
+
+	if(MicMuted)
+	{
+		UpdateMicLevel(0.0f);
+		m_VadActive = false;
+		m_VadReleaseDeadline = 0;
+		m_PttReleaseDeadline.store(0);
+		m_TxWasActive = false;
+		SDL_ClearQueuedAudio(m_CaptureDevice);
+		return;
 	}
 
 	if(!UseVad && !PttHeld)
@@ -1790,6 +1802,7 @@ void CRClientVoice::UpdateConfigSnapshot()
 	m_ConfigSnapshot.m_RiVoiceRadius = g_Config.m_RiVoiceRadius;
 	m_ConfigSnapshot.m_RiVoiceVolume = g_Config.m_RiVoiceVolume;
 	m_ConfigSnapshot.m_RiVoiceMicVolume = g_Config.m_RiVoiceMicVolume;
+	m_ConfigSnapshot.m_RiVoiceMicMute = g_Config.m_RiVoiceMicMute;
 	m_ConfigSnapshot.m_RiVoiceTestMode = g_Config.m_RiVoiceTestMode;
 	m_ConfigSnapshot.m_RiVoiceVadEnable = g_Config.m_RiVoiceVadEnable;
 	m_ConfigSnapshot.m_RiVoiceVadThreshold = g_Config.m_RiVoiceVadThreshold;
