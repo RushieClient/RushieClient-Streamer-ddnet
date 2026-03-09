@@ -70,6 +70,7 @@
 #include "components/tclient/bindwheel.h"
 #include "components/tclient/custom_communities.h"
 #include "components/tclient/mod.h"
+#include "components/tclient/moving_tiles.h"
 #include "components/tclient/mumble.h"
 #include "components/tclient/outlines.h"
 #include "components/tclient/pet.h"
@@ -231,6 +232,8 @@ public:
 	CScripting m_Scripting;
 	CMod m_Mod;
 	CCustomCommunities m_CustomCommunities;
+	CMovingTiles m_MovingTilesBackground = CMovingTiles{ false };
+	CMovingTiles m_MovingTilesForeground = CMovingTiles{ true };
 
 private:
 	std::vector<class CComponent *> m_vpAll;

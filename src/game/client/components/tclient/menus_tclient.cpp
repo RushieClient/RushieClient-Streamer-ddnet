@@ -542,6 +542,7 @@ void CMenus::RenderSettingsTClientSettings(CUIRect MainView)
 			g_Config.m_TcFakeCtfFlags = Value;
 		}
 	}
+	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcMovingTilesEntities, TCLocalize("Show moving tiles in entities"), &g_Config.m_TcMovingTilesEntities, &Column, LineSize);
 
 	Column.HSplitTop(MarginExtraSmall, nullptr, &Column);
 	s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;

@@ -121,7 +121,7 @@ void CGameClient::OnConsoleInit()
 					      &m_CountryFlags,
 					      &m_MapImages,
 					      &m_Effects, // doesn't render anything, just updates effects
-					      &m_SkinProfiles,
+					      &m_SkinProfiles, // TClient
 					      &m_Binds,
 					      &m_Binds.m_SpecialBinds,
 					      &m_Controls,
@@ -130,40 +130,42 @@ void CGameClient::OnConsoleInit()
 					      &m_Voting,
 					      &m_Particles, // doesn't render anything, just updates all the particles
 					      &m_RaceDemo,
-					      &m_Rainbow,
+					      &m_Rainbow, // TClient
 					      &m_MapSounds,
 					      &m_Censor,
 					      &m_Background, // render instead of m_MapLayersBackground when g_Config.m_ClOverlayEntities == 100
 					      &m_MapLayersBackground, // first to render
-					      &m_BgDraw,
+					      &m_BgDraw, // TClient
 					      &m_Particles.m_RenderTrail,
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
-					      &m_Trails,
-					      &m_Translate,
+					      &m_Trails, // TClient
+					      &m_Translate, // TClient
 					      &m_Ghost,
-					      &m_TClient, // Must be before chat and players
+					      &m_TClient, // TClient (Must be before chat and players)
 					      &m_Players,
-					      &m_MapLayersForeground,
-					      &m_Outlines,
-					      &m_Mumble,
-					      &m_Pet,
+						  &m_MovingTilesBackground, // TClient
+						  &m_MapLayersForeground,
+						  &m_MovingTilesForeground, // TClient
+					      &m_Outlines,  // TClient
+					      &m_Mumble, // TClient
+					      &m_Pet, // TClient
 					      &m_Particles.m_RenderExplosions,
 					      &m_NamePlates,
 					      &m_Particles.m_RenderExtra,
 					      &m_Particles.m_RenderGeneral,
 					      &m_FreezeBars,
 					      &m_DamageInd,
-					      &m_PlayerIndicator,
-					      &m_Mod,
-					      &m_CustomCommunities,
+					      &m_PlayerIndicator, // TClient
+					      &m_Mod, // TClient
+					      &m_CustomCommunities, // TClient
 					      &m_Hud,
 					      &m_Spectator,
 					      &m_Emoticon,
-					      &m_BindChat,
-					      &m_BindWheel,
-					      &m_WarList,
-					      &m_StatusBar,
+					      &m_BindChat, // TClient
+					      &m_BindWheel, // TClient
+					      &m_WarList, // TClient
+					      &m_StatusBar, // TClient
 					      &m_InfoMessages,
 					      &m_Chat,
 					      &m_Broadcast,
@@ -175,7 +177,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Motd,
 					      &m_Menus,
 					      &m_Tooltips,
-					      &m_Scripting,
+					      &m_Scripting, // TClient
 					      &m_KeyBinder,
 					      &m_GameConsole,
 					      &m_MenuBackground});
@@ -188,7 +190,7 @@ void CGameClient::OnConsoleInit()
 						  &m_Scoreboard,
 						  &m_Motd, // for pressing esc to remove it
 						  &m_Spectator,
-						  &m_BindWheel,
+						  &m_BindWheel, // TClient
 						  &m_Emoticon,
 						  &m_ImportantAlert,
 						  &m_Menus,
@@ -2525,25 +2527,25 @@ void CGameClient::UpdateEditorIngameMoved()
 }
 
 // TClient
-bool CGameClient::GetDummyFastInput(CNetObj_PlayerInput& DummyFastInput, const CNetObj_PlayerInput* pDummyInputData, const CCharacter* pDummyChar, int LocalTee, int DummyTee) const
+bool CGameClient::GetDummyFastInput(CNetObj_PlayerInput &DummyFastInput, const CNetObj_PlayerInput *pDummyInputData, const CCharacter *pDummyChar, int LocalTee, int DummyTee) const
 {
-	if (!PredictDummy() || !pDummyChar)
+	if(!PredictDummy() || !pDummyChar)
 		return false;
 
-	if (g_Config.m_ClDummyHammer)
+	if(g_Config.m_ClDummyHammer)
 	{
 		DummyFastInput = m_HammerInput;
 		return true;
 	}
 
-	if (g_Config.m_ClDummyCopyMoves)
+	if(g_Config.m_ClDummyCopyMoves)
 	{
 		DummyFastInput = m_Controls.m_aFastInput[LocalTee];
 		DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
 		DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
 		DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
 		DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
-		if (g_Config.m_ClDummyControl)
+		if(g_Config.m_ClDummyControl)
 		{
 			const CNetObj_PlayerInput BaseDummyInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
 			DummyFastInput.m_Jump = BaseDummyInput.m_Jump;
@@ -2553,7 +2555,7 @@ bool CGameClient::GetDummyFastInput(CNetObj_PlayerInput& DummyFastInput, const C
 		return true;
 	}
 
-	if (g_Config.m_ClDummyControl)
+	if(g_Config.m_ClDummyControl)
 	{
 		const CNetObj_PlayerInput BaseDummyInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
 		DummyFastInput = BaseDummyInput;
@@ -2837,11 +2839,11 @@ void CGameClient::OnPredict()
 		if(Tick <= FinalTickRegular)
 			HandlePredictedEvents(Tick);
 
-		if (Tick == FinalTickRegular)
+		if(Tick == FinalTickRegular)
 			m_RegularPredictedWorld.CopyWorldClean(&m_PredictedWorld);
 	}
 
-	if (FastInputTicks > 0) 
+	if(FastInputTicks > 0)
 	{
 		m_PredictedWorld.CopyWorld(&m_RegularPredictedWorld);
 		// m_PrevPredictedWorld.CopyWorld(&m_PrevRegularPredictedWorld); // not sure if this is worth performance cost, it seems to not matter

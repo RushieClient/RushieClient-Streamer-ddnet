@@ -2621,6 +2621,8 @@ if(CLIENT)
     components/tclient/menus_tclient.cpp
     components/tclient/mod.cpp
     components/tclient/mod.h
+    components/tclient/moving_tiles.cpp
+    components/tclient/moving_tiles.h
     components/tclient/mumble.cpp
     components/tclient/mumble.h
     components/tclient/outlines.cpp
