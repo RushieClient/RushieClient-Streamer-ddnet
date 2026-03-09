@@ -321,17 +321,18 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 		TextRender()->TextColor(TextRender()->DefaultTextColor());
 	}
 
+	CUIRect Button, ExtBar;
+	ExtBar = TopStatus;
+	if(g_Config.m_RiUiShowTopBar)
+		ExtBar.Draw(ColorRGBA(0.12f, 0.12f, 0.18f, 1.0f), IGraphics::CORNER_NONE, 0);
+	ExtBar.HSplitBottom(5.0f, &ExtBar, nullptr);
+	ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
+	ExtBar.HSplitTop(5.0f, nullptr, &ExtBar);
+
 	// render console
 	if(g_Config.m_RiUiShowTopBar)
 	{
-		CUIRect Button, ExtBar;
-		ExtBar = TopStatus;
-		ExtBar.Draw(ColorRGBA(0.12f, 0.12f, 0.18f, 1.0f), IGraphics::CORNER_NONE, 0);
-		ExtBar.HSplitBottom(5.0f, &ExtBar, nullptr);
-		ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
-		ExtBar.HSplitTop(5.0f, nullptr, &ExtBar);
 		ExtBar.VSplitLeft(80.0f, &Button, &ExtBar);
-
 		Ui()->DoLabel(&Button, "Discords:", 14.0f, TEXTALIGN_MC);
 
 		ExtBar.VSplitLeft(15.0f, nullptr, &ExtBar);
@@ -422,6 +423,28 @@ void CMenusStartRClient::RenderStartMenu(CUIRect MainView)
 		if(GameClient()->m_Menus.DoButton_Menu(&s_ConsoleButton, FontIcon::TERMINAL, 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.5f, 0.0f, 0.0f, 0.5f)))
 		{
 			GameClient()->m_GameConsole.Toggle(CGameConsole::CONSOLETYPE_LOCAL);
+		}
+		TextRender()->SetRenderFlags(0);
+		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	}
+	else
+	{
+		bool UsedEscape = false;
+		ExtBar.VSplitRight(15.0f, &ExtBar, nullptr);
+		ExtBar.VSplitRight(40.0f, &ExtBar, &Button);
+		static CButtonContainer s_ExitButton;
+		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_PIXEL_ALIGNMENT | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+		if(GameClient()->m_Menus.DoButton_Menu(&s_ExitButton, FontIcon::POWER_OFF, 0, &Button, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.5f, 0.0f, 0.0f, 0.5f)))
+		{
+			if(UsedEscape || GameClient()->Editor()->HasUnsavedData() || (GameClient()->CurrentRaceTime() / 60 >= g_Config.m_ClConfirmQuitTime && g_Config.m_ClConfirmQuitTime >= 0))
+			{
+				GameClient()->m_Menus.ShowQuitPopup();
+			}
+			else
+			{
+				Client()->Quit();
+			}
 		}
 		TextRender()->SetRenderFlags(0);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);

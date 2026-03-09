@@ -872,3 +872,15 @@ Mic Mute toggle
 [VoiceChat]
 All
 == Всех
+
+Show new RClient's menu
+== Вкл новое меню
+
+custom RClient's menu background
+== Вкл новый бекграунд
+
+show RClient's menu topbar
+== Вкл верхнюю панель
+
+show RClient's menu bottombar
+== Вкл нижнюю панель

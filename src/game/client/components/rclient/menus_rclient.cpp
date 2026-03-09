@@ -534,6 +534,10 @@ void CMenus::RenderSettingsRushieInfo(CUIRect MainView)
 
 void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 {
+	#define MACRO_CONFIG_CHECKBOX(Name, Desc) \
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_##Name, RCLocalize(Desc), &g_Config.m_##Name, &Column, LineSize); \
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+
 	static CScrollRegion s_ScrollRegion;
 	vec2 ScrollOffset(0.0f, 0.0f);
 	CScrollRegionParams ScrollParams;
@@ -1042,7 +1046,10 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	BeginSectionHeader(Column, MarginBetweenSections, RCLIENT_SETTINGS_SECTION_MENUS, RCLocalize("Menus"));
 	if(s_aSectionExpanded[RCLIENT_SETTINGS_SECTION_MENUS])
 	{
-
+		MACRO_CONFIG_CHECKBOX(RiUiNewMenu, "Show new RClient's menu");
+		MACRO_CONFIG_CHECKBOX(RiUiCustomBg, "custom RClient's menu background");
+		MACRO_CONFIG_CHECKBOX(RiUiShowTopBar, "show RClient's menu topbar");
+		MACRO_CONFIG_CHECKBOX(RiUiShowBottomBar, "show RClient's menu bottombar");
 	}
 	EndSection(Column);
 
