@@ -2679,11 +2679,12 @@ void CMenus::RenderBackground()
 		Graphics()->QuadsBegin();
 		Graphics()->SetColor(1.0f, 1.0f, 1.0f, 0.035f);
 		IGraphics::CQuadItem aGridItems[128];
+		const int MaxGridItems = static_cast<int>(std::size(aGridItems));
 		int NumGridItems = 0;
 		for(float x = -GridOffset; x < ScreenWidth + GridSize; x += GridSize)
 		{
 			aGridItems[NumGridItems++] = IGraphics::CQuadItem(x, 0.0f, 1.0f, ScreenHeight);
-			if(NumGridItems == std::size(aGridItems))
+			if(NumGridItems == MaxGridItems)
 			{
 				Graphics()->QuadsDrawTL(aGridItems, NumGridItems);
 				NumGridItems = 0;
@@ -2692,7 +2693,7 @@ void CMenus::RenderBackground()
 		for(float y = GridOffset - GridSize; y < ScreenHeight + GridSize; y += GridSize)
 		{
 			aGridItems[NumGridItems++] = IGraphics::CQuadItem(0.0f, y, ScreenWidth, 1.0f);
-			if(NumGridItems == std::size(aGridItems))
+			if(NumGridItems == MaxGridItems)
 			{
 				Graphics()->QuadsDrawTL(aGridItems, NumGridItems);
 				NumGridItems = 0;
