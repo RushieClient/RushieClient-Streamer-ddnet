@@ -77,7 +77,7 @@ void CMovingTiles::OnMapLoad()
 	GameClient()->Map()->GetType(MAPITEMTYPE_GROUP, &GroupsStart, &GroupsNum);
 	GameClient()->Map()->GetType(MAPITEMTYPE_LAYER, &LayersStart, &LayersNum);
 
-	size_t NumQuadLayers = 0;
+	// size_t NumQuadLayers = 0;
 	for(int GroupIndex = 0; GroupIndex < GroupsNum; GroupIndex++)
 	{
 		CMapItemGroup *pGroup = static_cast<CMapItemGroup *>(GameClient()->Map()->GetItem(GroupsStart + GroupIndex));
@@ -102,7 +102,7 @@ void CMovingTiles::OnMapLoad()
 					else if(m_RenderAbove && Type != EQType::HOOKABLE && Type != EQType::UNHOOKABLE)
 						continue;
 
-					NumQuadLayers++;
+					// NumQuadLayers++;
 					CQuad *pQuads = (CQuad *)GameClient()->Map()->GetDataSwapped(pTilemap->m_Data);
 					for(int NumQuads = 0; NumQuads < pTilemap->m_NumQuads; NumQuads++)
 					{
