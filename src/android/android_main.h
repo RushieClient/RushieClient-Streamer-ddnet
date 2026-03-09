@@ -61,6 +61,18 @@ void RestartAndroidApp();
 bool StartAndroidServer(const char **ppArguments, size_t NumArguments);
 
 /**
+ * Requests the Android microphone permission for voice capture.
+ *
+ * @ingroup Android
+ *
+ * This may show the runtime permission dialog and blocks until the user made
+ * a choice.
+ *
+ * @return `true` if the permission is granted, `false` otherwise.
+ */
+bool RequestAndroidAudioRecordPermission();
+
+/**
  * Adds a command to the execution queue of the local server.
  *
  * @ingroup Android

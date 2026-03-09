@@ -14,6 +14,10 @@
 
 #include <game/gamecore.h>
 
+#if defined(CONF_PLATFORM_ANDROID)
+#include <android/android_main.h>
+#endif
+
 #include <opus/opus.h>
 
 #if defined(CONF_RNNOISE)
@@ -787,6 +791,14 @@ bool CRClientVoice::EnsureAudio()
 
 	if(!m_CaptureDevice)
 	{
+#if defined(CONF_PLATFORM_ANDROID)
+		if(m_AndroidRecordPermissionKnown && !m_AndroidRecordPermissionGranted)
+		{
+			m_CaptureUnavailable = true;
+		}
+		else
+#endif
+		{
 		const bool InputMissing = m_aInputDeviceName[0] != '\0' && pInputName == nullptr;
 		const bool NoCaptureDevices = SDL_GetNumAudioDevices(1) <= 0;
 
@@ -821,6 +833,7 @@ bool CRClientVoice::EnsureAudio()
 				SDL_PauseAudioDevice(m_CaptureDevice, 0);
 				m_CaptureUnavailable = false;
 			}
+		}
 		}
 	}
 	else
@@ -1093,6 +1106,10 @@ void CRClientVoice::Shutdown()
 	m_MixBuffer.clear();
 	m_CaptureUnavailable = false;
 	m_OutputUnavailable = false;
+#if defined(CONF_PLATFORM_ANDROID)
+	m_AndroidRecordPermissionKnown = false;
+	m_AndroidRecordPermissionGranted = false;
+#endif
 	m_LastAudioRetryAttempt = 0;
 	m_AudioRefreshRequested.store(true);
 	if(m_pEncoder)
@@ -2036,7 +2053,12 @@ void CRClientVoice::WorkerLoop()
 		}
 
 		bool ShouldEnsureAudio = m_AudioRefreshRequested.exchange(false);
-		if(!ShouldEnsureAudio && (m_CaptureUnavailable || m_OutputUnavailable))
+		bool CaptureNeedsRetry = m_CaptureUnavailable;
+#if defined(CONF_PLATFORM_ANDROID)
+		if(m_AndroidRecordPermissionKnown && !m_AndroidRecordPermissionGranted)
+			CaptureNeedsRetry = false;
+#endif
+		if(!ShouldEnsureAudio && (CaptureNeedsRetry || m_OutputUnavailable))
 		{
 			const int64_t RetryInterval = time_freq();
 			const int64_t Now = time_get();
@@ -2087,6 +2109,19 @@ void CRClientVoice::OnRender()
 	UpdateClientSnapshot();
 	UpdateConfigSnapshot();
 
+#if defined(CONF_PLATFORM_ANDROID)
+	if(!m_AndroidRecordPermissionKnown)
+	{
+		m_AndroidRecordPermissionGranted = RequestAndroidAudioRecordPermission();
+		m_AndroidRecordPermissionKnown = true;
+		if(!m_AndroidRecordPermissionGranted)
+		{
+			VoiceLogErrorOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), "Microphone permission denied on Android");
+			m_CaptureUnavailable = true;
+		}
+	}
+#endif
+
 	const bool WantStereo = g_Config.m_RiVoiceStereo != 0;
 	const int DesiredChannels = WantStereo ? 2 : 1;
 	bool NeedReinit = false;
@@ -2116,6 +2151,9 @@ void CRClientVoice::OnRender()
 	}
 	if(!m_CaptureDevice)
 	{
+#if defined(CONF_PLATFORM_ANDROID)
+		if(!(m_AndroidRecordPermissionKnown && !m_AndroidRecordPermissionGranted))
+#endif
 		if(!m_CaptureUnavailable)
 			NeedReinit = true;
 	}

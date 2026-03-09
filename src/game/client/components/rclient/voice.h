@@ -139,6 +139,10 @@ class CRClientVoice
 	bool m_LogDeviceChange = false;
 	bool m_CaptureUnavailable = false;
 	bool m_OutputUnavailable = false;
+#if defined(CONF_PLATFORM_ANDROID)
+	bool m_AndroidRecordPermissionKnown = false;
+	bool m_AndroidRecordPermissionGranted = false;
+#endif
 	float m_HpfPrevIn = 0.0f;
 	float m_HpfPrevOut = 0.0f;
 	float m_CompEnv = 0.0f;

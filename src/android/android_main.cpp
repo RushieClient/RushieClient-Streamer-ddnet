@@ -288,6 +288,11 @@ bool StartAndroidServer(const char **ppArguments, size_t NumArguments)
 	return true;
 }
 
+bool RequestAndroidAudioRecordPermission()
+{
+	return SDL_AndroidRequestPermission("android.permission.RECORD_AUDIO") == SDL_TRUE;
+}
+
 void ExecuteAndroidServerCommand(const char *pCommand)
 {
 	JNIEnv *pEnv = static_cast<JNIEnv *>(SDL_AndroidGetJNIEnv());
