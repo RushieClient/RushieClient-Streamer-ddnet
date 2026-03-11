@@ -1138,6 +1138,7 @@ void CRClientVoice::Shutdown()
 	}
 	ClearPeerFrames();
 	m_ServerAddrValid.store(false);
+	m_ServerAddrResolveRequested.store(true);
 	m_aServerAddrStr[0] = '\0';
 	m_LastServerResolveAttempt = 0;
 	m_HpfPrevIn = 0.0f;
@@ -1168,27 +1169,48 @@ void CRClientVoice::Shutdown()
 	m_LastPingSeq = 0;
 }
 
-void CRClientVoice::UpdateServerAddr()
+void CRClientVoice::UpdateServerAddrConfig()
 {
-	const int64_t Now = time_get();
-	const bool AddrChanged = str_comp(m_aServerAddrStr, g_Config.m_RiVoiceServer) != 0;
-	const bool ShouldRetry = !m_ServerAddrValid.load() && (m_LastServerResolveAttempt == 0 || Now - m_LastServerResolveAttempt > time_freq() * 5);
-	if(!AddrChanged && !ShouldRetry)
+	bool AddrChanged = false;
+	{
+		std::lock_guard<std::mutex> Guard(m_ServerAddrMutex);
+		AddrChanged = str_comp(m_aServerAddrStr, g_Config.m_RiVoiceServer) != 0;
+		if(AddrChanged)
+			str_copy(m_aServerAddrStr, g_Config.m_RiVoiceServer, sizeof(m_aServerAddrStr));
+	}
+
+	if(!AddrChanged)
 		return;
 
-	if(AddrChanged)
-	{
-		str_copy(m_aServerAddrStr, g_Config.m_RiVoiceServer, sizeof(m_aServerAddrStr));
-		m_ServerAddrValid.store(false);
-		m_aServerAddrErrorLog[0] = '\0';
-	}
-	if(m_aServerAddrStr[0] == '\0')
+	m_ServerAddrValid.store(false);
+	m_LastServerResolveAttempt = 0;
+	m_ServerAddrResolveRequested.store(true);
+}
+
+void CRClientVoice::ResolveServerAddr()
+{
+	const int64_t Now = time_get();
+	const bool ShouldRetry = !m_ServerAddrValid.load() && (m_LastServerResolveAttempt == 0 || Now - m_LastServerResolveAttempt > time_freq() * 5);
+	if(!m_ServerAddrResolveRequested.load() && !ShouldRetry)
 		return;
+
+	char aServerAddrStr[sizeof(m_aServerAddrStr)];
+	{
+		std::lock_guard<std::mutex> Guard(m_ServerAddrMutex);
+		str_copy(aServerAddrStr, m_aServerAddrStr, sizeof(aServerAddrStr));
+	}
+
+	m_ServerAddrResolveRequested.store(false);
+	if(aServerAddrStr[0] == '\0')
+	{
+		m_ServerAddrValid.store(false);
+		return;
+	}
 
 	m_LastServerResolveAttempt = Now;
 
 	NETADDR NewAddr = NETADDR_ZEROED;
-	if(net_addr_from_str(&NewAddr, m_aServerAddrStr) == 0)
+	if(net_addr_from_str(&NewAddr, aServerAddrStr) == 0)
 	{
 		{
 			std::lock_guard<std::mutex> Guard(m_ServerAddrMutex);
@@ -1201,10 +1223,10 @@ void CRClientVoice::UpdateServerAddr()
 
 	char aHost[128];
 	int Port = 0;
-	if(!ParseHostPort(m_aServerAddrStr, aHost, sizeof(aHost), Port))
+	if(!ParseHostPort(aServerAddrStr, aHost, sizeof(aHost), Port))
 	{
 		char aError[256];
-		str_format(aError, sizeof(aError), "Invalid voice server address '%s'", m_aServerAddrStr);
+		str_format(aError, sizeof(aError), "Invalid voice server address '%s'", aServerAddrStr);
 		VoiceLogErrorOnce(m_aServerAddrErrorLog, sizeof(m_aServerAddrErrorLog), aError);
 		return;
 	}
@@ -1222,7 +1244,7 @@ void CRClientVoice::UpdateServerAddr()
 	}
 
 	char aError[256];
-	str_format(aError, sizeof(aError), "Failed to resolve voice server '%s'", m_aServerAddrStr);
+	str_format(aError, sizeof(aError), "Failed to resolve voice server '%s'", aServerAddrStr);
 	VoiceLogErrorOnce(m_aServerAddrErrorLog, sizeof(m_aServerAddrErrorLog), aError);
 }
 
@@ -2093,6 +2115,7 @@ void CRClientVoice::WorkerLoop()
 		if(ShouldEnsureAudio)
 			EnsureAudio();
 
+		ResolveServerAddr();
 		ProcessIncoming();
 		DecodeJitter();
 		UpdateEncoderParams();
@@ -2139,7 +2162,7 @@ void CRClientVoice::OnRender()
 	if(m_OutputDevice)
 		SDL_PauseAudioDevice(m_OutputDevice, 0);
 
-	UpdateServerAddr();
+	UpdateServerAddrConfig();
 	const bool ContextChanged = UpdateContext();
 	UpdateClientSnapshot();
 	UpdateConfigSnapshot();
@@ -2198,11 +2221,6 @@ void CRClientVoice::OnRender()
 		ClearPeerFrames();
 	}
 
-	if(!m_ServerAddrValid.load())
-	{
-		StopWorker();
-		return;
-	}
 	if(NeedReinit)
 	{
 		StopWorker();

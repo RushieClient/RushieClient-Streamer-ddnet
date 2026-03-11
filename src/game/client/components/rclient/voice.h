@@ -117,8 +117,9 @@ class CRClientVoice
 	NETSOCKET m_Socket = nullptr;
 	NETADDR m_ServerAddr = NETADDR_ZEROED;
 	std::atomic<bool> m_ServerAddrValid = false;
+	std::atomic<bool> m_ServerAddrResolveRequested = true;
 	char m_aServerAddrStr[128] = {0};
-	int64_t m_LastServerResolveAttempt = 0;
+	std::atomic<int64_t> m_LastServerResolveAttempt = 0;
 
 	SDL_AudioDeviceID m_CaptureDevice = 0;
 	SDL_AudioDeviceID m_OutputDevice = 0;
@@ -204,7 +205,8 @@ class CRClientVoice
 	bool EnsureSocket();
 	bool EnsureAudio();
 	void Shutdown();
-	void UpdateServerAddr();
+	void UpdateServerAddrConfig();
+	void ResolveServerAddr();
 	bool UpdateContext();
 	void UpdateClientSnapshot();
 	void UpdateConfigSnapshot();
