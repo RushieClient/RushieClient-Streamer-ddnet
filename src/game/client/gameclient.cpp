@@ -121,7 +121,7 @@ void CGameClient::OnConsoleInit()
 					      &m_CountryFlags,
 					      &m_MapImages,
 					      &m_Effects, // doesn't render anything, just updates effects
-					      &m_SkinProfiles,
+					      &m_SkinProfiles, // TClient
 					      &m_Binds,
 					      &m_Binds.m_SpecialBinds,
 					      &m_Controls,
@@ -130,26 +130,28 @@ void CGameClient::OnConsoleInit()
 					      &m_Voting,
 					      &m_Particles, // doesn't render anything, just updates all the particles
 					      &m_RaceDemo,
-					      &m_Rainbow,
+					      &m_Rainbow, // TClient
 					      &m_MapSounds,
 					      &m_Censor,
 					      &m_Background, // render instead of m_MapLayersBackground when g_Config.m_ClOverlayEntities == 100
 					      &m_MapLayersBackground, // first to render
-					      &m_BgDraw,
+					      &m_BgDraw, // TClient
 					      &m_Particles.m_RenderTrail,
 					      &m_Particles.m_RenderTrailExtra,
 					      &m_Items,
-					      &m_Trails,
-					      &m_Translate,
+					      &m_Trails, // TClient
+					      &m_Translate, // TClient
 					      &m_Ghost,
 					      &m_TClient,
-					      &m_RClient, // Must be before chat and players
+					      &m_RClient, // TClient (Must be before chat and players)
 					      &m_Players,
 					      &m_RClientIndicator,
+					      &m_MovingTilesBackground, // TClient
 					      &m_MapLayersForeground,
-					      &m_Outlines,
-					      &m_Mumble,
-					      &m_Pet,
+					      &m_MovingTilesForeground, // TClient
+					      &m_Outlines,  // TClient
+					      &m_Mumble, // TClient
+					      &m_Pet, // TClient
 					      &m_Particles.m_RenderExplosions,
 					      &m_NamePlates,
 					      &m_ChatBubbles, // E-Client
@@ -157,17 +159,17 @@ void CGameClient::OnConsoleInit()
 					      &m_Particles.m_RenderGeneral,
 					      &m_FreezeBars,
 					      &m_DamageInd,
-					      &m_PlayerIndicator,
-					      &m_Mod,
-					      &m_CustomCommunities,
+					      &m_PlayerIndicator, // TClient
+					      &m_Mod, // TClient
+					      &m_CustomCommunities, // TClient
 					      &m_Hud,
 					      &m_Spectator,
 					      &m_Emoticon,
-					      &m_BindChat,
-					      &m_BindWheel,
+					      &m_BindChat, // TClient
+					      &m_BindWheel, // TClient
 					      &m_BindWheelSpec,
-					      &m_WarList,
-					      &m_StatusBar,
+					      &m_WarList, // TClient
+					      &m_StatusBar, // TClient
 					      &m_InfoMessages,
 					      &m_Chat,
 					      &m_Broadcast,
@@ -182,7 +184,7 @@ void CGameClient::OnConsoleInit()
 					      &m_Motd,
 					      &m_Menus,
 					      &m_Tooltips,
-					      &m_Scripting,
+					      &m_Scripting, // TClient
 					      &m_KeyBinder,
 					      &m_GameConsole,
 					      &m_MenuBackground});
@@ -197,8 +199,8 @@ void CGameClient::OnConsoleInit()
 						  &m_Scoreboard,
 						  &m_Motd, // for pressing esc to remove it
 						  &m_Spectator,
-						  &m_BindWheel,
-						  &m_BindWheelSpec,
+						  &m_BindWheel, // TClient
+					          &m_BindWheelSpec,
 						  &m_Emoticon,
 						  &m_ImportantAlert,
 						  &m_Menus,
@@ -1061,18 +1063,21 @@ void CGameClient::OnMessage(int MsgId, CUnpacker *pUnpacker, int Conn, bool Dumm
 	{
 		// unpack the new tuning
 		CTuningParams NewTuning;
-		int *pParams = (int *)&NewTuning;
 
 		// No jetpack on DDNet incompatible servers,
 		// jetpack strength will be received by tune params
 		NewTuning.m_JetpackStrength = 0;
 
-		for(unsigned i = 0; i < sizeof(CTuningParams) / sizeof(int); i++)
+		int *pParams = NewTuning.NetworkArray();
+		for(int i = 0; i < CTuningParams::Num(); i++)
 		{
-			// 31 is the magic number index of laser_damage
-			// which was removed in 0.7
-			// also in 0.6 it is unused so we just set it to 0
-			const int Value = (Client()->IsSixup() && i == 30) ? 0 : pUnpacker->GetInt();
+			static_assert(offsetof(CTuningParams, m_LaserDamage) / sizeof(CTuneParam) == 30);
+			if(i == 30 && Client()->IsSixup()) // laser_damage was removed in 0.7
+			{
+				continue;
+			}
+
+			const int Value = pUnpacker->GetInt();
 
 			// check for unpacking errors
 			if(pUnpacker->Error())
@@ -2545,6 +2550,52 @@ void CGameClient::UpdateEditorIngameMoved()
 	}
 }
 
+// TClient
+bool CGameClient::GetDummyFastInput(CNetObj_PlayerInput &DummyFastInput, const CNetObj_PlayerInput *pDummyInputData, const CCharacter *pDummyChar, int LocalTee, int DummyTee) const
+{
+	if(!PredictDummy() || !pDummyChar)
+		return false;
+
+	if(g_Config.m_ClDummyHammer)
+	{
+		DummyFastInput = m_HammerInput;
+		return true;
+	}
+
+	if(g_Config.m_ClDummyCopyMoves)
+	{
+		DummyFastInput = m_Controls.m_aFastInput[LocalTee];
+		DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
+		DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
+		DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
+		DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
+		if(g_Config.m_ClDummyControl)
+		{
+			const CNetObj_PlayerInput BaseDummyInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
+			DummyFastInput.m_Jump = BaseDummyInput.m_Jump;
+			DummyFastInput.m_Fire = BaseDummyInput.m_Fire;
+			DummyFastInput.m_Hook = BaseDummyInput.m_Hook;
+		}
+		return true;
+	}
+
+	if(g_Config.m_ClDummyControl)
+	{
+		const CNetObj_PlayerInput BaseDummyInput = pDummyInputData ? *pDummyInputData : CNetObj_PlayerInput{};
+		DummyFastInput = BaseDummyInput;
+		DummyFastInput.m_Direction = m_Controls.m_aFastInput[DummyTee].m_Direction;
+		DummyFastInput.m_PlayerFlags = m_Controls.m_aFastInput[DummyTee].m_PlayerFlags;
+		DummyFastInput.m_TargetX = m_Controls.m_aFastInput[DummyTee].m_TargetX;
+		DummyFastInput.m_TargetY = m_Controls.m_aFastInput[DummyTee].m_TargetY;
+		DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
+		DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
+		DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
+		return true;
+	}
+
+	return false;
+}
+
 void CGameClient::ApplyPreInputs(int Tick, bool Direct, CGameWorld &GameWorld)
 {
 	if(!g_Config.m_ClAntiPingPreInput)
@@ -2703,6 +2754,7 @@ void CGameClient::OnPredict()
 		// apply inputs and tick
 		CNetObj_PlayerInput *pInputData = (CNetObj_PlayerInput *)Client()->GetInput(Tick, m_IsDummySwapping);
 		CNetObj_PlayerInput *pDummyInputData = !pDummyChar ? nullptr : (CNetObj_PlayerInput *)Client()->GetInput(Tick, m_IsDummySwapping ^ 1);
+		CNetObj_PlayerInput DummyFastInput{};
 		bool DummyFirst = pInputData && pDummyInputData && pDummyChar->GetCid() < pLocalChar->GetCid();
 
 		if(g_Config.m_TcFastInput)
@@ -2712,23 +2764,8 @@ void CGameClient::OnPredict()
 				if(Tick > FinalTickRegular)
 				{
 					pInputData = &m_Controls.m_aFastInput[LocalTee];
-					if(g_Config.m_ClDummyCopyMoves && PredictDummy() && pDummyChar)
-					{
-						CNetObj_PlayerInput DummyFastInput;
-						if(g_Config.m_ClDummyHammer)
-						{
-							DummyFastInput = m_HammerInput;
-						}
-						else
-						{
-							DummyFastInput = m_Controls.m_aFastInput[LocalTee];
-							DummyFastInput.m_Fire = m_Controls.m_aFastInput[DummyTee].m_Fire;
-							DummyFastInput.m_WantedWeapon = m_Controls.m_aFastInput[DummyTee].m_WantedWeapon;
-							DummyFastInput.m_NextWeapon = m_Controls.m_aFastInput[DummyTee].m_NextWeapon;
-							DummyFastInput.m_PrevWeapon = m_Controls.m_aFastInput[DummyTee].m_PrevWeapon;
-						}
+					if(GetDummyFastInput(DummyFastInput, pDummyInputData, pDummyChar, LocalTee, DummyTee))
 						pDummyInputData = &DummyFastInput;
-					}
 				}
 			}
 			else if(Tick == FinalTickSelf)
@@ -2738,6 +2775,7 @@ void CGameClient::OnPredict()
 		}
 
 		// TClient
+		// Disable predicted events during fastinput over-run prediction ticks because they are not real
 		// This has to be before direct input because physics happens in there
 		bool TempPredEventState = m_PredictedWorld.m_WorldConfig.m_PredictEvents;
 		if(Tick > FinalTickRegular)
@@ -2764,9 +2802,6 @@ void CGameClient::OnPredict()
 
 		// TClient
 		m_PredictedWorld.m_WorldConfig.m_PredictEvents = TempPredEventState;
-
-		if(Tick == FinalTickRegular)
-			m_RegularPredictedWorld.CopyWorldClean(&m_PredictedWorld);
 
 		// fetch the current characters
 		if(Tick == FinalTickSelf)
@@ -2843,6 +2878,9 @@ void CGameClient::OnPredict()
 
 		if(Tick <= FinalTickRegular)
 			HandlePredictedEvents(Tick);
+
+		if(Tick == FinalTickRegular)
+			m_RegularPredictedWorld.CopyWorldClean(&m_PredictedWorld);
 	}
 
 	if(FastInputTicks > 0)
@@ -3448,7 +3486,7 @@ CSkinDescriptor CGameClient::CClientData::ToSkinDescriptor() const
 			{
 				str_copy(SkinDescriptor.m_aSixup[Dummy].m_aaSkinPartNames[Part], m_aSixup[Dummy].m_aaSkinPartNames[Part]);
 			}
-			SkinDescriptor.m_aSixup[Dummy].m_XmasHat = time_season() == SEASON_XMAS;
+			SkinDescriptor.m_aSixup[Dummy].m_XmasHat = time_season() == ETimeSeason::XMAS;
 			SkinDescriptor.m_aSixup[Dummy].m_BotDecoration = (TranslatedClient.m_PlayerFlags7 & protocol7::PLAYERFLAG_BOT) != 0;
 		}
 	}
@@ -5856,7 +5894,7 @@ void CGameClient::StoreSave(const char *pTeamMembers, const char *pGeneratedCode
 	};
 
 	char aTimestamp[20];
-	str_timestamp_format(aTimestamp, sizeof(aTimestamp), FORMAT_SPACE);
+	str_timestamp_format(aTimestamp, sizeof(aTimestamp), TimestampFormat::SPACE);
 
 	const bool SavesFileExists = Storage()->FileExists(SAVES_FILE, IStorage::TYPE_SAVE);
 	IOHANDLE File = Storage()->OpenFile(SAVES_FILE, IOFLAG_APPEND, IStorage::TYPE_SAVE);

@@ -439,13 +439,11 @@ void CPlayers::RenderHookCollLine(
 		Graphics()->QuadsBegin();
 		Graphics()->SetColor(HookCollColor.WithAlpha(Alpha));
 		Graphics()->QuadsDrawFreeform(vLineQuadSegments.data(), vLineQuadSegments.size());
-		if(HookTipLineSegment.has_value() && HookCollTipColor.a > 0.0f && g_Config.m_TcRevertHookLine != 1 /*TClient*/)
+		if(HookTipLineSegment.has_value() && HookCollTipColor.a > 0.0f && !g_Config.m_TcRevertHookLine /*TClient*/)
 		{
 			vLineQuadSegments.clear();
 			ConvertLineSegments(HookTipLineSegment.value());
-			if(g_Config.m_TcRevertHookLine != 2) // TClient
-				HookCollColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClHookCollColorTeeColl));
-			Graphics()->SetColor(HookCollColor.WithAlpha(Alpha));
+			Graphics()->SetColor(HookCollTipColor.WithMultipliedAlpha(Alpha));
 			Graphics()->QuadsDrawFreeform(vLineQuadSegments.data(), vLineQuadSegments.size());
 		}
 		Graphics()->QuadsEnd();
@@ -455,11 +453,9 @@ void CPlayers::RenderHookCollLine(
 		Graphics()->LinesBegin();
 		Graphics()->SetColor(HookCollColor.WithAlpha(Alpha));
 		Graphics()->LinesDraw(vLineSegments.data(), vLineSegments.size());
-		if(HookTipLineSegment.has_value() && HookCollTipColor.a > 0.0f && g_Config.m_TcRevertHookLine != 1 /*TClient*/)
+		if(HookTipLineSegment.has_value() && HookCollTipColor.a > 0.0f && !g_Config.m_TcRevertHookLine /*TClient*/)
 		{
-			if(g_Config.m_TcRevertHookLine != 2) // TClient
-				HookCollColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClHookCollColorTeeColl));
-			Graphics()->SetColor(HookCollColor.WithAlpha(Alpha));
+			Graphics()->SetColor(HookCollTipColor.WithMultipliedAlpha(Alpha));
 			Graphics()->LinesDraw(&HookTipLineSegment.value(), 1);
 		}
 		Graphics()->LinesEnd();

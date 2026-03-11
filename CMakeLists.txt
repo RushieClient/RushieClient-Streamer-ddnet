@@ -2184,6 +2184,8 @@ set_src(BASE GLOB_RECURSE src/base
   math.h
   mem.cpp
   mem.h
+  net.cpp
+  net.h
   os.cpp
   os.h
   process.cpp
@@ -2195,7 +2197,6 @@ set_src(BASE GLOB_RECURSE src/base
   sphore.h
   str.cpp
   str.h
-  system.cpp
   system.h
   thread.cpp
   thread.h
@@ -2672,6 +2673,8 @@ if(CLIENT)
     components/tclient/menus_tclient.cpp
     components/tclient/mod.cpp
     components/tclient/mod.h
+    components/tclient/moving_tiles.cpp
+    components/tclient/moving_tiles.h
     components/tclient/mumble.cpp
     components/tclient/mumble.h
     components/tclient/outlines.cpp

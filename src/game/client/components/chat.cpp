@@ -3,6 +3,9 @@
 
 #include "chat.h"
 
+#include <base/io.h>
+#include <base/time.h>
+
 #include <engine/editor.h>
 #include <engine/external/regex.h>
 #include <engine/graphics.h>
@@ -651,7 +654,7 @@ void CChat::StoreSave(const char *pText)
 	str_truncate(aSaveCode, sizeof(aSaveCode), pMid + 13, (pOn ? pOn : pEnd) - pMid - 13);
 
 	char aTimestamp[20];
-	str_timestamp_format(aTimestamp, sizeof(aTimestamp), FORMAT_SPACE);
+	str_timestamp_format(aTimestamp, sizeof(aTimestamp), TimestampFormat::SPACE);
 
 	const bool SavesFileExists = Storage()->FileExists(SAVES_FILE, IStorage::TYPE_SAVE);
 	IOHANDLE File = Storage()->OpenFile(SAVES_FILE, IOFLAG_APPEND, IStorage::TYPE_SAVE);

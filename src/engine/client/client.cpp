@@ -9,14 +9,18 @@
 
 #include <base/bytes.h>
 #include <base/crashdump.h>
+#include <base/fs.h>
 #include <base/hash.h>
 #include <base/hash_ctxt.h>
+#include <base/io.h>
 #include <base/log.h>
 #include <base/logger.h>
 #include <base/math.h>
 #include <base/os.h>
 #include <base/process.h>
+#include <base/secure.h>
 #include <base/str.h>
+#include <base/time.h>
 #include <base/windows.h>
 
 #include <engine/config.h>
@@ -454,10 +458,7 @@ void CClient::SetState(EClientState State)
 	if(State == IClient::STATE_ONLINE)
 	{
 		const bool Registered = m_ServerBrowser.IsRegistered(ServerAddress());
-		CServerInfo CurrentServerInfo;
-		GetServerInfo(&CurrentServerInfo);
-
-		Discord()->SetGameInfo(CurrentServerInfo, GameClient()->Map()->BaseName(), Registered);
+		Discord()->SetGameInfo(m_CurrentServerInfo, Registered);
 		Steam()->SetGameInfo(ServerAddress(), GameClient()->Map()->BaseName(), Registered);
 	}
 	else if(OldState == IClient::STATE_ONLINE)
@@ -897,13 +898,22 @@ bool CClient::DummyAllowed() const
 
 void CClient::GetServerInfo(CServerInfo *pServerInfo) const
 {
-	mem_copy(pServerInfo, &m_CurrentServerInfo, sizeof(m_CurrentServerInfo));
+	*pServerInfo = m_CurrentServerInfo;
 }
 
 void CClient::ServerInfoRequest()
 {
 	mem_zero(&m_CurrentServerInfo, sizeof(m_CurrentServerInfo));
 	m_CurrentServerInfoRequestTime = 0;
+}
+
+void CClient::SetCurrentServerInfo(const CServerInfo &ServerInfo)
+{
+	m_CurrentServerInfo = ServerInfo;
+	m_CurrentServerInfoRequestTime = -1;
+	str_copy(m_CurrentServerInfo.m_aMap, GameClient()->Map()->BaseName());
+	m_CurrentServerInfo.m_MapCrc = GameClient()->Map()->Crc();
+	m_CurrentServerInfo.m_MapSize = GameClient()->Map()->Size();
 }
 
 void CClient::LoadDebugFont()
@@ -1507,9 +1517,8 @@ void CClient::ProcessServerInfo(int RawType, NETADDR *pFrom, const void *pData, 
 			// us.
 			if(SavedType >= m_CurrentServerInfo.m_Type)
 			{
-				m_CurrentServerInfo = Info;
-				m_CurrentServerInfoRequestTime = -1;
-				Discord()->UpdateServerInfo(Info, GameClient()->Map()->BaseName());
+				SetCurrentServerInfo(Info);
+				Discord()->UpdateServerInfo(m_CurrentServerInfo);
 			}
 
 			bool ValidPong = false;

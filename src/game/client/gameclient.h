@@ -81,6 +81,7 @@
 #include "components/tclient/bindwheel.h"
 #include "components/tclient/custom_communities.h"
 #include "components/tclient/mod.h"
+#include "components/tclient/moving_tiles.h"
 #include "components/tclient/mumble.h"
 #include "components/tclient/outlines.h"
 #include "components/tclient/pet.h"
@@ -243,6 +244,8 @@ public:
 	CScripting m_Scripting;
 	CMod m_Mod;
 	CCustomCommunities m_CustomCommunities;
+	CMovingTiles m_MovingTilesBackground = CMovingTiles{ false };
+	CMovingTiles m_MovingTilesForeground = CMovingTiles{ true };
 
 	// RClient Components
 	CChatBubbles m_ChatBubbles;
@@ -737,6 +740,7 @@ public:
 	void SendReadyChange7();
 
 	void ApplyPreInputs(int Tick, bool Direct, CGameWorld &GameWorld);
+	bool GetDummyFastInput(CNetObj_PlayerInput &DummyFastInput, const CNetObj_PlayerInput *pDummyInputData, const class CCharacter *pDummyChar, int LocalTee, int DummyTee) const;
 
 	int m_aNextChangeInfo[NUM_DUMMIES];
 

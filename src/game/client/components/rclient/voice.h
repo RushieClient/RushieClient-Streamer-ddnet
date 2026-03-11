@@ -1,6 +1,7 @@
 #ifndef GAME_CLIENT_COMPONENTS_RCLIENT_VOICE_H
 #define GAME_CLIENT_COMPONENTS_RCLIENT_VOICE_H
 
+#include <base/net.h>
 #include <base/system.h>
 #include <base/vmath.h>
 
