@@ -1052,7 +1052,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		MACRO_CONFIG_CHECKBOX(RiUiShowBottomBar, "show RClient's menu bottombar");
 		static CButtonContainer s_MenuColor;
 		Column.HSplitTop(LineSize, &Button, &Column);
-		DoLine_ColorPicker(&s_MenuColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Button, RCLocalize("Color of settings menu"), &g_Config.m_RiMenusSettingsColor, DefaultConfig::RiMenusSettingsColor, false, nullptr, true);
+		DoLine_ColorPicker(&s_MenuColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Button, RCLocalize("Color of settings menu"), &g_Config.m_RiMenusSettingsColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::RiMenusSettingsColor, true)), false, nullptr, true);
 	}
 	EndSection(Column);
 
