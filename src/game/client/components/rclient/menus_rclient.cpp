@@ -569,7 +569,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Section.x -= Padding * 0.5f;
 		Section.y -= Padding * 0.5f;
 		Section.y -= s_PrevScrollOffset.y - ScrollOffset.y;
-		Section.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.25f), IGraphics::CORNER_ALL, 10.0f);
+		Section.Draw(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiMenusSettingsColor, true)), IGraphics::CORNER_ALL, 10.0f);
 	}
 	s_PrevScrollOffset = ScrollOffset;
 	s_SectionBoxes.clear();
@@ -1050,6 +1050,9 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		MACRO_CONFIG_CHECKBOX(RiUiCustomBg, "custom RClient's menu background");
 		MACRO_CONFIG_CHECKBOX(RiUiShowTopBar, "show RClient's menu topbar");
 		MACRO_CONFIG_CHECKBOX(RiUiShowBottomBar, "show RClient's menu bottombar");
+		static CButtonContainer s_MenuColor;
+		Column.HSplitTop(LineSize, &Button, &Column);
+		DoLine_ColorPicker(&s_MenuColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Button, RCLocalize("Color of settings menu"), &g_Config.m_RiMenusSettingsColor, DefaultConfig::RiMenusSettingsColor, false, nullptr, true);
 	}
 	EndSection(Column);
 
