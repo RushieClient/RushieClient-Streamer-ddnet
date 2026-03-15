@@ -181,12 +181,19 @@ class CRClientVoice
 	int64_t m_LastKeepalive = 0;
 	uint32_t m_LastTokenHashSent = 0;
 
+	// Debug counters (worker thread only)
+	int64_t m_TxLastLog = 0;
+	int m_TxPackets = 0;
+	int64_t m_RxLastLog = 0;
+	int m_RxPackets = 0;
+	int m_RxDropContext = 0;
+	int m_RxDropRadius = 0;
+
 	std::thread m_Worker;
 	std::atomic<bool> m_WorkerStop = false;
 	std::atomic<bool> m_WorkerEnabled = false;
 	std::atomic<bool> m_AudioRefreshRequested = true;
 	bool m_ShutdownDone = true;
-
 	std::mutex m_ServerAddrMutex;
 
 	mutable std::mutex m_ConfigMutex;

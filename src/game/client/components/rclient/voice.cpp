@@ -1016,9 +1016,6 @@ void CRClientVoice::ResetPeer(SVoicePeer &Peer)
 	Peer.m_FrameTail = 0;
 	Peer.m_FrameCount = 0;
 	Peer.m_FrameReadPos = 0;
-	if(m_OutputDevice)
-		SDL_UnlockAudioDevice(m_OutputDevice);
-
 	for(auto &Pkt : Peer.m_aPackets)
 	{
 		Pkt.m_Valid = false;
@@ -1042,6 +1039,8 @@ void CRClientVoice::ResetPeer(SVoicePeer &Peer)
 	Peer.m_LossEwma = 0.0f;
 	if(Peer.m_pDecoder)
 		opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
+	if(m_OutputDevice)
+		SDL_UnlockAudioDevice(m_OutputDevice);
 }
 
 const char *CRClientVoice::FindDeviceName(bool Capture, const char *pDesired) const
@@ -1433,8 +1432,7 @@ void CRClientVoice::ProcessCapture()
 		return;
 	}
 
-	static int64_t s_TxLastLog = 0;
-	static int s_TxPackets = 0;
+
 
 	const int ClientId = LocalClientId;
 	const vec2 Pos = LocalPos;
@@ -1551,12 +1549,12 @@ void CRClientVoice::ProcessCapture()
 		m_aLastHeard[ClientId].store(Now);
 		if(Config.m_RiVoiceDebug)
 		{
-			s_TxPackets++;
-			if(Now - s_TxLastLog > time_freq())
+			m_TxPackets++;
+			if(Now - m_TxLastLog > time_freq())
 			{
-				log_info("voice", "tx packets=%d ctx=0x%08x", s_TxPackets, m_ContextHash.load());
-				s_TxLastLog = Now;
-				s_TxPackets = 0;
+				log_info("voice", "tx packets=%d ctx=0x%08x", m_TxPackets, m_ContextHash.load());
+				m_TxLastLog = Now;
+				m_TxPackets = 0;
 			}
 		}
 	}
@@ -1583,10 +1581,7 @@ void CRClientVoice::ProcessIncoming()
 	const bool TestServer = TestMode == 2;
 	const uint8_t ProtocolVersion = VoiceProtocolVersion(Config);
 
-	static int64_t s_RxLastLog = 0;
-	static int s_RxPackets = 0;
-	static int s_RxDropContext = 0;
-	static int s_RxDropRadius = 0;
+
 
 	while(net_socket_read_wait(m_Socket, std::chrono::nanoseconds(0)) > 0)
 	{
@@ -1640,7 +1635,7 @@ void CRClientVoice::ProcessIncoming()
 		const uint32_t LocalContextHash = m_ContextHash.load();
 		if(ContextHash == 0 || ContextHash != LocalContextHash)
 		{
-			s_RxDropContext++;
+			m_RxDropContext++;
 			continue;
 		}
 		if(Type == VOICE_TYPE_PING || Type == VOICE_TYPE_PONG)
@@ -1737,7 +1732,7 @@ void CRClientVoice::ProcessIncoming()
 		const float Dist = distance(LocalPos, SenderPos);
 		if(!IgnoreDistance && Dist > Radius)
 		{
-			s_RxDropRadius++;
+			m_RxDropRadius++;
 			continue;
 		}
 
@@ -1825,14 +1820,14 @@ void CRClientVoice::ProcessIncoming()
 
 		if(Config.m_RiVoiceDebug)
 		{
-			s_RxPackets++;
-			if(Now - s_RxLastLog > time_freq())
+			m_RxPackets++;
+			if(Now - m_RxLastLog > time_freq())
 			{
-				log_info("voice", "rx packets=%d drop_ctx=%d drop_radius=%d", s_RxPackets, s_RxDropContext, s_RxDropRadius);
-				s_RxLastLog = Now;
-				s_RxPackets = 0;
-				s_RxDropContext = 0;
-				s_RxDropRadius = 0;
+				log_info("voice", "rx packets=%d drop_ctx=%d drop_radius=%d", m_RxPackets, m_RxDropContext, m_RxDropRadius);
+				m_RxLastLog = Now;
+				m_RxPackets = 0;
+				m_RxDropContext = 0;
+				m_RxDropRadius = 0;
 			}
 		}
 	}
