@@ -2638,6 +2638,8 @@ if(CLIENT)
     components/rclient/menu/menus_start_rclient.cpp
     components/rclient/menu/menus_start_rclient.h
     components/rclient/menus_rclient.cpp
+    components/rclient/music_island.cpp
+    components/rclient/music_island.h
     components/rclient/playermenu.cpp
     components/rclient/playermenu.h
     components/rclient/rclient.cpp

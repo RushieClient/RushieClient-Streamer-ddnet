@@ -179,6 +179,7 @@ void CGameClient::OnConsoleInit()
 					      &m_AdminPanelRi,
 					      &m_RiPlayerMenu,
 					      &m_EdgeHelper,
+					      &m_MusicIsland,
 					      &m_Scoreboard,
 					      &m_Statboard,
 					      &m_Motd,
