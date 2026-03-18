@@ -1,6 +1,13 @@
 #include "music_island.h"
 #include <game/client/gameclient.h>
 
+#if defined(CONF_FAMILY_WINDOWS)
+#pragma comment(lib, "runtimeobject.lib")
+#include <winrt/base.h>
+#include <winrt/Windows.Media.Control.h>
+#include <winrt/Windows.Foundation.h>
+#endif
+
 struct SEdgeHelperProperties
 {
 	static constexpr float ms_Padding = 3.0f;
@@ -31,36 +38,47 @@ CMusicIsland::CMusicIsland()
 	OnReset();
 }
 
+CMusicIsland::~CMusicIsland()
+{
+	StopInfoWorker();
+}
+
+void CMusicIsland::ResetMusicInfo()
+{
+	std::lock_guard<std::mutex> Guard(m_MusicInfoMutex);
+	m_MusicInfo = {};
+}
+
+CMusicIsland::SMusicInfo CMusicIsland::GetMusicInfo() const
+{
+	std::lock_guard<std::mutex> Guard(m_MusicInfoMutex);
+	return m_MusicInfo;
+}
+
 void CMusicIsland::OnConsoleInit()
 {
+	Console()->Register("ri_show_cur_info", "", CFGFLAG_CLIENT, ConShowCurInfo, this, "Print current music info");
 }
 
 void CMusicIsland::SetExtended(bool Extended)
 {
-	if(m_Extended == Extended)
-		return;
-
 	m_Extended = Extended;
-	if(m_Extended)
-	{
-
-	}
-	else
-	{
-		OnReset();
-	}
 }
 
 void CMusicIsland::OnReset()
 {
-	RIMusicReset();
-	SetExtended(false);
+	StopInfoWorker();
+	m_Extended = false;
+	m_NextInfoUpdateTime = 0;
+	ResetMusicInfo();
 }
 
-void CMusicIsland::OnRelease()
+void CMusicIsland::OnShutdown()
 {
-	RIMusicReset();
-	SetExtended(false);
+	StopInfoWorker();
+	m_Extended = false;
+	m_NextInfoUpdateTime = 0;
+	ResetMusicInfo();
 }
 
 void CMusicIsland::OnRender()
@@ -68,12 +86,16 @@ void CMusicIsland::OnRender()
 	if(!IsActive())
 		return;
 
+	const int64_t Now = time_get();
+	if(!m_InfoWorkerRunning.load() && (m_NextInfoUpdateTime == 0 || Now >= m_NextInfoUpdateTime))
+		StartInfoWorker(Now);
+
 	RenderMusicIsland();
 }
 
 void CMusicIsland::RenderMusicIsland()
 {
-	CUIRect Base, MusicImage, Visualizer;
+	CUIRect Base;
 
 	vec2 ScreenTL, ScreenBR;
 	Graphics()->GetScreen(&ScreenTL.x, &ScreenTL.y, &ScreenBR.x, &ScreenBR.y);
@@ -98,6 +120,82 @@ void CMusicIsland::RenderMusicIsland()
 	Base.Margin(SEdgeHelperProperties::ms_Padding, &Base);
 }
 
+void CMusicIsland::StartInfoWorker(int64_t Now)
+{
+#if defined(CONF_FAMILY_WINDOWS)
+	if(m_InfoWorkerRunning.load())
+		return;
+
+	if(m_InfoWorker.joinable())
+		m_InfoWorker.join();
+
+	m_InfoWorkerStopRequested.store(false);
+	m_InfoWorkerRunning.store(true);
+	m_NextInfoUpdateTime = Now + time_freq();
+	m_InfoWorker = std::thread(&CMusicIsland::InfoWorkerLoop, this);
+#endif
+}
+
+void CMusicIsland::StopInfoWorker()
+{
+#if defined(CONF_FAMILY_WINDOWS)
+	m_InfoWorkerStopRequested.store(true);
+	if(m_InfoWorker.joinable())
+		m_InfoWorker.join();
+
+	m_InfoWorkerRunning.store(false);
+#endif
+}
+
+void CMusicIsland::InfoWorkerLoop()
+{
+#if defined(CONF_FAMILY_WINDOWS)
+	winrt::init_apartment(winrt::apartment_type::multi_threaded);
+	UpdateMusicInfo();
+	winrt::uninit_apartment();
+	m_InfoWorkerRunning.store(false);
+#endif
+}
+
+void CMusicIsland::UpdateMusicInfo()
+{
+#if defined(CONF_FAMILY_WINDOWS)
+	SMusicInfo NewInfo;
+
+	try
+	{
+		using namespace winrt::Windows::Media::Control;
+
+		const auto SessionManager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
+		const auto Session = SessionManager.GetCurrentSession();
+		if(Session)
+		{
+			const auto PlaybackInfo = Session.GetPlaybackInfo();
+			const auto MediaProperties = Session.TryGetMediaPropertiesAsync().get();
+
+			NewInfo.m_Available = true;
+			NewInfo.m_Playing = PlaybackInfo && PlaybackInfo.PlaybackStatus() == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
+			NewInfo.m_Title = winrt::to_string(MediaProperties.Title());
+			NewInfo.m_Artist = winrt::to_string(MediaProperties.Artist());
+		}
+	}
+	catch(const winrt::hresult_error &)
+	{
+		NewInfo = {};
+	}
+	catch(...)
+	{
+		NewInfo = {};
+	}
+
+	if(m_InfoWorkerStopRequested.load())
+		return;
+
+	std::lock_guard<std::mutex> Guard(m_MusicInfoMutex);
+	m_MusicInfo = std::move(NewInfo);
+#endif
+}
+
 bool CMusicIsland::IsActive() const
 {
 #if defined(CONF_FAMILY_WINDOWS)
@@ -105,4 +203,17 @@ bool CMusicIsland::IsActive() const
 #else
 	return false;
 #endif
+}
+
+void CMusicIsland::ConShowCurInfo(IConsole::IResult *pResult, void *pUserData)
+{
+	(void)pResult;
+
+	auto *pSelf = static_cast<CMusicIsland *>(pUserData);
+	if(pSelf == nullptr)
+		return;
+
+	const SMusicInfo Info = pSelf->GetMusicInfo();
+
+	dbg_msg("Music", "Available: %d, Is playing: %d, Title: %s, Artist: %s", Info.m_Available, Info.m_Playing, Info.m_Title.c_str(), Info.m_Artist.c_str());
 }
