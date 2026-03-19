@@ -1,10 +1,11 @@
 #ifndef RCLIENT_MUSIC_ISLAND_H
 #define RCLIENT_MUSIC_ISLAND_H
+#include "engine/console.h"
 #include "engine/graphics.h"
 #include "engine/image.h"
-#include "engine/console.h"
 #include "game/client/component.h"
 #include "game/client/ui_rect.h"
+#include "generated/protocol.h"
 
 #include <atomic>
 #include <cstdint>
@@ -23,6 +24,14 @@ class CMusicIsland : public CComponent
 		std::string m_Title;
 		std::string m_Artist;
 		std::string m_Album;
+	};
+
+	struct SGameTimerRenderInfo
+	{
+		char m_aText[32]{};
+		float m_TextWidth = 0.0f;
+		float m_ActualTextWidth = 0.0f;
+		ColorRGBA m_TextColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 	};
 
 	bool m_Extended = false;
@@ -58,6 +67,9 @@ class CMusicIsland : public CComponent
 	void StopImageWorker();
 	void InfoWorkerLoop();
 	void UpdateMusicInfo();
+	static float GetStableGameTimerWidth(ITextRender *pTextRender, float FontSize, float TimeSeconds, bool ShowCentiseconds);
+	static bool GetGameTimerRenderInfo(const CNetObj_GameInfo *pGameInfo, IClient *pClient, ITextRender *pTextRender, float FontSize, SGameTimerRenderInfo &RenderInfo);
+	static float GetScrollingTextOffset(float Overflow, float Seconds);
 
 public:
 	CMusicIsland();

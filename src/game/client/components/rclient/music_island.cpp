@@ -6,6 +6,7 @@
 
 #include <game/client/gameclient.h>
 
+#include <cmath>
 #include <cstring>
 
 #if defined(CONF_FAMILY_WINDOWS)
@@ -40,6 +41,119 @@ struct SEdgeHelperProperties
 	static ColorRGBA BlueSteelButtonColor() { return ColorRGBA(0.2f, 0.4f, 0.65f, 0.8f); };
 	static ColorRGBA ActionWhiteButtonColor() { return ColorRGBA(1.0f, 1.0f, 1.0f, 0.8f); };
 };
+
+float CMusicIsland::GetStableGameTimerWidth(ITextRender *pTextRender, float FontSize, float TimeSeconds, bool ShowCentiseconds)
+{
+	static float s_LastFontSize = -1.0f;
+	static float s_TextWidthM = 0.0f;
+	static float s_TextWidthH = 0.0f;
+	static float s_TextWidth0D = 0.0f;
+	static float s_TextWidth00D = 0.0f;
+	static float s_TextWidth000D = 0.0f;
+	static float s_TextWidthMwC = 0.0f;
+	static float s_TextWidthHwC = 0.0f;
+	static float s_TextWidth0DwC = 0.0f;
+	static float s_TextWidth00DwC = 0.0f;
+	static float s_TextWidth000DwC = 0.0f;
+
+	if(s_LastFontSize != FontSize)
+	{
+		s_TextWidthM = pTextRender->TextWidth(FontSize, "00:00", -1, -1.0f);
+		s_TextWidthH = pTextRender->TextWidth(FontSize, "00:00:00", -1, -1.0f);
+		s_TextWidth0D = pTextRender->TextWidth(FontSize, "0d 00:00:00", -1, -1.0f);
+		s_TextWidth00D = pTextRender->TextWidth(FontSize, "00d 00:00:00", -1, -1.0f);
+		s_TextWidth000D = pTextRender->TextWidth(FontSize, "000d 00:00:00", -1, -1.0f);
+		s_TextWidthMwC = pTextRender->TextWidth(FontSize, "00:00.00", -1, -1.0f);
+		s_TextWidthHwC = pTextRender->TextWidth(FontSize, "00:00:00.00", -1, -1.0f);
+		s_TextWidth0DwC = pTextRender->TextWidth(FontSize, "0d 00:00:00.00", -1, -1.0f);
+		s_TextWidth00DwC = pTextRender->TextWidth(FontSize, "00d 00:00:00.00", -1, -1.0f);
+		s_TextWidth000DwC = pTextRender->TextWidth(FontSize, "000d 00:00:00.00", -1, -1.0f);
+		s_LastFontSize = FontSize;
+	}
+
+	if(!ShowCentiseconds)
+	{
+		return TimeSeconds >= 3600 * 24 * 100 ? s_TextWidth000D :
+			TimeSeconds >= 3600 * 24 * 10 ? s_TextWidth00D :
+			TimeSeconds >= 3600 * 24 ? s_TextWidth0D :
+			TimeSeconds >= 3600 ? s_TextWidthH :
+			s_TextWidthM;
+	}
+
+	return TimeSeconds >= 3600 * 24 * 100 ? s_TextWidth000DwC :
+		TimeSeconds >= 3600 * 24 * 10 ? s_TextWidth00DwC :
+		TimeSeconds >= 3600 * 24 ? s_TextWidth0DwC :
+		TimeSeconds >= 3600 ? s_TextWidthHwC :
+		s_TextWidthMwC;
+}
+
+bool CMusicIsland::GetGameTimerRenderInfo(const CNetObj_GameInfo *pGameInfo, IClient *pClient, ITextRender *pTextRender, float FontSize, SGameTimerRenderInfo &RenderInfo)
+{
+	if(!pGameInfo || (pGameInfo->m_GameStateFlags & GAMESTATEFLAG_SUDDENDEATH))
+		return false;
+
+	const int GameTick = pClient->GameTick(g_Config.m_ClDummy);
+	const int GameTickSpeed = pClient->GameTickSpeed();
+	float TimeSeconds = 0.0f;
+	if(pGameInfo->m_TimeLimit && pGameInfo->m_WarmupTimer <= 0)
+	{
+		TimeSeconds = pGameInfo->m_TimeLimit * 60.0f -
+			(float)(GameTick - pGameInfo->m_RoundStartTick) / GameTickSpeed;
+
+		if(pGameInfo->m_GameStateFlags & GAMESTATEFLAG_GAMEOVER)
+			TimeSeconds = 0.0f;
+	}
+	else if(pGameInfo->m_GameStateFlags & GAMESTATEFLAG_RACETIME)
+	{
+		TimeSeconds = (float)(GameTick + pGameInfo->m_WarmupTimer) / GameTickSpeed;
+	}
+	else
+	{
+		TimeSeconds = (float)(GameTick - pGameInfo->m_RoundStartTick) / GameTickSpeed;
+	}
+
+	str_time((int64_t)(TimeSeconds * 100), g_Config.m_RiShowMilliSecondsTimer ? ETimeFormat::DAYS_CENTISECS : ETimeFormat::DAYS, RenderInfo.m_aText, sizeof(RenderInfo.m_aText));
+	RenderInfo.m_TextWidth = GetStableGameTimerWidth(pTextRender, FontSize, TimeSeconds, g_Config.m_RiShowMilliSecondsTimer != 0);
+	RenderInfo.m_ActualTextWidth = pTextRender->TextWidth(FontSize, RenderInfo.m_aText, -1, -1.0f);
+	RenderInfo.m_TextColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+
+	if(pGameInfo->m_TimeLimit && TimeSeconds <= 60.0f && pGameInfo->m_WarmupTimer <= 0)
+	{
+		const float Alpha = TimeSeconds <= 10.0f && (2 * time_get() / time_freq()) % 2 ? 0.5f : 1.0f;
+		RenderInfo.m_TextColor = ColorRGBA(1.0f, 0.25f, 0.25f, Alpha);
+	}
+
+	return true;
+}
+
+float CMusicIsland::GetScrollingTextOffset(float Overflow, float Seconds)
+{
+	if(Overflow <= 0.0f)
+		return 0.0f;
+
+	const float PauseSeconds = 0.75f;
+	const float ScrollSpeed = 16.0f;
+	const float TravelSeconds = Overflow / ScrollSpeed;
+	if(TravelSeconds <= 0.0f)
+		return 0.0f;
+
+	const float CycleSeconds = PauseSeconds + TravelSeconds + PauseSeconds + TravelSeconds;
+	float PhaseSeconds = std::fmod(Seconds, CycleSeconds);
+
+	if(PhaseSeconds < PauseSeconds)
+		return 0.0f;
+	PhaseSeconds -= PauseSeconds;
+
+	if(PhaseSeconds < TravelSeconds)
+		return PhaseSeconds * ScrollSpeed;
+	PhaseSeconds -= TravelSeconds;
+
+	if(PhaseSeconds < PauseSeconds)
+		return Overflow;
+	PhaseSeconds -= PauseSeconds;
+
+	return maximum(0.0f, Overflow - PhaseSeconds * ScrollSpeed);
+}
 
 #if defined(CONF_FAMILY_WINDOWS)
 static std::string MakeArtworkKey(const std::string &Title, const std::string &Artist, const std::string &Album)
@@ -234,11 +348,12 @@ void CMusicIsland::RenderMusicIsland()
 	m_Rect = Base;
 
 	Base.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 1.0f), IGraphics::CORNER_ALL, Base.h / 2);
-	Base.Margin(SEdgeHelperProperties::ms_Padding, &Base);
-	Base.VSplitLeft(15.0f, &MusicImage, &Base);
+	Base.VMargin(3.0f, &Base);
+	Base.HMargin(SEdgeHelperProperties::ms_Padding, &Base);
+	Base.VSplitLeft(8.0f, &MusicImage, &Base);
 	MusicImage.Margin(SEdgeHelperProperties::ms_Padding, &MusicImage);
-	Base.VSplitRight(15.0f, &Base, &Visualizer);
-	Base.VMargin(5.0f, &Base);
+	Base.VSplitRight(8.0f, &Base, &Visualizer);
+	Base.VMargin(1.0f, &Base);
 	if(g_Config.m_RiShowMusicIslandImage)
 		RenderMusicIslandImage(&MusicImage);
 	if(g_Config.m_RiShowMusicIslandVisualizer)
@@ -459,7 +574,55 @@ void CMusicIsland::RenderMusicIslandVisualizer(CUIRect *pBase)
 
 void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
 {
+	constexpr float BaseFontSize = 8.0f;
+	SGameTimerRenderInfo RenderInfo;
+	CUIRect TextRect = *pBase;
+	TextRect.VMargin(0.5f, &TextRect);
+	if(TextRect.w <= 0.0f || TextRect.h <= 0.0f)
+		return;
 
+	float RenderFontSize = minimum(BaseFontSize, TextRect.h);
+	if(!GetGameTimerRenderInfo(GameClient()->m_Snap.m_pGameInfoObj, Client(), TextRender(), RenderFontSize, RenderInfo))
+		return;
+
+	if(g_Config.m_RiShowMusicIslandTimerFull && RenderInfo.m_TextWidth > TextRect.w)
+	{
+		const float WidthScale = TextRect.w / RenderInfo.m_TextWidth;
+		RenderFontSize = maximum(1.0f, RenderFontSize * WidthScale);
+		if(!GetGameTimerRenderInfo(GameClient()->m_Snap.m_pGameInfoObj, Client(), TextRender(), RenderFontSize, RenderInfo))
+			return;
+	}
+
+	const bool ShouldScroll = !g_Config.m_RiShowMusicIslandTimerFull && RenderInfo.m_ActualTextWidth > TextRect.w;
+	const float LayoutWidth = g_Config.m_RiShowMusicIslandTimerFull ? RenderInfo.m_ActualTextWidth :
+		(RenderInfo.m_TextWidth <= TextRect.w ? RenderInfo.m_TextWidth : RenderInfo.m_ActualTextWidth);
+	float TextX = TextRect.x + (TextRect.w - LayoutWidth) / 2.0f;
+	if(ShouldScroll)
+	{
+		const float ScrollWidth = maximum(RenderInfo.m_TextWidth, RenderInfo.m_ActualTextWidth);
+		const float Overflow = ScrollWidth - TextRect.w;
+		TextX = TextRect.x - GetScrollingTextOffset(Overflow, LocalTime());
+	}
+
+	float TextY = TextRect.y + (TextRect.h - RenderFontSize) / 2.0f;
+	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+	const float ScreenWidth = ScreenX1 - ScreenX0;
+	const float ScreenHeight = ScreenY1 - ScreenY0;
+	const float PixelSizeX = ScreenWidth / Graphics()->ScreenWidth();
+	const float PixelSizeY = ScreenHeight / Graphics()->ScreenHeight();
+	TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
+	TextY = round_to_int(TextY / PixelSizeY) * PixelSizeY;
+	const int ClipX = (int)std::round((TextRect.x - ScreenX0) * Graphics()->ScreenWidth() / ScreenWidth);
+	const int ClipY = (int)std::round((TextRect.y - ScreenY0) * Graphics()->ScreenHeight() / ScreenHeight);
+	const int ClipW = (int)std::round(TextRect.w * Graphics()->ScreenWidth() / ScreenWidth);
+	const int ClipH = (int)std::round(TextRect.h * Graphics()->ScreenHeight() / ScreenHeight);
+
+	Graphics()->ClipEnable(ClipX, ClipY, ClipW, ClipH);
+	TextRender()->TextColor(RenderInfo.m_TextColor);
+	TextRender()->Text(TextX, TextY, RenderFontSize, RenderInfo.m_aText, -1.0f);
+	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+	Graphics()->ClipDisable();
 }
 
 void CMusicIsland::UpdateMusicImageTexture()
@@ -492,7 +655,7 @@ void CMusicIsland::RenderMusicIslandImage(CUIRect *pBase)
 {
 	CUIRect ImageRect = *pBase;
 	const float CubeSize = minimum(ImageRect.w, ImageRect.h);
-	ImageRect.x += (ImageRect.w - CubeSize) / 2.0f;
+	ImageRect.x += ImageRect.w - CubeSize;
 	ImageRect.y += (ImageRect.h - CubeSize) / 2.0f;
 	ImageRect.w = CubeSize;
 	ImageRect.h = CubeSize;
