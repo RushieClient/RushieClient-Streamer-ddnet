@@ -155,6 +155,15 @@ float CMusicIsland::GetScrollingTextOffset(float Overflow, float Seconds)
 	return maximum(0.0f, Overflow - PhaseSeconds * ScrollSpeed);
 }
 
+static float GetVisualizerBarPulse(float Time, int LayerIndex)
+{
+	const float Phase = 0.91f * (LayerIndex + 1);
+	const float Slow = 0.5f + 0.5f * std::sin(Time * (4.8f + LayerIndex * 0.35f) + Phase);
+	const float Mid = 0.5f + 0.5f * std::sin(Time * (9.4f + LayerIndex * 0.8f) + Phase * 1.8f + 0.35f);
+	const float Fast = 0.5f + 0.5f * std::sin(Time * (15.5f + LayerIndex * 1.15f) + Phase * 2.6f + 1.1f);
+	return maximum(0.0f, minimum(1.0f, Slow * 0.5f + Mid * 0.34f + Fast * 0.16f));
+}
+
 #if defined(CONF_FAMILY_WINDOWS)
 static std::string MakeArtworkKey(const std::string &Title, const std::string &Artist, const std::string &Album)
 {
@@ -569,7 +578,68 @@ void CMusicIsland::ConShowCurInfo(IConsole::IResult *pResult, void *pUserData)
 
 void CMusicIsland::RenderMusicIslandVisualizer(CUIRect *pBase)
 {
+	CUIRect VisualizerRect = *pBase;
+	VisualizerRect.Margin(vec2(0.35f, 0.45f), &VisualizerRect);
+	if(VisualizerRect.w <= 0.0f || VisualizerRect.h <= 0.0f)
+		return;
 
+	const SMusicInfo MusicInfo = GetMusicInfo();
+	const float Time = LocalTime();
+	const float MotionScale = MusicInfo.m_Playing ? 1.0f : (MusicInfo.m_Available ? 0.38f : 0.24f);
+	const float AlphaScale = MusicInfo.m_Playing ? 1.0f : (MusicInfo.m_Available ? 0.65f : 0.45f);
+	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+	const float PixelSizeX = (ScreenX1 - ScreenX0) / Graphics()->ScreenWidth();
+	const float PixelSizeY = (ScreenY1 - ScreenY0) / Graphics()->ScreenHeight();
+
+	constexpr int BarCount = 5;
+	const int CenterBar = BarCount / 2;
+	float aBarWidths[BarCount];
+	float TotalWidth = 0.0f;
+	for(int BarIndex = 0; BarIndex < BarCount; ++BarIndex)
+	{
+		const int DistIndex = std::abs(BarIndex - CenterBar);
+		const float ShapeStrength = 1.0f - DistIndex / 2.0f;
+		aBarWidths[BarIndex] = 0.74f + ShapeStrength * 0.46f;
+		TotalWidth += aBarWidths[BarIndex];
+	}
+
+	const float BarSpacing = 0.52f;
+	TotalWidth += BarSpacing * (BarCount - 1);
+	float CursorX = VisualizerRect.x + (VisualizerRect.w - TotalWidth) / 2.0f;
+	const float CenterY = VisualizerRect.y + VisualizerRect.h / 2.0f;
+
+	for(int BarIndex = 0; BarIndex < BarCount; ++BarIndex)
+	{
+		const int DistIndex = std::abs(BarIndex - CenterBar);
+		const float ShapeStrength = 1.0f - DistIndex / 2.0f;
+		const float Width = aBarWidths[BarIndex];
+		const float Pulse = GetVisualizerBarPulse(Time, BarIndex);
+		const float BaseHeight = 1.85f + ShapeStrength * 1.35f;
+		const float JumpHeight = (1.2f + ShapeStrength * 1.95f) * MotionScale;
+		const float Height = minimum(VisualizerRect.h, BaseHeight + Pulse * JumpHeight);
+
+		float Left = round_to_int(CursorX / PixelSizeX) * PixelSizeX;
+		float Right = round_to_int((CursorX + Width) / PixelSizeX) * PixelSizeX;
+		float Top = CenterY - Height / 2.0f;
+		float Bottom = CenterY + Height / 2.0f;
+		if(Right <= Left)
+			Right = Left + PixelSizeX;
+		if(Bottom <= Top)
+			Bottom = Top + maximum(PixelSizeY, 0.001f);
+
+		CUIRect BarRect = {Left, Top, Right - Left, Bottom - Top};
+		const float BarAlpha = (0.62f + ShapeStrength * 0.33f) * AlphaScale;
+		BarRect.Draw4(
+			ColorRGBA(0.47f, 0.9f, 1.0f, BarAlpha),
+			ColorRGBA(0.47f, 0.9f, 1.0f, BarAlpha),
+			ColorRGBA(0.0f, 0.66f, 1.0f, BarAlpha * 0.92f),
+			ColorRGBA(0.0f, 0.66f, 1.0f, BarAlpha * 0.92f),
+			IGraphics::CORNER_ALL,
+			BarRect.w / 2.0f);
+
+		CursorX += Width + BarSpacing;
+	}
 }
 
 void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
