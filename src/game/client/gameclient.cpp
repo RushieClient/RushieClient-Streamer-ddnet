@@ -205,6 +205,7 @@ void CGameClient::OnConsoleInit()
 						  &m_Emoticon,
 						  &m_ImportantAlert,
 						  &m_Menus,
+						  &m_MusicIsland,
 						  &m_Controls,
 						  &m_TouchControls,
 						  &m_Binds});

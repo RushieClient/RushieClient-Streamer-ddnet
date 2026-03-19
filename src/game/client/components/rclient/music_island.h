@@ -99,6 +99,7 @@ public:
 	void OnRender() override;
 	void OnConsoleInit() override;
 	void OnShutdown() override;
+	bool OnInput(const IInput::CEvent &Event) override;
 
 	bool IsActive() const;
 };

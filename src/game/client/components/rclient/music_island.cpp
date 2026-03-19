@@ -2,6 +2,7 @@
 
 #include <engine/font_icons.h>
 #include <engine/gfx/image_manipulation.h>
+#include <engine/keys.h>
 #include <engine/textrender.h>
 
 #include <game/client/gameclient.h>
@@ -316,6 +317,19 @@ void CMusicIsland::OnShutdown()
 	ResetMusicImage();
 }
 
+bool CMusicIsland::OnInput(const IInput::CEvent &Event)
+{
+	if(!IsActive())
+		return false;
+
+	if(Event.m_Key != KEY_MOUSE_1 || (Event.m_Flags & (IInput::FLAG_PRESS | IInput::FLAG_RELEASE)) == 0)
+		return false;
+
+	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+	return m_Rect.Inside(NativeMouseToScreen(Input(), Graphics(), vec2(ScreenX0, ScreenY0), vec2(ScreenX1, ScreenY1)));
+}
+
 void CMusicIsland::OnRender()
 {
 	if(!IsActive())
@@ -359,7 +373,7 @@ void CMusicIsland::RenderMusicIsland()
 
 	const float ControlsExtraHeight = SMusicIslandProperties::ms_ControlGap + SMusicIslandProperties::ms_ControlHeight;
 	const vec2 MousePos = NativeMouseToScreen(Input(), Graphics(), ScreenTL, ScreenBR);
-	const bool MousePressed = Input()->NativeMousePressed(0);
+	const bool MousePressed = Input()->KeyIsPressed(KEY_MOUSE_1);
 	const bool MouseClicked = MousePressed && !m_LastNativeMousePressed;
 
 	CUIRect BaseHoverRect = WindowRect;
@@ -742,7 +756,8 @@ void CMusicIsland::RenderMusicIslandVisualizer(CUIRect *pBase)
 
 	const SMusicInfo MusicInfo = GetMusicInfo();
 	const float Time = LocalTime();
-	const float MotionScale = MusicInfo.m_Playing ? 1.0f : (MusicInfo.m_Available ? 0.38f : 0.24f);
+	const bool Animated = MusicInfo.m_Playing;
+	const float MotionScale = Animated ? 1.0f : 0.0f;
 	const float AlphaScale = MusicInfo.m_Playing ? 1.0f : (MusicInfo.m_Available ? 0.65f : 0.45f);
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
@@ -768,11 +783,10 @@ void CMusicIsland::RenderMusicIslandVisualizer(CUIRect *pBase)
 
 	for(int BarIndex = 0; BarIndex < BarCount; ++BarIndex)
 	{
-		const int DistIndex = std::abs(BarIndex - CenterBar);
-		const float ShapeStrength = 1.0f - DistIndex / 2.0f;
+		const float ShapeStrength = Animated ? (1.0f - std::abs(BarIndex - CenterBar) / 2.0f) : 0.0f;
 		const float Width = aBarWidths[BarIndex];
-		const float Pulse = GetVisualizerBarPulse(Time, BarIndex);
-		const float BaseHeight = 1.85f + ShapeStrength * 1.35f;
+		const float Pulse = Animated ? GetVisualizerBarPulse(Time, BarIndex) : 0.0f;
+		const float BaseHeight = Animated ? (1.85f + ShapeStrength * 1.35f) : 1.65f;
 		const float JumpHeight = (1.2f + ShapeStrength * 1.95f) * MotionScale;
 		const float Height = minimum(VisualizerRect.h, BaseHeight + Pulse * JumpHeight);
 
