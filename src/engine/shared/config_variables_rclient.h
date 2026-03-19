@@ -187,3 +187,8 @@ MACRO_CONFIG_INT(RiSoundOnMoveNonInactive, ri_sound_on_move_nonactive, 0, 0, 2, 
 
 //Fastinput
 MACRO_CONFIG_INT(RiFastInputVersion, ri_fast_input_version, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Choose fastinput version (0-Tater's old, 1-Tater's new)")
+
+//Music island
+MACRO_CONFIG_INT(RiShowMusicIsland, ri_show_music_island, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island(windows only)")
+MACRO_CONFIG_INT(RiShowMusicIslandImage, ri_show_music_island_image, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music image (May eat fps)")
+MACRO_CONFIG_INT(RiShowMusicIslandVisualizer, ri_show_music_island, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island(windows only)")
