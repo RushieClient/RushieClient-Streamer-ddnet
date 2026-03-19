@@ -356,7 +356,7 @@ void CMusicIsland::RenderMusicIsland()
 
 	m_Rect = Base;
 
-	Base.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 1.0f), IGraphics::CORNER_ALL, Base.h / 2);
+	Base.Draw(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandColorBar, true)), IGraphics::CORNER_ALL, Base.h / 2);
 	Base.VMargin(3.0f, &Base);
 	Base.HMargin(SEdgeHelperProperties::ms_Padding, &Base);
 	Base.VSplitLeft(8.0f, &MusicImage, &Base);
