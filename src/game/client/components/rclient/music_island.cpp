@@ -28,6 +28,7 @@ struct SMusicIslandProperties
 	static constexpr float ms_Padding = 1.0f;
 	static constexpr float ms_Rounding = 3.0f;
 	static constexpr float ms_BaseHeight = 10.0f;
+	static constexpr float ms_ExpandedInfoHeight = 8.5f;
 	static constexpr float ms_ControlGap = 1.0f;
 	static constexpr float ms_ControlHeight = 8.0f;
 	static ColorRGBA WindowColorDark() { return ColorRGBA(0.2f, 0.2f, 0.2f, 0.9f); };
@@ -159,6 +160,39 @@ float CMusicIsland::GetScrollingTextOffset(float Overflow, float Seconds)
 	return maximum(0.0f, Overflow - PhaseSeconds * ScrollSpeed);
 }
 
+void CMusicIsland::RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *pTextRender, const CUIRect &Rect, const char *pText, float FontSize, const ColorRGBA &Color, float ScrollSeconds)
+{
+	if(Rect.w <= 0.0f || Rect.h <= 0.0f || pText == nullptr || pText[0] == '\0')
+		return;
+
+	const float TextWidth = pTextRender->TextWidth(FontSize, pText, -1, -1.0f);
+	float TextX = Rect.x + (Rect.w - TextWidth) / 2.0f;
+	if(TextWidth > Rect.w)
+		TextX = Rect.x - GetScrollingTextOffset(TextWidth - Rect.w, ScrollSeconds);
+	float TextY = Rect.y + (Rect.h - FontSize) / 2.0f;
+
+	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
+	pGraphics->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
+	const float ScreenWidth = ScreenX1 - ScreenX0;
+	const float ScreenHeight = ScreenY1 - ScreenY0;
+	const float PixelSizeX = ScreenWidth / pGraphics->ScreenWidth();
+	const float PixelSizeY = ScreenHeight / pGraphics->ScreenHeight();
+
+	TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
+	TextY = round_to_int(TextY / PixelSizeY) * PixelSizeY;
+
+	const int ClipX = (int)std::round((Rect.x - ScreenX0) * pGraphics->ScreenWidth() / ScreenWidth);
+	const int ClipY = (int)std::round((Rect.y - ScreenY0) * pGraphics->ScreenHeight() / ScreenHeight);
+	const int ClipW = (int)std::round(Rect.w * pGraphics->ScreenWidth() / ScreenWidth);
+	const int ClipH = (int)std::round(Rect.h * pGraphics->ScreenHeight() / ScreenHeight);
+
+	pGraphics->ClipEnable(ClipX, ClipY, ClipW, ClipH);
+	pTextRender->TextColor(Color);
+	pTextRender->Text(TextX, TextY, FontSize, pText, -1.0f);
+	pTextRender->TextColor(pTextRender->DefaultTextColor());
+	pGraphics->ClipDisable();
+}
+
 static float GetVisualizerBarPulse(float Time, int LayerIndex)
 {
 	const float Phase = 0.91f * (LayerIndex + 1);
@@ -180,8 +214,6 @@ static bool HasMusicIslandPlatformBackend()
 }
 
 #if defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
-namespace
-{
 constexpr const char *gs_pMprisPlayerInterface = "org.mpris.MediaPlayer2.Player";
 constexpr const char *gs_pMprisObjectPath = "/org/mpris/MediaPlayer2";
 constexpr const char *gs_pDbusService = "org.freedesktop.DBus";
@@ -203,7 +235,7 @@ struct SMprisPlayerState
 	std::string m_Album;
 };
 
-GVariant *MprisCallSync(GDBusConnection *pConnection, const char *pBusName, const char *pInterface, const char *pMethod, GVariant *pParameters, const GVariantType *pReplyType)
+static GVariant *MprisCallSync(GDBusConnection *pConnection, const char *pBusName, const char *pInterface, const char *pMethod, GVariant *pParameters, const GVariantType *pReplyType)
 {
 	GError *pError = nullptr;
 	GVariant *pResult = g_dbus_connection_call_sync(
@@ -226,7 +258,7 @@ GVariant *MprisCallSync(GDBusConnection *pConnection, const char *pBusName, cons
 	return pResult;
 }
 
-std::vector<std::string> GetMprisBusNames(GDBusConnection *pConnection)
+static std::vector<std::string> GetMprisBusNames(GDBusConnection *pConnection)
 {
 	std::vector<std::string> vNames;
 
@@ -267,7 +299,7 @@ std::vector<std::string> GetMprisBusNames(GDBusConnection *pConnection)
 	return vNames;
 }
 
-void ParseMprisMetadata(GVariant *pMetadata, SMprisPlayerState &State)
+static void ParseMprisMetadata(GVariant *pMetadata, SMprisPlayerState &State)
 {
 	GVariantIter Iter;
 	const char *pKey = nullptr;
@@ -297,7 +329,7 @@ void ParseMprisMetadata(GVariant *pMetadata, SMprisPlayerState &State)
 	}
 }
 
-bool QueryMprisPlayer(GDBusConnection *pConnection, const char *pBusName, SMprisPlayerState &State)
+static bool QueryMprisPlayer(GDBusConnection *pConnection, const char *pBusName, SMprisPlayerState &State)
 {
 	GVariant *pResult = MprisCallSync(
 		pConnection,
@@ -352,7 +384,7 @@ bool QueryMprisPlayer(GDBusConnection *pConnection, const char *pBusName, SMpris
 	return true;
 }
 
-bool QueryBestMprisPlayer(SMprisPlayerState &State)
+static bool QueryBestMprisPlayer(SMprisPlayerState &State)
 {
 	GError *pError = nullptr;
 	GDBusConnection *pConnection = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &pError);
@@ -395,7 +427,7 @@ bool QueryBestMprisPlayer(SMprisPlayerState &State)
 	return true;
 }
 
-void TriggerMprisControlAction(const char *pMethod)
+static void TriggerMprisControlAction(const char *pMethod)
 {
 	SMprisPlayerState PlayerState;
 	if(!QueryBestMprisPlayer(PlayerState) || PlayerState.m_BusName.empty())
@@ -419,7 +451,6 @@ void TriggerMprisControlAction(const char *pMethod)
 		g_variant_unref(pResult);
 	g_object_unref(pConnection);
 }
-} // namespace
 #endif
 
 #if defined(CONF_FAMILY_WINDOWS)
@@ -629,14 +660,16 @@ void CMusicIsland::RenderMusicIsland()
 		WindowRect.x -= WindowRect.x + WindowRect.w - ScreenBR.x;
 	}
 
+	const float MainExtraHeight = SMusicIslandProperties::ms_ExpandedInfoHeight;
 	const float ControlsExtraHeight = SMusicIslandProperties::ms_ControlGap + SMusicIslandProperties::ms_ControlHeight;
+	const float ExpandedExtraHeight = MainExtraHeight + ControlsExtraHeight;
 	const vec2 MousePos = NativeMouseToScreen(Input(), Graphics(), ScreenTL, ScreenBR);
 	const bool MousePressed = Input()->KeyIsPressed(KEY_MOUSE_1);
 	const bool MouseClicked = MousePressed && !m_LastNativeMousePressed;
 
 	CUIRect BaseHoverRect = WindowRect;
 	CUIRect ExpandedHoverRect = WindowRect;
-	ExpandedHoverRect.h += ControlsExtraHeight;
+	ExpandedHoverRect.h += ExpandedExtraHeight;
 
 	const bool Hovered = (m_ExtendAnim > 0.0f ? ExpandedHoverRect : BaseHoverRect).Inside(MousePos);
 	m_Extended = Hovered;
@@ -649,7 +682,7 @@ void CMusicIsland::RenderMusicIsland()
 		m_ExtendAnim = maximum(TargetAnim, m_ExtendAnim - AnimStep);
 
 	const float SmoothAnim = m_ExtendAnim * m_ExtendAnim * (3.0f - 2.0f * m_ExtendAnim);
-	WindowRect.h += ControlsExtraHeight * SmoothAnim;
+	WindowRect.h += ExpandedExtraHeight * SmoothAnim;
 
 	m_Rect = WindowRect;
 	WindowRect.Draw(MusicIslandWindowColor(), IGraphics::CORNER_ALL, SMusicIslandProperties::ms_BaseHeight / 2.0f);
@@ -658,7 +691,7 @@ void CMusicIsland::RenderMusicIsland()
 	CUIRect ControlsRect;
 	if(SmoothAnim > 0.0f)
 	{
-		HeaderRect.HSplitTop(SMusicIslandProperties::ms_BaseHeight, &HeaderRect, &ControlsRect);
+		HeaderRect.HSplitTop(SMusicIslandProperties::ms_BaseHeight + MainExtraHeight * SmoothAnim, &HeaderRect, &ControlsRect);
 		const float AnimatedGap = SMusicIslandProperties::ms_ControlGap * SmoothAnim;
 		if(AnimatedGap > 0.0f)
 			ControlsRect.HSplitTop(AnimatedGap, nullptr, &ControlsRect);
@@ -678,6 +711,7 @@ void CMusicIsland::RenderMusicIsland()
 		Base.VSplitRight(8.0f, &Base, &Visualizer);
 	}
 	Base.VMargin(1.0f, &Base);
+	const SMusicInfo MusicInfo = GetMusicInfo();
 	if(g_Config.m_RiShowMusicIslandImage)
 		RenderMusicIslandImage(&MusicImage);
 	if(g_Config.m_RiShowMusicIslandVisualizer)
@@ -685,7 +719,7 @@ void CMusicIsland::RenderMusicIsland()
 	RenderMusicIslandMain(&Base);
 
 	if(SmoothAnim > 0.0f)
-		RenderMusicIslandControls(&ControlsRect, GetMusicInfo(), MousePos, MouseClicked, MousePressed, SmoothAnim);
+		RenderMusicIslandControls(&ControlsRect, MusicInfo, MousePos, MouseClicked, MousePressed, SmoothAnim);
 
 	m_LastNativeMousePressed = MousePressed;
 }
@@ -1112,36 +1146,52 @@ void CMusicIsland::RenderMusicIslandVisualizer(CUIRect *pBase)
 void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
 {
 	constexpr float BaseFontSize = 8.0f;
+	constexpr float ExpandedTimerFontSize = 6.1f;
+	constexpr float TitleFontSize = 4.3f;
+	constexpr float ArtistFontSize = 3.5f;
+	constexpr float MetadataGap = 0.4f;
+	const float AnimProgress = m_ExtendAnim * m_ExtendAnim * (3.0f - 2.0f * m_ExtendAnim);
+	const SMusicInfo MusicInfo = GetMusicInfo();
 	SGameTimerRenderInfo RenderInfo;
 	CUIRect TextRect = *pBase;
 	TextRect.VMargin(0.5f, &TextRect);
 	if(TextRect.w <= 0.0f || TextRect.h <= 0.0f)
 		return;
 
-	float RenderFontSize = minimum(BaseFontSize, TextRect.h);
+	CUIRect TimerRect = TextRect;
+	CUIRect MetadataRect = TextRect;
+	const float TimerFontTarget = BaseFontSize + (ExpandedTimerFontSize - BaseFontSize) * AnimProgress;
+	float TimerBlockHeight = TextRect.h;
+	if(AnimProgress > 0.0f)
+	{
+		TimerBlockHeight = minimum(TextRect.h, 4.8f + 2.2f * (1.0f - AnimProgress));
+		TextRect.HSplitTop(TimerBlockHeight, &TimerRect, &MetadataRect);
+	}
+
+	float RenderFontSize = minimum(TimerFontTarget, TimerRect.h);
 	if(!GetGameTimerRenderInfo(GameClient()->m_Snap.m_pGameInfoObj, Client(), TextRender(), RenderFontSize, RenderInfo))
 		return;
 
-	if(g_Config.m_RiShowMusicIslandTimerFull && RenderInfo.m_TextWidth > TextRect.w)
+	if(g_Config.m_RiShowMusicIslandTimerFull && RenderInfo.m_TextWidth > TimerRect.w)
 	{
-		const float WidthScale = TextRect.w / RenderInfo.m_TextWidth;
+		const float WidthScale = TimerRect.w / RenderInfo.m_TextWidth;
 		RenderFontSize = maximum(1.0f, RenderFontSize * WidthScale);
 		if(!GetGameTimerRenderInfo(GameClient()->m_Snap.m_pGameInfoObj, Client(), TextRender(), RenderFontSize, RenderInfo))
 			return;
 	}
 
-	const bool ShouldScroll = !g_Config.m_RiShowMusicIslandTimerFull && RenderInfo.m_ActualTextWidth > TextRect.w;
+	const bool ShouldScroll = !g_Config.m_RiShowMusicIslandTimerFull && RenderInfo.m_ActualTextWidth > TimerRect.w;
 	const float LayoutWidth = g_Config.m_RiShowMusicIslandTimerFull ? RenderInfo.m_ActualTextWidth :
-		(RenderInfo.m_TextWidth <= TextRect.w ? RenderInfo.m_TextWidth : RenderInfo.m_ActualTextWidth);
-	float TextX = TextRect.x + (TextRect.w - LayoutWidth) / 2.0f;
+		(RenderInfo.m_TextWidth <= TimerRect.w ? RenderInfo.m_TextWidth : RenderInfo.m_ActualTextWidth);
+	float TextX = TimerRect.x + (TimerRect.w - LayoutWidth) / 2.0f;
 	if(ShouldScroll)
 	{
 		const float ScrollWidth = maximum(RenderInfo.m_TextWidth, RenderInfo.m_ActualTextWidth);
-		const float Overflow = ScrollWidth - TextRect.w;
-		TextX = TextRect.x - GetScrollingTextOffset(Overflow, LocalTime());
+		const float Overflow = ScrollWidth - TimerRect.w;
+		TextX = TimerRect.x - GetScrollingTextOffset(Overflow, LocalTime());
 	}
 
-	float TextY = TextRect.y + (TextRect.h - RenderFontSize) / 2.0f;
+	float TextY = TimerRect.y + (TimerRect.h - RenderFontSize) / 2.0f;
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
 	const float ScreenWidth = ScreenX1 - ScreenX0;
@@ -1150,16 +1200,41 @@ void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
 	const float PixelSizeY = ScreenHeight / Graphics()->ScreenHeight();
 	TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
 	TextY = round_to_int(TextY / PixelSizeY) * PixelSizeY;
-	const int ClipX = (int)std::round((TextRect.x - ScreenX0) * Graphics()->ScreenWidth() / ScreenWidth);
-	const int ClipY = (int)std::round((TextRect.y - ScreenY0) * Graphics()->ScreenHeight() / ScreenHeight);
-	const int ClipW = (int)std::round(TextRect.w * Graphics()->ScreenWidth() / ScreenWidth);
-	const int ClipH = (int)std::round(TextRect.h * Graphics()->ScreenHeight() / ScreenHeight);
+	const int ClipX = (int)std::round((TimerRect.x - ScreenX0) * Graphics()->ScreenWidth() / ScreenWidth);
+	const int ClipY = (int)std::round((TimerRect.y - ScreenY0) * Graphics()->ScreenHeight() / ScreenHeight);
+	const int ClipW = (int)std::round(TimerRect.w * Graphics()->ScreenWidth() / ScreenWidth);
+	const int ClipH = (int)std::round(TimerRect.h * Graphics()->ScreenHeight() / ScreenHeight);
 
 	Graphics()->ClipEnable(ClipX, ClipY, ClipW, ClipH);
 	TextRender()->TextColor(RenderInfo.m_TextColor);
 	TextRender()->Text(TextX, TextY, RenderFontSize, RenderInfo.m_aText, -1.0f);
 	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	Graphics()->ClipDisable();
+
+	if(AnimProgress <= 0.0f)
+		return;
+
+	const float MetadataAlpha = AnimProgress * AnimProgress;
+	MetadataRect.HMargin(0.25f, &MetadataRect);
+	if(MetadataRect.w <= 0.0f || MetadataRect.h <= 0.0f)
+		return;
+
+	const float TitleLineHeight = TitleFontSize + 0.6f;
+	const float ArtistLineHeight = ArtistFontSize + 0.5f;
+	const float TotalTextHeight = TitleLineHeight + MetadataGap + ArtistLineHeight;
+	if(MetadataRect.h < TotalTextHeight)
+		return;
+
+	CUIRect TitleRect = MetadataRect;
+	CUIRect ArtistRect = MetadataRect;
+	const float TopOffset = (MetadataRect.h - TotalTextHeight) / 2.0f;
+	TitleRect.y += TopOffset;
+	TitleRect.h = TitleLineHeight;
+	ArtistRect.y = TitleRect.y + TitleRect.h + MetadataGap;
+	ArtistRect.h = ArtistLineHeight;
+
+	RenderCenteredClippedText(Graphics(), TextRender(), TitleRect, MusicInfo.m_Title.c_str(), TitleFontSize, ColorRGBA(1.0f, 1.0f, 1.0f, MetadataAlpha), LocalTime());
+	RenderCenteredClippedText(Graphics(), TextRender(), ArtistRect, MusicInfo.m_Artist.c_str(), ArtistFontSize, ColorRGBA(0.82f, 0.86f, 0.92f, MetadataAlpha), LocalTime() + 0.8f);
 }
 
 void CMusicIsland::UpdateMusicImageTexture()
