@@ -541,6 +541,7 @@ void CChat::EnableMode(int Team)
 		m_CompletionChosen = -1;
 		m_CompletionUsed = false;
 		m_Input.Activate(EInputPriority::CHAT);
+		Input()->MouseModeAbsolute();
 	}
 }
 
@@ -550,6 +551,7 @@ void CChat::DisableMode()
 	{
 		m_Mode = MODE_NONE;
 		m_Input.Deactivate();
+		Input()->MouseModeRelative();
 	}
 }
 
@@ -1336,6 +1338,8 @@ void CChat::OnRender()
 	float ScaledFontSize = FontSize() * (8.0f / 6.0f);
 	if(m_Mode != MODE_NONE)
 	{
+		Input()->MouseModeAbsolute();
+
 		// render chat input
 		CTextCursor InputCursor;
 		InputCursor.SetPosition(vec2(x, y));

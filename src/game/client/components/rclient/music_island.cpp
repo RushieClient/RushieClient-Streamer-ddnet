@@ -18,29 +18,28 @@
 #include <winrt/Windows.Storage.Streams.h>
 #endif
 
-struct SEdgeHelperProperties
+struct SMusicIslandProperties
 {
 	static constexpr float ms_Padding = 1.0f;
 	static constexpr float ms_Rounding = 3.0f;
-
-	static constexpr float ms_ItemSpacing = 2.0f;
-
-	static constexpr float ms_ArrowsSize = 18.0f;
-	static constexpr float ms_WallWidth = 3.0f;
-	static constexpr float ms_CircleRadius = 8.0f;
-	static constexpr float ms_CircleThickness = 2.0f;
-
-	static constexpr float ms_HeadlineFontSize = 8.0f;
-
-	static ColorRGBA WindowColor() { return ColorRGBA(0.451f, 0.451f, 0.451f, 0.9f); };
+	static constexpr float ms_BaseHeight = 10.0f;
+	static constexpr float ms_ControlGap = 1.0f;
+	static constexpr float ms_ControlHeight = 8.0f;
 	static ColorRGBA WindowColorDark() { return ColorRGBA(0.2f, 0.2f, 0.2f, 0.9f); };
-	static ColorRGBA WindowColorMedium() { return ColorRGBA(0.35f, 0.35f, 0.35f, 0.9f); };
-
-	static ColorRGBA ActionActiveButtonColor() { return ColorRGBA(0.53f, 0.78f, 0.53f, 0.8f); };
-	static ColorRGBA ActionAltActiveButtonColor() { return ColorRGBA(1.0f, 0.42f, 0.42f, 0.8f); };
-	static ColorRGBA BlueSteelButtonColor() { return ColorRGBA(0.2f, 0.4f, 0.65f, 0.8f); };
-	static ColorRGBA ActionWhiteButtonColor() { return ColorRGBA(1.0f, 1.0f, 1.0f, 0.8f); };
 };
+
+static ColorRGBA MusicIslandWindowColor()
+{
+	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandColorBar, true));
+}
+
+static vec2 NativeMouseToScreen(IInput *pInput, IGraphics *pGraphics, vec2 ScreenTL, vec2 ScreenBR)
+{
+	const vec2 NativeMousePos = pInput->NativeMousePos();
+	return vec2(
+		ScreenTL.x + NativeMousePos.x * (ScreenBR.x - ScreenTL.x) / pGraphics->ScreenWidth(),
+		ScreenTL.y + NativeMousePos.y * (ScreenBR.y - ScreenTL.y) / pGraphics->ScreenHeight());
+}
 
 float CMusicIsland::GetStableGameTimerWidth(ITextRender *pTextRender, float FontSize, float TimeSeconds, bool ShowCentiseconds)
 {
@@ -298,6 +297,8 @@ void CMusicIsland::OnReset()
 	StopInfoWorker();
 	StopImageWorker();
 	m_Extended = false;
+	m_ExtendAnim = 0.0f;
+	m_LastNativeMousePressed = false;
 	m_NextInfoUpdateTime = 0;
 	ResetMusicInfo();
 	ResetMusicImage();
@@ -308,6 +309,8 @@ void CMusicIsland::OnShutdown()
 	StopInfoWorker();
 	StopImageWorker();
 	m_Extended = false;
+	m_ExtendAnim = 0.0f;
+	m_LastNativeMousePressed = false;
 	m_NextInfoUpdateTime = 0;
 	ResetMusicInfo();
 	ResetMusicImage();
@@ -335,34 +338,68 @@ void CMusicIsland::OnRender()
 
 void CMusicIsland::RenderMusicIsland()
 {
-	CUIRect Base, MusicImage, Visualizer;
+	CUIRect WindowRect;
 
 	vec2 ScreenTL, ScreenBR;
 	Graphics()->GetScreen(&ScreenTL.x, &ScreenTL.y, &ScreenBR.x, &ScreenBR.y);
 
-	Base.h = 10.0f;
-	Base.w = 75.0f;
-	Base.x = ScreenTL.x + (ScreenBR.x - ScreenTL.x - Base.w) / 2.0f;
-	Base.y = ScreenTL.y + 2.5f;
+	WindowRect.h = SMusicIslandProperties::ms_BaseHeight;
+	WindowRect.w = 75.0f;
+	WindowRect.x = ScreenTL.x + (ScreenBR.x - ScreenTL.x - WindowRect.w) / 2.0f;
+	WindowRect.y = ScreenTL.y + 2.5f;
 
-	if(Base.y + Base.h > ScreenBR.y)
+	if(WindowRect.y + WindowRect.h > ScreenBR.y)
 	{
-		Base.y -= Base.y + Base.h - ScreenBR.y;
+		WindowRect.y -= WindowRect.y + WindowRect.h - ScreenBR.y;
 	}
-	if(Base.x + Base.w > ScreenBR.x)
+	if(WindowRect.x + WindowRect.w > ScreenBR.x)
 	{
-		Base.x -= Base.x + Base.w - ScreenBR.x;
+		WindowRect.x -= WindowRect.x + WindowRect.w - ScreenBR.x;
 	}
 
-	m_Rect = Base;
+	const float ControlsExtraHeight = SMusicIslandProperties::ms_ControlGap + SMusicIslandProperties::ms_ControlHeight;
+	const vec2 MousePos = NativeMouseToScreen(Input(), Graphics(), ScreenTL, ScreenBR);
+	const bool MousePressed = Input()->NativeMousePressed(0);
+	const bool MouseClicked = MousePressed && !m_LastNativeMousePressed;
 
-	Base.Draw(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandColorBar, true)), IGraphics::CORNER_ALL, Base.h / 2);
+	CUIRect BaseHoverRect = WindowRect;
+	CUIRect ExpandedHoverRect = WindowRect;
+	ExpandedHoverRect.h += ControlsExtraHeight;
+
+	const bool Hovered = (m_ExtendAnim > 0.0f ? ExpandedHoverRect : BaseHoverRect).Inside(MousePos);
+	m_Extended = Hovered;
+
+	const float TargetAnim = Hovered ? 1.0f : 0.0f;
+	const float AnimStep = Client()->RenderFrameTime() * 10.0f;
+	if(m_ExtendAnim < TargetAnim)
+		m_ExtendAnim = minimum(TargetAnim, m_ExtendAnim + AnimStep);
+	else if(m_ExtendAnim > TargetAnim)
+		m_ExtendAnim = maximum(TargetAnim, m_ExtendAnim - AnimStep);
+
+	const float SmoothAnim = m_ExtendAnim * m_ExtendAnim * (3.0f - 2.0f * m_ExtendAnim);
+	WindowRect.h += ControlsExtraHeight * SmoothAnim;
+
+	m_Rect = WindowRect;
+	WindowRect.Draw(MusicIslandWindowColor(), IGraphics::CORNER_ALL, SMusicIslandProperties::ms_BaseHeight / 2.0f);
+
+	CUIRect HeaderRect = WindowRect;
+	CUIRect ControlsRect;
+	if(SmoothAnim > 0.0f)
+	{
+		HeaderRect.HSplitTop(SMusicIslandProperties::ms_BaseHeight, &HeaderRect, &ControlsRect);
+		const float AnimatedGap = SMusicIslandProperties::ms_ControlGap * SmoothAnim;
+		if(AnimatedGap > 0.0f)
+			ControlsRect.HSplitTop(AnimatedGap, nullptr, &ControlsRect);
+	}
+
+	CUIRect Base = HeaderRect;
+	CUIRect MusicImage, Visualizer;
 	Base.VMargin(3.0f, &Base);
-	Base.HMargin(SEdgeHelperProperties::ms_Padding, &Base);
+	Base.HMargin(SMusicIslandProperties::ms_Padding, &Base);
 	if(g_Config.m_RiShowMusicIslandImage)
 	{
 		Base.VSplitLeft(8.0f, &MusicImage, &Base);
-		MusicImage.HMargin(SEdgeHelperProperties::ms_Padding, &MusicImage);
+		MusicImage.HMargin(SMusicIslandProperties::ms_Padding, &MusicImage);
 	}
 	if(g_Config.m_RiShowMusicIslandVisualizer)
 	{
@@ -374,6 +411,73 @@ void CMusicIsland::RenderMusicIsland()
 	if(g_Config.m_RiShowMusicIslandVisualizer)
 		RenderMusicIslandVisualizer(&Visualizer);
 	RenderMusicIslandMain(&Base);
+
+	if(SmoothAnim > 0.0f)
+		RenderMusicIslandControls(&ControlsRect, GetMusicInfo(), MousePos, MouseClicked, MousePressed, SmoothAnim);
+
+	m_LastNativeMousePressed = MousePressed;
+}
+
+bool CMusicIsland::DoControlButton(const CUIRect *pRect, const char *pIcon, bool Enabled, vec2 MousePos, bool MouseClicked, bool MousePressed, float AnimProgress)
+{
+	const bool Hovered = Enabled && pRect->Inside(MousePos);
+	const bool Active = Hovered && MousePressed;
+	const float BaseAlpha = !Enabled ? 0.3f : (Active ? 1.0f : (Hovered ? 0.95f : 0.75f));
+	const float IconAlpha = BaseAlpha * AnimProgress;
+
+	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+	TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH |
+		ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING |
+		ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING);
+	TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor().WithAlpha(IconAlpha));
+	TextRender()->TextColor(TextRender()->DefaultTextColor().WithAlpha(IconAlpha));
+
+	const float IconSize = pRect->h * 0.68f;
+	const float IconWidth = TextRender()->TextWidth(IconSize, pIcon, -1, -1.0f);
+	const float IconX = pRect->x + (pRect->w - IconWidth) / 2.0f;
+	const float IconY = pRect->y + (pRect->h - IconSize) / 2.0f;
+	TextRender()->Text(IconX, IconY, IconSize, pIcon, -1.0f);
+
+	TextRender()->SetRenderFlags(0);
+	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	TextRender()->TextOutlineColor(TextRender()->DefaultTextOutlineColor());
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
+
+	return Enabled && Hovered && MouseClicked;
+}
+
+void CMusicIsland::RenderMusicIslandControls(CUIRect *pBase, const SMusicInfo &MusicInfo, vec2 MousePos, bool MouseClicked, bool MousePressed, float AnimProgress)
+{
+	CUIRect Controls = *pBase;
+	Controls.Margin(vec2(14.0f, 0.7f), &Controls);
+	if(Controls.w <= 0.0f || Controls.h <= 0.0f)
+		return;
+
+	const float Gap = 2.0f;
+	const float ButtonWidth = (Controls.w - Gap * 2.0f) / 3.0f;
+	if(ButtonWidth <= 0.0f)
+		return;
+
+	CUIRect PreviousButton;
+	CUIRect PlayPauseButton;
+	CUIRect NextButton;
+
+	Controls.VSplitLeft(ButtonWidth, &PreviousButton, &Controls);
+	Controls.VSplitLeft(Gap, nullptr, &Controls);
+	Controls.VSplitLeft(ButtonWidth, &PlayPauseButton, &Controls);
+	Controls.VSplitLeft(Gap, nullptr, &Controls);
+	NextButton = Controls;
+
+	if(DoControlButton(&PreviousButton, FontIcon::BACKWARD_STEP, MusicInfo.m_CanGoPrevious, MousePos, MouseClicked, MousePressed, AnimProgress))
+		TriggerControlAction(CONTROL_BUTTON_PREVIOUS);
+
+	const char *pPlayPauseIcon = MusicInfo.m_Playing ? FontIcon::PAUSE : FontIcon::PLAY;
+	const bool CanTogglePlayback = MusicInfo.m_Playing ? MusicInfo.m_CanPause : MusicInfo.m_CanPlay;
+	if(DoControlButton(&PlayPauseButton, pPlayPauseIcon, CanTogglePlayback, MousePos, MouseClicked, MousePressed, AnimProgress))
+		TriggerControlAction(CONTROL_BUTTON_PLAY_PAUSE);
+
+	if(DoControlButton(&NextButton, FontIcon::FORWARD_STEP, MusicInfo.m_CanGoNext, MousePos, MouseClicked, MousePressed, AnimProgress))
+		TriggerControlAction(CONTROL_BUTTON_NEXT);
 }
 
 void CMusicIsland::StartInfoWorker(int64_t Now)
@@ -444,9 +548,14 @@ void CMusicIsland::UpdateMusicInfo()
 		{
 			const auto PlaybackInfo = Session.GetPlaybackInfo();
 			const auto MediaProperties = Session.TryGetMediaPropertiesAsync().get();
+			const auto Controls = PlaybackInfo ? PlaybackInfo.Controls() : nullptr;
 
 			NewInfo.m_Available = true;
 			NewInfo.m_Playing = PlaybackInfo && PlaybackInfo.PlaybackStatus() == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
+			NewInfo.m_CanPlay = Controls && Controls.IsPlayEnabled();
+			NewInfo.m_CanPause = Controls && Controls.IsPauseEnabled();
+			NewInfo.m_CanGoPrevious = Controls && Controls.IsPreviousEnabled();
+			NewInfo.m_CanGoNext = Controls && Controls.IsNextEnabled();
 			NewInfo.m_Title = winrt::to_string(MediaProperties.Title());
 			NewInfo.m_Artist = winrt::to_string(MediaProperties.Artist());
 			NewInfo.m_Album = winrt::to_string(MediaProperties.AlbumTitle());
@@ -560,6 +669,48 @@ void CMusicIsland::UpdateMusicInfo()
 		winrt::uninit_apartment();
 		m_ImageWorkerRunning.store(false);
 	});
+#endif
+}
+
+void CMusicIsland::TriggerControlAction(EControlButton Button)
+{
+#if defined(CONF_FAMILY_WINDOWS)
+	m_NextInfoUpdateTime = 0;
+	std::thread([Button]() {
+		try
+		{
+			winrt::init_apartment(winrt::apartment_type::multi_threaded);
+
+			using namespace winrt::Windows::Media::Control;
+
+			const auto SessionManager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
+			const auto Session = SessionManager.GetCurrentSession();
+			if(Session)
+			{
+				switch(Button)
+				{
+				case CONTROL_BUTTON_PREVIOUS:
+					Session.TrySkipPreviousAsync().get();
+					break;
+				case CONTROL_BUTTON_PLAY_PAUSE:
+					Session.TryTogglePlayPauseAsync().get();
+					break;
+				case CONTROL_BUTTON_NEXT:
+					Session.TrySkipNextAsync().get();
+					break;
+				default:
+					break;
+				}
+			}
+
+			winrt::uninit_apartment();
+		}
+		catch(...)
+		{
+		}
+	}).detach();
+#else
+	(void)Button;
 #endif
 }
 
@@ -736,7 +887,7 @@ void CMusicIsland::RenderMusicIslandImage(CUIRect *pBase)
 	ImageRect.w = CubeSize;
 	ImageRect.h = CubeSize;
 
-	ImageRect.Draw(SEdgeHelperProperties::WindowColorDark(), IGraphics::CORNER_ALL, SEdgeHelperProperties::ms_Rounding);
+	ImageRect.Draw(SMusicIslandProperties::WindowColorDark(), IGraphics::CORNER_ALL, SMusicIslandProperties::ms_Rounding);
 
 	if(m_MusicImageTexture.IsValid() && m_MusicImageWidth > 0 && m_MusicImageHeight > 0)
 	{

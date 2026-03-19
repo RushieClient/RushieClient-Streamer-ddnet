@@ -17,10 +17,22 @@ class CMusicIsland : public CComponent
 {
 	static void ConShowCurInfo(IConsole::IResult *pResult, void *pUserData);
 
+	enum EControlButton
+	{
+		CONTROL_BUTTON_PREVIOUS = 0,
+		CONTROL_BUTTON_PLAY_PAUSE,
+		CONTROL_BUTTON_NEXT,
+		NUM_CONTROL_BUTTONS,
+	};
+
 	struct SMusicInfo
 	{
 		bool m_Available = false;
 		bool m_Playing = false;
+		bool m_CanPlay = false;
+		bool m_CanPause = false;
+		bool m_CanGoPrevious = false;
+		bool m_CanGoNext = false;
 		std::string m_Title;
 		std::string m_Artist;
 		std::string m_Album;
@@ -35,6 +47,7 @@ class CMusicIsland : public CComponent
 	};
 
 	bool m_Extended = false;
+	float m_ExtendAnim = 0.0f;
 
 	CUIRect m_Rect;
 
@@ -53,11 +66,14 @@ class CMusicIsland : public CComponent
 	IGraphics::CTextureHandle m_MusicImageTexture;
 	int m_MusicImageWidth = 0;
 	int m_MusicImageHeight = 0;
+	bool m_LastNativeMousePressed = false;
 
 	void ResetMusicInfo();
 	void ResetMusicImage();
 	SMusicInfo GetMusicInfo() const;
 	void RenderMusicIsland();
+	void RenderMusicIslandControls(CUIRect *pBase, const SMusicInfo &MusicInfo, vec2 MousePos, bool MouseClicked, bool MousePressed, float AnimProgress);
+	bool DoControlButton(const CUIRect *pRect, const char *pIcon, bool Enabled, vec2 MousePos, bool MouseClicked, bool MousePressed, float AnimProgress);
 	void RenderMusicIslandImage(CUIRect *pBase);
 	void RenderMusicIslandVisualizer(CUIRect *pBase);
 	void RenderMusicIslandMain(CUIRect *pBase);
@@ -67,6 +83,7 @@ class CMusicIsland : public CComponent
 	void StopImageWorker();
 	void InfoWorkerLoop();
 	void UpdateMusicInfo();
+	void TriggerControlAction(EControlButton Button);
 	static float GetStableGameTimerWidth(ITextRender *pTextRender, float FontSize, float TimeSeconds, bool ShowCentiseconds);
 	static bool GetGameTimerRenderInfo(const CNetObj_GameInfo *pGameInfo, IClient *pClient, ITextRender *pTextRender, float FontSize, SGameTimerRenderInfo &RenderInfo);
 	static float GetScrollingTextOffset(float Overflow, float Seconds);
