@@ -9,6 +9,8 @@
 
 #include <cmath>
 #include <cstring>
+#include <utility>
+#include <vector>
 
 #if defined(CONF_FAMILY_WINDOWS)
 #pragma comment(lib, "runtimeobject.lib")
@@ -17,6 +19,8 @@
 #include <winrt/Windows.Media.Control.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Storage.Streams.h>
+#elif defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
+#include <gio/gio.h>
 #endif
 
 struct SMusicIslandProperties
@@ -163,6 +167,260 @@ static float GetVisualizerBarPulse(float Time, int LayerIndex)
 	const float Fast = 0.5f + 0.5f * std::sin(Time * (15.5f + LayerIndex * 1.15f) + Phase * 2.6f + 1.1f);
 	return maximum(0.0f, minimum(1.0f, Slow * 0.5f + Mid * 0.34f + Fast * 0.16f));
 }
+
+static bool HasMusicIslandPlatformBackend()
+{
+#if defined(CONF_FAMILY_WINDOWS)
+	return true;
+#elif defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
+	return true;
+#else
+	return false;
+#endif
+}
+
+#if defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
+namespace
+{
+constexpr const char *gs_pMprisPlayerInterface = "org.mpris.MediaPlayer2.Player";
+constexpr const char *gs_pMprisObjectPath = "/org/mpris/MediaPlayer2";
+constexpr const char *gs_pDbusService = "org.freedesktop.DBus";
+constexpr const char *gs_pDbusPath = "/org/freedesktop/DBus";
+constexpr const char *gs_pDbusInterface = "org.freedesktop.DBus";
+constexpr const char *gs_pDbusPropertiesInterface = "org.freedesktop.DBus.Properties";
+constexpr const char *gs_pMprisBusPrefix = "org.mpris.MediaPlayer2.";
+
+struct SMprisPlayerState
+{
+	bool m_Playing = false;
+	bool m_CanPlay = false;
+	bool m_CanPause = false;
+	bool m_CanGoPrevious = false;
+	bool m_CanGoNext = false;
+	std::string m_BusName;
+	std::string m_Title;
+	std::string m_Artist;
+	std::string m_Album;
+};
+
+GVariant *MprisCallSync(GDBusConnection *pConnection, const char *pBusName, const char *pInterface, const char *pMethod, GVariant *pParameters, const GVariantType *pReplyType)
+{
+	GError *pError = nullptr;
+	GVariant *pResult = g_dbus_connection_call_sync(
+		pConnection,
+		pBusName,
+		gs_pMprisObjectPath,
+		pInterface,
+		pMethod,
+		pParameters,
+		pReplyType,
+		G_DBUS_CALL_FLAGS_NONE,
+		1000,
+		nullptr,
+		&pError);
+	if(pError != nullptr)
+	{
+		g_error_free(pError);
+		return nullptr;
+	}
+	return pResult;
+}
+
+std::vector<std::string> GetMprisBusNames(GDBusConnection *pConnection)
+{
+	std::vector<std::string> vNames;
+
+	GError *pError = nullptr;
+	GVariant *pResult = g_dbus_connection_call_sync(
+		pConnection,
+		gs_pDbusService,
+		gs_pDbusPath,
+		gs_pDbusInterface,
+		"ListNames",
+		nullptr,
+		G_VARIANT_TYPE("(as)"),
+		G_DBUS_CALL_FLAGS_NONE,
+		1000,
+		nullptr,
+		&pError);
+	if(pError != nullptr)
+	{
+		g_error_free(pError);
+		return vNames;
+	}
+	if(pResult == nullptr)
+		return vNames;
+
+	GVariant *pNames = nullptr;
+	g_variant_get(pResult, "(@as)", &pNames);
+	GVariantIter Iter;
+	const char *pName = nullptr;
+	g_variant_iter_init(&Iter, pNames);
+	while(g_variant_iter_next(&Iter, "&s", &pName))
+	{
+		if(std::strncmp(pName, gs_pMprisBusPrefix, std::strlen(gs_pMprisBusPrefix)) == 0)
+			vNames.emplace_back(pName);
+	}
+
+	g_variant_unref(pNames);
+	g_variant_unref(pResult);
+	return vNames;
+}
+
+void ParseMprisMetadata(GVariant *pMetadata, SMprisPlayerState &State)
+{
+	GVariantIter Iter;
+	const char *pKey = nullptr;
+	GVariant *pValue = nullptr;
+	g_variant_iter_init(&Iter, pMetadata);
+	while(g_variant_iter_next(&Iter, "{&sv}", &pKey, &pValue))
+	{
+		GVariant *pInnerValue = g_variant_get_variant(pValue);
+		if(std::strcmp(pKey, "xesam:title") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_STRING))
+		{
+			State.m_Title = g_variant_get_string(pInnerValue, nullptr);
+		}
+		else if(std::strcmp(pKey, "xesam:album") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_STRING))
+		{
+			State.m_Album = g_variant_get_string(pInnerValue, nullptr);
+		}
+		else if(std::strcmp(pKey, "xesam:artist") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE("as")))
+		{
+			gsize NumArtists = 0;
+			const gchar **ppArtists = g_variant_get_strv(pInnerValue, &NumArtists);
+			if(NumArtists > 0 && ppArtists[0] != nullptr)
+				State.m_Artist = ppArtists[0];
+			g_free((gpointer)ppArtists);
+		}
+		g_variant_unref(pInnerValue);
+		g_variant_unref(pValue);
+	}
+}
+
+bool QueryMprisPlayer(GDBusConnection *pConnection, const char *pBusName, SMprisPlayerState &State)
+{
+	GVariant *pResult = MprisCallSync(
+		pConnection,
+		pBusName,
+		gs_pDbusPropertiesInterface,
+		"GetAll",
+		g_variant_new("(s)", gs_pMprisPlayerInterface),
+		G_VARIANT_TYPE("(a{sv})"));
+	if(pResult == nullptr)
+		return false;
+
+	GVariant *pProperties = nullptr;
+	g_variant_get(pResult, "(@a{sv})", &pProperties);
+	GVariantIter Iter;
+	const char *pKey = nullptr;
+	GVariant *pValue = nullptr;
+	g_variant_iter_init(&Iter, pProperties);
+	while(g_variant_iter_next(&Iter, "{&sv}", &pKey, &pValue))
+	{
+		GVariant *pInnerValue = g_variant_get_variant(pValue);
+		if(std::strcmp(pKey, "PlaybackStatus") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_STRING))
+		{
+			State.m_Playing = std::strcmp(g_variant_get_string(pInnerValue, nullptr), "Playing") == 0;
+		}
+		else if(std::strcmp(pKey, "CanPlay") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_BOOLEAN))
+		{
+			State.m_CanPlay = g_variant_get_boolean(pInnerValue);
+		}
+		else if(std::strcmp(pKey, "CanPause") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_BOOLEAN))
+		{
+			State.m_CanPause = g_variant_get_boolean(pInnerValue);
+		}
+		else if(std::strcmp(pKey, "CanGoPrevious") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_BOOLEAN))
+		{
+			State.m_CanGoPrevious = g_variant_get_boolean(pInnerValue);
+		}
+		else if(std::strcmp(pKey, "CanGoNext") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_BOOLEAN))
+		{
+			State.m_CanGoNext = g_variant_get_boolean(pInnerValue);
+		}
+		else if(std::strcmp(pKey, "Metadata") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_VARDICT))
+		{
+			ParseMprisMetadata(pInnerValue, State);
+		}
+		g_variant_unref(pInnerValue);
+		g_variant_unref(pValue);
+	}
+
+	State.m_BusName = pBusName;
+	g_variant_unref(pProperties);
+	g_variant_unref(pResult);
+	return true;
+}
+
+bool QueryBestMprisPlayer(SMprisPlayerState &State)
+{
+	GError *pError = nullptr;
+	GDBusConnection *pConnection = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &pError);
+	if(pError != nullptr)
+	{
+		g_error_free(pError);
+		return false;
+	}
+	if(pConnection == nullptr)
+		return false;
+
+	bool FoundPlayer = false;
+	SMprisPlayerState FallbackState;
+
+	for(const std::string &BusName : GetMprisBusNames(pConnection))
+	{
+		SMprisPlayerState CandidateState;
+		if(!QueryMprisPlayer(pConnection, BusName.c_str(), CandidateState))
+			continue;
+
+		if(!FoundPlayer)
+		{
+			FallbackState = CandidateState;
+			FoundPlayer = true;
+		}
+
+		if(CandidateState.m_Playing)
+		{
+			State = std::move(CandidateState);
+			g_object_unref(pConnection);
+			return true;
+		}
+	}
+
+	g_object_unref(pConnection);
+	if(!FoundPlayer)
+		return false;
+
+	State = std::move(FallbackState);
+	return true;
+}
+
+void TriggerMprisControlAction(const char *pMethod)
+{
+	SMprisPlayerState PlayerState;
+	if(!QueryBestMprisPlayer(PlayerState) || PlayerState.m_BusName.empty())
+		return;
+
+	if(pMethod == nullptr)
+		return;
+
+	GError *pError = nullptr;
+	GDBusConnection *pConnection = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &pError);
+	if(pError != nullptr)
+	{
+		g_error_free(pError);
+		return;
+	}
+	if(pConnection == nullptr)
+		return;
+
+	GVariant *pResult = MprisCallSync(pConnection, PlayerState.m_BusName.c_str(), gs_pMprisPlayerInterface, pMethod, nullptr, nullptr);
+	if(pResult != nullptr)
+		g_variant_unref(pResult);
+	g_object_unref(pConnection);
+}
+} // namespace
+#endif
 
 #if defined(CONF_FAMILY_WINDOWS)
 static std::string MakeArtworkKey(const std::string &Title, const std::string &Artist, const std::string &Album)
@@ -336,7 +594,7 @@ void CMusicIsland::OnRender()
 		return;
 
 	const int64_t Now = time_get();
-	if(!m_InfoWorkerRunning.load() && (m_NextInfoUpdateTime == 0 || Now >= m_NextInfoUpdateTime))
+	if(HasMusicIslandPlatformBackend() && !m_InfoWorkerRunning.load() && (m_NextInfoUpdateTime == 0 || Now >= m_NextInfoUpdateTime))
 		StartInfoWorker(Now);
 
 	if(g_Config.m_RiShowMusicIslandImage)
@@ -496,7 +754,6 @@ void CMusicIsland::RenderMusicIslandControls(CUIRect *pBase, const SMusicInfo &M
 
 void CMusicIsland::StartInfoWorker(int64_t Now)
 {
-#if defined(CONF_FAMILY_WINDOWS)
 	if(m_InfoWorkerRunning.load())
 		return;
 
@@ -507,18 +764,15 @@ void CMusicIsland::StartInfoWorker(int64_t Now)
 	m_InfoWorkerRunning.store(true);
 	m_NextInfoUpdateTime = Now + time_freq();
 	m_InfoWorker = std::thread(&CMusicIsland::InfoWorkerLoop, this);
-#endif
 }
 
 void CMusicIsland::StopInfoWorker()
 {
-#if defined(CONF_FAMILY_WINDOWS)
 	m_InfoWorkerStopRequested.store(true);
 	if(m_InfoWorker.joinable())
 		m_InfoWorker.join();
 
 	m_InfoWorkerRunning.store(false);
-#endif
 }
 
 void CMusicIsland::StopImageWorker()
@@ -536,10 +790,12 @@ void CMusicIsland::InfoWorkerLoop()
 {
 #if defined(CONF_FAMILY_WINDOWS)
 	winrt::init_apartment(winrt::apartment_type::multi_threaded);
-	UpdateMusicInfo();
-	winrt::uninit_apartment();
-	m_InfoWorkerRunning.store(false);
 #endif
+	UpdateMusicInfo();
+#if defined(CONF_FAMILY_WINDOWS)
+	winrt::uninit_apartment();
+#endif
+	m_InfoWorkerRunning.store(false);
 }
 
 void CMusicIsland::UpdateMusicInfo()
@@ -683,6 +939,29 @@ void CMusicIsland::UpdateMusicInfo()
 		winrt::uninit_apartment();
 		m_ImageWorkerRunning.store(false);
 	});
+#elif defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
+	SMusicInfo NewInfo;
+	SMprisPlayerState PlayerState;
+	if(QueryBestMprisPlayer(PlayerState))
+	{
+		NewInfo.m_Available = true;
+		NewInfo.m_Playing = PlayerState.m_Playing;
+		NewInfo.m_CanPlay = PlayerState.m_CanPlay;
+		NewInfo.m_CanPause = PlayerState.m_CanPause;
+		NewInfo.m_CanGoPrevious = PlayerState.m_CanGoPrevious;
+		NewInfo.m_CanGoNext = PlayerState.m_CanGoNext;
+		NewInfo.m_Title = std::move(PlayerState.m_Title);
+		NewInfo.m_Artist = std::move(PlayerState.m_Artist);
+		NewInfo.m_Album = std::move(PlayerState.m_Album);
+	}
+
+	if(m_InfoWorkerStopRequested.load())
+		return;
+
+	{
+		std::lock_guard<std::mutex> Guard(m_MusicInfoMutex);
+		m_MusicInfo = std::move(NewInfo);
+	}
 #endif
 }
 
@@ -723,6 +1002,26 @@ void CMusicIsland::TriggerControlAction(EControlButton Button)
 		{
 		}
 	}).detach();
+#elif defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
+	m_NextInfoUpdateTime = 0;
+	const char *pMethod = nullptr;
+	switch(Button)
+	{
+	case CONTROL_BUTTON_PREVIOUS:
+		pMethod = "Previous";
+		break;
+	case CONTROL_BUTTON_PLAY_PAUSE:
+		pMethod = "PlayPause";
+		break;
+	case CONTROL_BUTTON_NEXT:
+		pMethod = "Next";
+		break;
+	default:
+		break;
+	}
+	std::thread([pMethod]() {
+		TriggerMprisControlAction(pMethod);
+	}).detach();
 #else
 	(void)Button;
 #endif
@@ -730,11 +1029,8 @@ void CMusicIsland::TriggerControlAction(EControlButton Button)
 
 bool CMusicIsland::IsActive() const
 {
-#if defined(CONF_FAMILY_WINDOWS)
-	if(g_Config.m_RiShowMusicIsland)
-		return true;
-	else
-		return false;
+#if defined(CONF_FAMILY_WINDOWS) || defined(CONF_PLATFORM_LINUX)
+	return g_Config.m_RiShowMusicIsland != 0;
 #else
 	return false;
 #endif

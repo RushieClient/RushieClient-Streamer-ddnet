@@ -2205,7 +2205,7 @@ void CHud::OnRender()
 			RenderSpectatorHud();
 		}
 
-		if(g_Config.m_ClShowhudTimer && !g_Config.m_RiShowMusicIsland)
+		if(g_Config.m_ClShowhudTimer && GameClient()->m_MusicIsland.IsActive())
 			RenderGameTimer();
 		RenderPauseNotification();
 		RenderSuddenDeath();
