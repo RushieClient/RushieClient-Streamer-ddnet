@@ -611,12 +611,21 @@ bool CMusicIsland::OnInput(const IInput::CEvent &Event)
 	if(!IsActive())
 		return false;
 
+	if(!CanUseMouseInteraction())
+		return false;
+
 	if(Event.m_Key != KEY_MOUSE_1 || (Event.m_Flags & (IInput::FLAG_PRESS | IInput::FLAG_RELEASE)) == 0)
 		return false;
 
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
 	return m_Rect.Inside(NativeMouseToScreen(Input(), Graphics(), vec2(ScreenX0, ScreenY0), vec2(ScreenX1, ScreenY1)));
+}
+
+bool CMusicIsland::CanUseMouseInteraction() const
+{
+	return GameClient()->m_Chat.IsActive() ||
+		GameClient()->m_Scoreboard.IsActive();
 }
 
 void CMusicIsland::OnRender()
@@ -663,15 +672,16 @@ void CMusicIsland::RenderMusicIsland()
 	const float MainExtraHeight = SMusicIslandProperties::ms_ExpandedInfoHeight;
 	const float ControlsExtraHeight = SMusicIslandProperties::ms_ControlGap + SMusicIslandProperties::ms_ControlHeight;
 	const float ExpandedExtraHeight = MainExtraHeight + ControlsExtraHeight;
-	const vec2 MousePos = NativeMouseToScreen(Input(), Graphics(), ScreenTL, ScreenBR);
-	const bool MousePressed = Input()->KeyIsPressed(KEY_MOUSE_1);
-	const bool MouseClicked = MousePressed && !m_LastNativeMousePressed;
+	const bool UseMouse = CanUseMouseInteraction();
+	const vec2 MousePos = UseMouse ? NativeMouseToScreen(Input(), Graphics(), ScreenTL, ScreenBR) : vec2(-1.0f, -1.0f);
+	const bool MousePressed = UseMouse && Input()->KeyIsPressed(KEY_MOUSE_1);
+	const bool MouseClicked = UseMouse && MousePressed && !m_LastNativeMousePressed;
 
 	CUIRect BaseHoverRect = WindowRect;
 	CUIRect ExpandedHoverRect = WindowRect;
 	ExpandedHoverRect.h += ExpandedExtraHeight;
 
-	const bool Hovered = (m_ExtendAnim > 0.0f ? ExpandedHoverRect : BaseHoverRect).Inside(MousePos);
+	const bool Hovered = UseMouse && (m_ExtendAnim > 0.0f ? ExpandedHoverRect : BaseHoverRect).Inside(MousePos);
 	m_Extended = Hovered;
 
 	const float TargetAnim = Hovered ? 1.0f : 0.0f;
@@ -1064,7 +1074,7 @@ void CMusicIsland::TriggerControlAction(EControlButton Button)
 bool CMusicIsland::IsActive() const
 {
 #if defined(CONF_FAMILY_WINDOWS) || defined(CONF_PLATFORM_LINUX)
-	return g_Config.m_RiShowMusicIsland != 0;
+	return g_Config.m_RiShowMusicIsland;
 #else
 	return false;
 #endif
