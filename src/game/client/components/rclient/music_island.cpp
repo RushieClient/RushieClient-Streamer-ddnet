@@ -630,6 +630,10 @@ bool CMusicIsland::CanUseMouseInteraction() const
 
 void CMusicIsland::OnRender()
 {
+}
+
+void CMusicIsland::RenderHud()
+{
 	if(!IsActive())
 		return;
 

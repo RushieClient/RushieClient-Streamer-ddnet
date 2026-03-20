@@ -2225,6 +2225,7 @@ void CHud::OnRender()
 		if(g_Config.m_ClShowRecord)
 			RenderRecord();
 	}
+	GameClient()->m_MusicIsland.RenderHud();
 	RenderCursor();
 }
 

@@ -96,6 +96,7 @@ public:
 	int Sizeof() const override { return sizeof(*this); }
 
 	void SetExtended(bool Extended);
+	void RenderHud();
 
 	void OnReset() override;
 	void OnRender() override;
