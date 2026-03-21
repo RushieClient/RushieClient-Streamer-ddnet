@@ -574,7 +574,7 @@ CMusicIsland::SMusicInfo CMusicIsland::GetMusicInfo() const
 
 void CMusicIsland::OnConsoleInit()
 {
-	Console()->Register("ri_show_cur_info", "", CFGFLAG_CLIENT, ConShowCurInfo, this, "Print current music info");
+	Console()->Register("ri_show_cur_music_info", "", CFGFLAG_CLIENT, ConShowCurMusicInfo, this, "Print current music info");
 }
 
 void CMusicIsland::SetExtended(bool Extended)
@@ -1084,7 +1084,7 @@ bool CMusicIsland::IsActive() const
 #endif
 }
 
-void CMusicIsland::ConShowCurInfo(IConsole::IResult *pResult, void *pUserData)
+void CMusicIsland::ConShowCurMusicInfo(IConsole::IResult *pResult, void *pUserData)
 {
 	auto *pSelf = static_cast<CMusicIsland *>(pUserData);
 	const SMusicInfo Info = pSelf->GetMusicInfo();

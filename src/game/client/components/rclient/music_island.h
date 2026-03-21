@@ -15,7 +15,7 @@
 
 class CMusicIsland : public CComponent
 {
-	static void ConShowCurInfo(IConsole::IResult *pResult, void *pUserData);
+	static void ConShowCurMusicInfo(IConsole::IResult *pResult, void *pUserData);
 
 	enum EControlButton
 	{
