@@ -47,6 +47,13 @@ static vec2 NativeMouseToScreen(IInput *pInput, IGraphics *pGraphics, vec2 Scree
 		ScreenTL.y + NativeMousePos.y * (ScreenBR.y - ScreenTL.y) / pGraphics->ScreenHeight());
 }
 
+static vec2 UiMouseToScreen(const CUIRect *pUiScreen, vec2 UiMousePos, vec2 ScreenTL, vec2 ScreenBR)
+{
+	return vec2(
+		ScreenTL.x + (UiMousePos.x - pUiScreen->x) * (ScreenBR.x - ScreenTL.x) / pUiScreen->w,
+		ScreenTL.y + (UiMousePos.y - pUiScreen->y) * (ScreenBR.y - ScreenTL.y) / pUiScreen->h);
+}
+
 float CMusicIsland::GetStableGameTimerWidth(ITextRender *pTextRender, float FontSize, float TimeSeconds, bool ShowCentiseconds)
 {
 	static float s_LastFontSize = -1.0f;
@@ -619,13 +626,21 @@ bool CMusicIsland::OnInput(const IInput::CEvent &Event)
 
 	float ScreenX0, ScreenY0, ScreenX1, ScreenY1;
 	Graphics()->GetScreen(&ScreenX0, &ScreenY0, &ScreenX1, &ScreenY1);
-	return m_Rect.Inside(NativeMouseToScreen(Input(), Graphics(), vec2(ScreenX0, ScreenY0), vec2(ScreenX1, ScreenY1)));
+	return m_Rect.Inside(MouseInteractionPos(vec2(ScreenX0, ScreenY0), vec2(ScreenX1, ScreenY1)));
 }
 
 bool CMusicIsland::CanUseMouseInteraction() const
 {
-	return GameClient()->m_Chat.IsActive() ||
-		GameClient()->m_Scoreboard.IsActive();
+	return GameClient()->m_Chat.HasMouseCursor() ||
+		GameClient()->m_Scoreboard.HasMouseCursor();
+}
+
+vec2 CMusicIsland::MouseInteractionPos(vec2 ScreenTL, vec2 ScreenBR) const
+{
+	if(GameClient()->m_Chat.HasMouseCursor())
+		return UiMouseToScreen(Ui()->Screen(), GameClient()->m_Chat.MouseCursorPos(), ScreenTL, ScreenBR);
+	if(GameClient()->m_Scoreboard.HasMouseCursor())
+		return UiMouseToScreen(Ui()->Screen(), GameClient()->m_Scoreboard.MouseCursorPos(), ScreenTL, ScreenBR);
 }
 
 void CMusicIsland::OnRender()
@@ -677,7 +692,7 @@ void CMusicIsland::RenderMusicIsland()
 	const float ControlsExtraHeight = SMusicIslandProperties::ms_ControlGap + SMusicIslandProperties::ms_ControlHeight;
 	const float ExpandedExtraHeight = MainExtraHeight + ControlsExtraHeight;
 	const bool UseMouse = CanUseMouseInteraction();
-	const vec2 MousePos = UseMouse ? NativeMouseToScreen(Input(), Graphics(), ScreenTL, ScreenBR) : vec2(-1.0f, -1.0f);
+	const vec2 MousePos = UseMouse ? MouseInteractionPos(ScreenTL, ScreenBR) : vec2(-1.0f, -1.0f);
 	const bool MousePressed = UseMouse && Input()->KeyIsPressed(KEY_MOUSE_1);
 	const bool MouseClicked = UseMouse && MousePressed && !m_LastNativeMousePressed;
 

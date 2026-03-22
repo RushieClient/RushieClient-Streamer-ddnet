@@ -156,6 +156,8 @@ class CChat : public CComponent
 	bool m_IsInputCensored;
 	char m_aCurrentInputText[MAX_LINE_LENGTH];
 	bool m_EditingNewLine;
+	vec2 m_LastMousePos{};
+	bool m_HasLastMousePos = false;
 
 	bool m_ServerSupportsCommandInfo;
 
@@ -171,6 +173,7 @@ class CChat : public CComponent
 	static void ConchainChatWidth(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
 	void StoreSave(const char *pText);
+	void SetUiMousePos(vec2 Pos);
 
 	friend class CBindChat;
 	friend class CTranslate;
@@ -205,6 +208,7 @@ public:
 	void OnRelease() override;
 	void OnMessage(int MsgType, void *pRawMsg) override;
 	bool OnInput(const IInput::CEvent &Event) override;
+	bool OnCursorMove(float x, float y, IInput::ECursorType CursorType) override;
 	void OnInit() override;
 
 	void RebuildChat();
@@ -212,6 +216,8 @@ public:
 
 	void EnsureCoherentFontSize() const;
 	void EnsureCoherentWidth() const;
+	bool HasMouseCursor() const { return IsActive(); }
+	vec2 MouseCursorPos() const;
 
 	float FontSize() const { return g_Config.m_ClChatFontSize / 10.0f; }
 	float MessagePaddingX() const { return FontSize() * (5 / 6.f); }
