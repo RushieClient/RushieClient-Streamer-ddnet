@@ -1078,7 +1078,7 @@ void CMusicIsland::TriggerControlAction(EControlButton Button)
 bool CMusicIsland::IsActive() const
 {
 #if defined(CONF_FAMILY_WINDOWS) || defined(CONF_PLATFORM_LINUX)
-	return g_Config.m_RiShowMusicIsland;
+	return g_Config.m_RiShowMusicIsland != 0;
 #else
 	return false;
 #endif
