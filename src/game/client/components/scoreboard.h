@@ -111,6 +111,7 @@ public:
 	bool OnInput(const IInput::CEvent &Event) override;
 
 	bool IsActive() const;
+	bool HasMouseCursor() const { return IsActive() && m_MouseUnlocked; };
 };
 
 #endif
