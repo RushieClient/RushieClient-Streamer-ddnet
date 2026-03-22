@@ -39,6 +39,11 @@ static ColorRGBA MusicIslandWindowColor()
 	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandColorBar, true));
 }
 
+static ColorRGBA MusicIslandGapsColor()
+{
+	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandSectionsColor, true));
+}
+
 static vec2 NativeMouseToScreen(IInput *pInput, IGraphics *pGraphics, vec2 ScreenTL, vec2 ScreenBR)
 {
 	const vec2 NativeMousePos = pInput->NativeMousePos();
@@ -173,8 +178,9 @@ void CMusicIsland::RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *
 		return;
 
 	const float TextWidth = pTextRender->TextWidth(FontSize, pText, -1, -1.0f);
+	const bool ShouldScroll = TextWidth > Rect.w;
 	float TextX = Rect.x + (Rect.w - TextWidth) / 2.0f;
-	if(TextWidth > Rect.w)
+	if(ShouldScroll)
 		TextX = Rect.x - GetScrollingTextOffset(TextWidth - Rect.w, ScrollSeconds);
 	float TextY = Rect.y + (Rect.h - FontSize) / 2.0f;
 
@@ -185,7 +191,8 @@ void CMusicIsland::RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *
 	const float PixelSizeX = ScreenWidth / pGraphics->ScreenWidth();
 	const float PixelSizeY = ScreenHeight / pGraphics->ScreenHeight();
 
-	TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
+	if(!ShouldScroll)
+		TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
 	TextY = round_to_int(TextY / PixelSizeY) * PixelSizeY;
 
 	const int ClipX = (int)std::round((Rect.x - ScreenX0) * pGraphics->ScreenWidth() / ScreenWidth);
@@ -696,6 +703,7 @@ void CMusicIsland::RenderMusicIsland()
 	const vec2 MousePos = UseMouse ? MouseInteractionPos(ScreenTL, ScreenBR) : vec2(-1.0f, -1.0f);
 	const bool MousePressed = UseMouse && Input()->KeyIsPressed(KEY_MOUSE_1);
 	const bool MouseClicked = UseMouse && MousePressed && !m_LastNativeMousePressed;
+	const bool ShowGaps = g_Config.m_RiShowMusicIslandSections;
 
 	CUIRect BaseHoverRect = WindowRect;
 	CUIRect ExpandedHoverRect = WindowRect;
@@ -718,17 +726,27 @@ void CMusicIsland::RenderMusicIsland()
 	WindowRect.Draw(MusicIslandWindowColor(), IGraphics::CORNER_ALL, SMusicIslandProperties::ms_BaseHeight / 2.0f);
 
 	CUIRect HeaderRect = WindowRect;
-	CUIRect ControlsRect;
+	CUIRect ControlsRect, GapsRect;
 	if(SmoothAnim > 0.0f)
 	{
 		HeaderRect.HSplitTop(SMusicIslandProperties::ms_BaseHeight + MainExtraHeight * SmoothAnim, &HeaderRect, &ControlsRect);
 		const float AnimatedGap = SMusicIslandProperties::ms_ControlGap * SmoothAnim;
 		if(AnimatedGap > 0.0f)
-			ControlsRect.HSplitTop(AnimatedGap, nullptr, &ControlsRect);
+		{
+			if(ShowGaps)
+			{
+				ControlsRect.HSplitTop(AnimatedGap, &GapsRect, &ControlsRect);
+				GapsRect.VMargin(5.0f, &GapsRect);
+				GapsRect.HSplitTop(0.75f, &GapsRect, nullptr);
+				GapsRect.Draw(SMusicIslandProperties::WindowColorDark(), IGraphics::CORNER_NONE, 0.0f);
+			}
+			else
+				ControlsRect.HSplitTop(AnimatedGap, nullptr, &ControlsRect);
+		}
 	}
-
 	CUIRect Base = HeaderRect;
 	CUIRect MusicImage, Visualizer;
+
 	Base.VMargin(3.0f, &Base);
 	Base.HMargin(SMusicIslandProperties::ms_Padding, &Base);
 	if(g_Config.m_RiShowMusicIslandImage)
@@ -740,7 +758,20 @@ void CMusicIsland::RenderMusicIsland()
 	{
 		Base.VSplitRight(8.0f, &Base, &Visualizer);
 	}
-	Base.VMargin(1.0f, &Base);
+	if(ShowGaps)
+	{
+		Base.VSplitLeft(1.25f, &GapsRect, &Base);
+		GapsRect.VSplitLeft(0.75f, nullptr, &GapsRect);
+		GapsRect.Draw(MusicIslandGapsColor(), IGraphics::CORNER_NONE, 0.0f);
+
+		Base.VSplitRight(1.25f, &Base, &GapsRect);
+		GapsRect.VSplitRight(0.75f, &GapsRect, nullptr);
+		GapsRect.Draw(MusicIslandGapsColor(), IGraphics::CORNER_NONE, 0.0f);
+
+		Base.VMargin(0.25f, &Base);
+	}
+	else
+		Base.VMargin(1.5f, &Base);
 	const SMusicInfo MusicInfo = GetMusicInfo();
 	if(g_Config.m_RiShowMusicIslandImage)
 		RenderMusicIslandImage(&MusicImage);
@@ -1228,7 +1259,8 @@ void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
 	const float ScreenHeight = ScreenY1 - ScreenY0;
 	const float PixelSizeX = ScreenWidth / Graphics()->ScreenWidth();
 	const float PixelSizeY = ScreenHeight / Graphics()->ScreenHeight();
-	TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
+	if(!ShouldScroll)
+		TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
 	TextY = round_to_int(TextY / PixelSizeY) * PixelSizeY;
 	const int ClipX = (int)std::round((TimerRect.x - ScreenX0) * Graphics()->ScreenWidth() / ScreenWidth);
 	const int ClipY = (int)std::round((TimerRect.y - ScreenY0) * Graphics()->ScreenHeight() / ScreenHeight);
