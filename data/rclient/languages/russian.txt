@@ -594,7 +594,7 @@ Find teleport
 == Найти телепорт
 
 Voice
-== Голос
+== Войс
 
 Enable voice chat
 == Включить голосовой чат
@@ -680,8 +680,8 @@ Output device
 Use ri_voice_list_devices in console
 == Используйте ri_voice_list_devices в консоли
 
-Voice PTT
-== PTT голоса
+Voice button
+== Кнопка вкл голоса
 
 [VoiceChat]
 Block people with:
@@ -890,3 +890,21 @@ Menu
 
 Color of settings menu
 == Цвет настроек в меню
+
+[Voice activation]
+Voice activation:
+== Активация войса:
+
+[Voice activation]
+Push to talk
+== По нажатию
+
+[Voice activation]
+Voice
+== По голосу
+
+VAD threshold (%)
+== Порог активации (%)
+
+VAD release delay (ms)
+== Задержка VAD (мс)

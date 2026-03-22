@@ -78,7 +78,7 @@ MACRO_CONFIG_INT(RiVoiceHearVad, ri_voice_hear_vad, 1, 0, 1, CFGFLAG_CLIENT | CF
 MACRO_CONFIG_STR(RiVoiceVadAllow, ri_voice_vad_allow, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice activation allow list (comma-separated names)")
 MACRO_CONFIG_STR(RiVoiceNameVolumes, ri_voice_name_volumes, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Voice per-name volume list (name=percent)")
 MACRO_CONFIG_INT(RiVoiceShowIndicator, ri_voice_show_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice activity icon in nameplates")
-MACRO_CONFIG_INT(RiVoiceIndicatorAboveSelf, ri_voice_indicator_above_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice activity icon above yourself")
+MACRO_CONFIG_INT(RiVoiceIndicatorAboveSelf, ri_voice_indicator_above_self, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice activity icon above yourself")
 MACRO_CONFIG_INT(RiVoiceShowPing, ri_voice_show_ping, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice ping near HUD indicator")
 MACRO_CONFIG_INT(RiVoiceDebug, ri_voice_debug, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Log voice chat debug info to console")
 MACRO_CONFIG_INT(RiVoiceShowWhenActive, ri_voice_show_when_active, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show voice chat indicator when active")
