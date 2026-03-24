@@ -47,6 +47,9 @@ struct SClickGuiProperties
 
 	static constexpr float ms_SettingsTabsWidth = 285.0f;
 
+	static constexpr float ms_SettingsFunctionWidth = 410.0f;
+	static constexpr float ms_SettingsFunctionHeight = 180.0f;
+
 	static constexpr float ms_Rounding = 10.0f;
 
 	static ColorRGBA Hex141414Color() { return ColorRGBA(0.0784f, 0.0784f, 0.0784f, 1.0f); };
@@ -233,6 +236,7 @@ void CMenusRClientClickGui::OnRender()
 	//LEFTSIDE end
 
 	//RIGHTSIDE start
+	//Tabs start
 	CUIRect SettingsTabs;
 	Body.VMargin(DefaultVMargin, &Body);
 	Body.HSplitTop(TeeSkinSize, &SettingsTabs, &Body);
@@ -258,6 +262,18 @@ void CMenusRClientClickGui::OnRender()
 		if(Tab != NUM_CLICKGUI_TABS - 1)
 			SettingsTabs.VSplitLeft(SettingsTabsAutoGaps, nullptr, &SettingsTabs);
 	}
+	//Tabs end
+
+	Body.HMargin(DefaultVMargin, &Body);
+
+	//Main render
+	Body.Draw(SClickGuiProperties::Hex1E1E1EColor(), IGraphics::CORNER_ALL, DefaultRounding);
+	if(s_CurTab == CLICKGUI_TAB_SETTINGS)
+		RenderClickGuiRushieSettings(Body, PixelSize);
+	if(s_CurTab == CLICKGUI_TAB_VOICE)
+		RenderClickGuiRushieVoice(Body, PixelSize);
+	if(s_CurTab == CLICKGUI_TAB_INFO)
+		RenderClickGuiRushieInfo(Body, PixelSize);
 
 
 }
@@ -315,4 +331,21 @@ void CMenusRClientClickGui::RenderTeeCute(const CAnimState *pAnim, const CTeeRen
 	if(CuteEyes && Length < 0.4f)
 		Emote = 2;
 	RenderTools()->RenderTee(pAnim, pInfo, Emote, Dir, Pos, Alpha);
+}
+
+void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float ScreenPixelSize)
+{
+	const float SettingsFunctionWidth = SClickGuiProperties::ms_SettingsFunctionWidth * ScreenPixelSize;
+	const float SettingsFunctionHeight = SClickGuiProperties::ms_SettingsFunctionHeight * ScreenPixelSize;
+	const float DefaultVMargin = SClickGuiProperties::ms_DefaultVMargin * ScreenPixelSize;
+}
+
+void CMenusRClientClickGui::RenderClickGuiRushieVoice(CUIRect MainView, float ScreenPixelSize)
+{
+
+}
+
+void CMenusRClientClickGui::RenderClickGuiRushieInfo(CUIRect MainView, float ScreenPixelSize)
+{
+
 }

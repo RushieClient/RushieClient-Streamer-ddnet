@@ -14,6 +14,10 @@ class CMenusRClientClickGui : public CComponent
 	void RenderDevSkin(vec2 RenderPos, float Size, const char *pSkinName, const char *pBackupSkin, bool CustomColors, int FeetColor, int BodyColor, int Emote, bool Cute,
 			ColorRGBA ColorFeet = ColorRGBA(0, 0, 0, 0), ColorRGBA ColorBody = ColorRGBA(0, 0, 0, 0));
 	void RenderTeeCute(const CAnimState *pAnim, const CTeeRenderInfo *pInfo, int Emote, vec2 Dir, vec2 Pos, bool CuteEyes, float Alpha = 1.0f);
+
+	void RenderClickGuiRushieSettings(CUIRect MainView, float ScreenPixelSize);
+	void RenderClickGuiRushieVoice(CUIRect MainView, float ScreenPixelSize);
+	void RenderClickGuiRushieInfo(CUIRect MainView, float ScreenPixelSize);
 public:
 	int Sizeof() const override { return sizeof(*this); }
 
