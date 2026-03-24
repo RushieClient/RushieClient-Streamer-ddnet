@@ -7,9 +7,22 @@
 #include "game/client/render.h"
 #include "generated/client_data.h"
 
+#include <algorithm>
+#include <chrono>
 #include <engine/graphics.h>
 
 #include <game/client/ui.h>
+#include <game/localization.h>
+
+using namespace std::chrono_literals;
+
+enum
+{
+	CLICKGUI_TAB_SETTINGS = 0,
+	CLICKGUI_TAB_VOICE,
+	CLICKGUI_TAB_INFO,
+	NUM_CLICKGUI_TABS
+};
 
 struct SClickGuiProperties
 {
@@ -32,7 +45,7 @@ struct SClickGuiProperties
 	static constexpr float ms_ButtonSpace = 7.5f;
 	static constexpr float ms_SmallButtonSpace = 5.0f;
 
-	static constexpr float ms_SettingsTabsWidth = 155.0f;
+	static constexpr float ms_SettingsTabsWidth = 285.0f;
 
 	static constexpr float ms_Rounding = 10.0f;
 
@@ -41,6 +54,71 @@ struct SClickGuiProperties
 	static ColorRGBA Hex2A2A2AColor() { return ColorRGBA(0.1647f, 0.1647f, 0.1647f, 1.0f); };
 	static ColorRGBA Hex4E4E4EColor() { return ColorRGBA(0.3059f, 0.3059f, 0.3059f, 1.0f); };
 };
+
+static int DoButton_MenuTab(CUi *pUi, CButtonContainer *pButtonContainer, const char *pText, int Checked, const CUIRect *pRect, int Corners, SUIAnimator *pAnimator = nullptr, const ColorRGBA *pDefaultColor = nullptr, const ColorRGBA *pActiveColor = nullptr, const ColorRGBA *pHoverColor = nullptr, float EdgeRounding = 10.0f, float FontScale = 1.0f)
+{
+	const bool MouseInside = pUi->HotItem() == pButtonContainer;
+	CUIRect Rect = *pRect;
+
+	if(pAnimator != nullptr)
+	{
+		const auto Time = time_get_nanoseconds();
+
+		if(pAnimator->m_Time + 100ms < Time)
+		{
+			pAnimator->m_Value = pAnimator->m_Active ? 1 : 0;
+			pAnimator->m_Time = Time;
+		}
+
+		pAnimator->m_Active = Checked || MouseInside;
+
+		if(pAnimator->m_Active)
+			pAnimator->m_Value = std::clamp<float>(pAnimator->m_Value + (Time - pAnimator->m_Time).count() / (double)std::chrono::nanoseconds(100ms).count(), 0.0f, 1.0f);
+		else
+			pAnimator->m_Value = std::clamp<float>(pAnimator->m_Value - (Time - pAnimator->m_Time).count() / (double)std::chrono::nanoseconds(100ms).count(), 0.0f, 1.0f);
+
+		Rect.w += pAnimator->m_Value * pAnimator->m_WOffset;
+		Rect.h += pAnimator->m_Value * pAnimator->m_HOffset;
+		Rect.x += pAnimator->m_Value * pAnimator->m_XOffset;
+		Rect.y += pAnimator->m_Value * pAnimator->m_YOffset;
+
+		pAnimator->m_Time = Time;
+	}
+
+	if(Checked)
+	{
+		Rect.Draw(pActiveColor ? *pActiveColor : ColorRGBA(0.0f, 0.0f, 0.0f, 0.5f), Corners, EdgeRounding);
+	}
+	else if(MouseInside)
+	{
+		Rect.Draw(pHoverColor ? *pHoverColor : ColorRGBA(0.0f, 0.0f, 0.0f, 0.35f), Corners, EdgeRounding);
+	}
+	else
+	{
+		Rect.Draw(pDefaultColor ? *pDefaultColor : ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f), Corners, EdgeRounding);
+	}
+
+	if(pAnimator != nullptr)
+	{
+		if(pAnimator->m_RepositionLabel)
+		{
+			Rect.x += Rect.w - pRect->w + Rect.x - pRect->x;
+			Rect.y += Rect.h - pRect->h + Rect.y - pRect->y;
+		}
+
+		if(!pAnimator->m_ScaleLabel)
+		{
+			Rect.w = pRect->w;
+			Rect.h = pRect->h;
+		}
+	}
+
+	CUIRect Label;
+	Rect.HMargin(2.0f, &Label);
+	pUi->DoLabel(&Label, pText, FontScale, TEXTALIGN_MC);
+
+	return pUi->DoButtonLogic(pButtonContainer, Checked, pRect, BUTTONFLAG_LEFT);
+}
 
 void CMenusRClientClickGui::OnConsoleInit()
 {
@@ -158,7 +236,28 @@ void CMenusRClientClickGui::OnRender()
 	CUIRect SettingsTabs;
 	Body.VMargin(DefaultVMargin, &Body);
 	Body.HSplitTop(TeeSkinSize, &SettingsTabs, &Body);
-	const float SettingsTabsAutoGaps = (SettingsTabs.w - SettingsTabsWidth * 5) / 4;
+	const float SettingsTabsAutoGaps = (SettingsTabs.w - SettingsTabsWidth * NUM_CLICKGUI_TABS) / (NUM_CLICKGUI_TABS - 1);
+	const ColorRGBA SettingsTabActiveColor = SClickGuiProperties::Hex2A2A2AColor();
+	const ColorRGBA SettingsTabColor = ColorRGBA(SettingsTabActiveColor.r, SettingsTabActiveColor.g, SettingsTabActiveColor.b, 0.75f);
+	const float SettingsTabsFontScale = 14.0f * PixelSize;
+
+	static int s_CurTab = CLICKGUI_TAB_SETTINGS;
+	static CButtonContainer s_aTabButtons[NUM_CLICKGUI_TABS];
+	const char *apTabNames[NUM_CLICKGUI_TABS] = {
+		Localize("Settings"),
+		Localize("Voice"),
+		Localize("Info")};
+
+	for(int Tab = 0; Tab < NUM_CLICKGUI_TABS; ++Tab)
+	{
+		CUIRect Button;
+		SettingsTabs.VSplitLeft(SettingsTabsWidth, &Button, &SettingsTabs);
+		if(DoButton_MenuTab(Ui(), &s_aTabButtons[Tab], apTabNames[Tab], s_CurTab == Tab, &Button, IGraphics::CORNER_ALL, nullptr, &SettingsTabColor, &SettingsTabActiveColor, &SettingsTabActiveColor, DefaultRounding, SettingsTabsFontScale))
+			s_CurTab = Tab;
+
+		if(Tab != NUM_CLICKGUI_TABS - 1)
+			SettingsTabs.VSplitLeft(SettingsTabsAutoGaps, nullptr, &SettingsTabs);
+	}
 
 
 }
