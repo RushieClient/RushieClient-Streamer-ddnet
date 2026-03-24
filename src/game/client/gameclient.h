@@ -71,6 +71,7 @@
 #include "components/rclient/bindwheel.h"
 #include "components/rclient/chat_bubbles.h"
 #include "components/rclient/edgehelper.h"
+#include "components/rclient/menus_rclient_clickgui.h"
 #include "components/rclient/rclient.h"
 #include "components/rclient/rclient_indicator.h"
 #include "components/rclient/playermenu.h"
@@ -255,6 +256,7 @@ public:
 	CEdgeHelper m_EdgeHelper;
 	CRClientIndicator m_RClientIndicator;
 	CPlayerMenu m_RiPlayerMenu;
+	CMenusRClientClickGui m_RClientClickGui;
 
 private:
 	std::vector<class CComponent *> m_vpAll;

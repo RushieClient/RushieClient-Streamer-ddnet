@@ -178,6 +178,7 @@ void CGameClient::OnConsoleInit()
 					      &m_TouchControls,
 					      &m_AdminPanelRi,
 					      &m_RiPlayerMenu,
+					      &m_RClientClickGui,
 					      &m_EdgeHelper,
 					      &m_Scoreboard,
 					      &m_Statboard,
