@@ -11,6 +11,10 @@
 #include <chrono>
 #include <engine/graphics.h>
 
+#include <game/client/components/chat.h>
+#include <game/client/components/console.h>
+#include <game/client/components/emoticon.h>
+#include <game/client/components/menus.h>
 #include <game/client/ui.h>
 #include <game/localization.h>
 
@@ -123,6 +127,16 @@ static int DoButton_MenuTab(CUi *pUi, CButtonContainer *pButtonContainer, const 
 	return pUi->DoButtonLogic(pButtonContainer, Checked, pRect, BUTTONFLAG_LEFT);
 }
 
+void CMenusRClientClickGui::SetUiMousePos(vec2 Pos)
+{
+	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
+	const CUIRect *pScreen = Ui()->Screen();
+
+	const vec2 UpdatedMousePos = Ui()->UpdatedMousePos();
+	Pos = Pos / vec2(pScreen->w, pScreen->h) * WindowSize;
+	Ui()->OnCursorMove(Pos.x - UpdatedMousePos.x, Pos.y - UpdatedMousePos.y);
+}
+
 void CMenusRClientClickGui::OnConsoleInit()
 {
 	Console()->Register("toggle_rclient_clickgui", "", CFGFLAG_CLIENT, ConToggleClickGui, this, "Toggle RClient click GUI");
@@ -136,7 +150,74 @@ void CMenusRClientClickGui::ConToggleClickGui(IConsole::IResult *pResult, void *
 
 void CMenusRClientClickGui::SetActive(bool Active)
 {
+	if(m_Active == Active)
+		return;
+
+	vec2 OldMousePos = Ui()->MousePos();
 	m_Active = Active;
+
+	if(m_Active)
+	{
+		m_MouseUnlocked = true;
+		if(m_LastMousePos.has_value())
+			SetUiMousePos(m_LastMousePos.value());
+		else
+			SetUiMousePos(Ui()->Screen()->Center());
+	}
+	else
+	{
+		if(m_MouseUnlocked)
+			Ui()->ClosePopupMenus();
+
+		m_MouseUnlocked = false;
+		if(m_LastMousePos.has_value())
+			SetUiMousePos(m_LastMousePos.value());
+	}
+
+	m_LastMousePos = OldMousePos;
+}
+
+void CMenusRClientClickGui::OnReset()
+{
+	m_Active = false;
+	m_MouseUnlocked = false;
+	m_LastMousePos = std::nullopt;
+}
+
+void CMenusRClientClickGui::OnRelease()
+{
+	SetActive(false);
+}
+
+bool CMenusRClientClickGui::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
+{
+	if(!IsActive() || !m_MouseUnlocked)
+		return false;
+
+	if(GameClient()->m_GameConsole.IsActive() || GameClient()->m_Menus.IsActive() || GameClient()->m_Chat.IsActive() || GameClient()->m_Emoticon.IsActive())
+		return false;
+
+	Ui()->ConvertMouseMove(&x, &y, CursorType);
+	Ui()->OnCursorMove(x, y);
+
+	return true;
+}
+
+bool CMenusRClientClickGui::OnInput(const IInput::CEvent &Event)
+{
+	if(!IsActive())
+		return false;
+
+	if(Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE)
+	{
+		SetActive(false);
+		return true;
+	}
+
+	if(GameClient()->m_GameConsole.IsActive() || GameClient()->m_Menus.IsActive() || GameClient()->m_Chat.IsActive() || GameClient()->m_Emoticon.IsActive())
+		return false;
+
+	return m_MouseUnlocked;
 }
 
 void CMenusRClientClickGui::OnRender()
@@ -144,12 +225,18 @@ void CMenusRClientClickGui::OnRender()
 	if(!m_Active)
 		return;
 
-	vec2 ScreenTopLeft;
-	vec2 ScreenBottomRight;
-	Graphics()->GetScreen(&ScreenTopLeft.x, &ScreenTopLeft.y, &ScreenBottomRight.x, &ScreenBottomRight.y);
+	const bool UiBlocked = GameClient()->m_GameConsole.IsActive() || GameClient()->m_Menus.IsActive() || GameClient()->m_Chat.IsActive() || GameClient()->m_Emoticon.IsActive();
+	if(!UiBlocked)
+	{
+		Ui()->StartCheck();
+		Ui()->Update();
+	}
 
-	const float ScreenWidth = ScreenBottomRight.x - ScreenTopLeft.x;
-	const float ScreenHeight = ScreenBottomRight.y - ScreenTopLeft.y;
+	const CUIRect Screen = *Ui()->Screen();
+	Ui()->MapScreen();
+
+	const float ScreenWidth = Screen.w;
+	const float ScreenHeight = Screen.h;
 
 	const float PixelSize = ScreenHeight / Graphics()->ScreenHeight();
 	const float WindowWidth = SClickGuiProperties::ms_Width * PixelSize;
@@ -170,8 +257,8 @@ void CMenusRClientClickGui::OnRender()
 	const float SettingsTabsWidth = SClickGuiProperties::ms_SettingsTabsWidth * PixelSize;
 
 	CUIRect Window = {
-		ScreenTopLeft.x + (ScreenWidth - WindowWidth) * 0.5f,
-		ScreenTopLeft.y + (ScreenHeight - WindowHeight) * 0.5f,
+		Screen.x + (ScreenWidth - WindowWidth) * 0.5f,
+		Screen.y + (ScreenHeight - WindowHeight) * 0.5f,
 		WindowWidth,
 		WindowHeight};
 	Window.Draw(SClickGuiProperties::Hex141414Color(), IGraphics::CORNER_ALL, DefaultRounding);
@@ -275,7 +362,11 @@ void CMenusRClientClickGui::OnRender()
 	if(s_CurTab == CLICKGUI_TAB_INFO)
 		RenderClickGuiRushieInfo(Body, PixelSize);
 
+	if(m_MouseUnlocked && !UiBlocked)
+		RenderTools()->RenderCursor(Ui()->MousePos(), 24.0f);
 
+	if(!UiBlocked)
+		Ui()->FinishCheck();
 }
 
 

@@ -176,7 +176,9 @@ bool CBinds::OnInput(const IInput::CEvent &Event)
 			if(GameClient()->m_Chat.IsActive() ||
 				GameClient()->m_GameConsole.IsActive() ||
 				GameClient()->m_Menus.IsActive() ||
-				(g_Config.m_RiScoreboardFreezeInputs && GameClient()->m_Scoreboard.HasMouseCursor() && !str_find(m_aapKeyBindings[Bind.m_ModifierMask][Bind.m_Key], "+scoreboard")))
+				(g_Config.m_RiScoreboardFreezeInputs && GameClient()->m_Scoreboard.HasMouseCursor() && !str_find(m_aapKeyBindings[Bind.m_ModifierMask][Bind.m_Key], "+scoreboard")) ||
+				(g_Config.m_RiNewMenuFreezeInputs && GameClient()->m_RClientClickGui.HasMouseCursor() && !str_find(m_aapKeyBindings[Bind.m_ModifierMask][Bind.m_Key], "toggle_rclient_clickgui"))
+				)
 			{
 				return;
 			}
