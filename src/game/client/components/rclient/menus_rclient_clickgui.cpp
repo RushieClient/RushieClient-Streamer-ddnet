@@ -1,6 +1,7 @@
 #include "menus_rclient_clickgui.h"
 
 #include "base/str.h"
+#include "engine/font_icons.h"
 #include "engine/shared/config.h"
 #include "game/client/animstate.h"
 #include "game/client/gameclient.h"
@@ -16,6 +17,7 @@
 #include <game/client/components/emoticon.h>
 #include <game/client/components/menus.h>
 #include <game/client/ui.h>
+#include <game/client/ui_scrollregion.h>
 #include <game/localization.h>
 
 using namespace std::chrono_literals;
@@ -127,6 +129,56 @@ static int DoButton_MenuTab(CUi *pUi, CButtonContainer *pButtonContainer, const 
 	return pUi->DoButtonLogic(pButtonContainer, Checked, pRect, BUTTONFLAG_LEFT);
 }
 
+struct SClickGuiSettingsEntry
+{
+	CMenus::ERushieSettingsSection m_Section;
+	const char *m_pTitle;
+	const char *m_pIcon;
+};
+
+static const SClickGuiSettingsEntry gs_aClickGuiSettingsEntries[] = {
+	{CMenus::SETTINGS_SECTION_AUTO_CHANGE_PLAYER_INFO, "Auto Change Player Info", FontIcon::USER},
+	{CMenus::SETTINGS_SECTION_CHAT_FUNCTIONS, "Chat Functions", FontIcon::COMMENT},
+	{CMenus::SETTINGS_SECTION_BLOCK_LIST, "Block List", FontIcon::BAN},
+	{CMenus::SETTINGS_SECTION_CHAT, "Chat", FontIcon::COMMENT},
+	{CMenus::SETTINGS_SECTION_SCOREBOARD, "Scoreboard", FontIcon::LIST_UL},
+	{CMenus::SETTINGS_SECTION_CHANGED_TATER, "Changed Tater", FontIcon::ARROWS_ROTATE},
+	{CMenus::SETTINGS_SECTION_NAMEPLATES, "Nameplates", FontIcon::EYE},
+	{CMenus::SETTINGS_SECTION_DUMMY, "Dummy", FontIcon::RC_PEOPLE_GROUP},
+	{CMenus::SETTINGS_SECTION_EFFECTS, "Effects", FontIcon::STAR},
+	{CMenus::SETTINGS_SECTION_TRACKER_PLAYER, "Tracker Player", FontIcon::RC_LIST_TRACK},
+	{CMenus::SETTINGS_SECTION_HUD, "Hud", FontIcon::HEART},
+	{CMenus::SETTINGS_SECTION_CONTROLS, "Controls", FontIcon::KEYBOARD},
+	{CMenus::SETTINGS_SECTION_LASER, "Laser Settings", FontIcon::RC_PERSON_RIFLE},
+	{CMenus::SETTINGS_SECTION_SPECTATOR, "Spectator", FontIcon::EYE},
+	{CMenus::SETTINGS_SECTION_CHAT_BUBBLES, "Chat Bubbles", FontIcon::COMMENT},
+	{CMenus::SETTINGS_SECTION_RCLIENT_INDICATOR, "RClient Indicator", FontIcon::BOOKMARK},
+	{CMenus::SETTINGS_SECTION_EDGE_INFO, "Edge Info", FontIcon::TRIANGLE_EXCLAMATION},
+	{CMenus::SETTINGS_SECTION_VOICE, "Voice", FontIcon::RC_MICROPHONE},
+	{CMenus::SETTINGS_SECTION_MENUS, "Menu", FontIcon::HOUSE},
+};
+static constexpr int gs_NumClickGuiSettingsEntries = sizeof(gs_aClickGuiSettingsEntries) / sizeof(gs_aClickGuiSettingsEntries[0]);
+
+static int *GetClickGuiSettingsMainToggle(CMenus::ERushieSettingsSection SectionId)
+{
+	switch(SectionId)
+	{
+	case CMenus::SETTINGS_SECTION_AUTO_CHANGE_PLAYER_INFO: return &g_Config.m_PlayerClanAutoChange;
+	case CMenus::SETTINGS_SECTION_BLOCK_LIST: return &g_Config.m_RiEnableCensorList;
+	case CMenus::SETTINGS_SECTION_CHAT: return &g_Config.m_RiChatAnim;
+	case CMenus::SETTINGS_SECTION_CHANGED_TATER: return &g_Config.m_RiIndicatorTransparentToggle;
+	case CMenus::SETTINGS_SECTION_DUMMY: return &g_Config.m_RiShowhudDummyPosition;
+	case CMenus::SETTINGS_SECTION_TRACKER_PLAYER: return &g_Config.m_RiShowLastPosHud;
+	case CMenus::SETTINGS_SECTION_LASER: return &g_Config.m_RiBetterLasers;
+	case CMenus::SETTINGS_SECTION_SPECTATOR: return &g_Config.m_RiSpectatorMoveEnable;
+	case CMenus::SETTINGS_SECTION_CHAT_BUBBLES: return &g_Config.m_RiChatBubbles;
+	case CMenus::SETTINGS_SECTION_RCLIENT_INDICATOR: return &g_Config.m_RiShowRclientIndicator;
+	case CMenus::SETTINGS_SECTION_VOICE: return &g_Config.m_RiVoiceEnable;
+	case CMenus::SETTINGS_SECTION_MENUS: return &g_Config.m_RiUiNewMenu;
+	default: return nullptr;
+	}
+}
+
 void CMenusRClientClickGui::SetUiMousePos(vec2 Pos)
 {
 	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
@@ -216,6 +268,8 @@ bool CMenusRClientClickGui::OnInput(const IInput::CEvent &Event)
 
 	if(GameClient()->m_GameConsole.IsActive() || GameClient()->m_Menus.IsActive() || GameClient()->m_Chat.IsActive() || GameClient()->m_Emoticon.IsActive())
 		return false;
+
+	Ui()->OnInput(Event);
 
 	return m_MouseUnlocked;
 }
@@ -429,6 +483,137 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	const float SettingsFunctionWidth = SClickGuiProperties::ms_SettingsFunctionWidth * ScreenPixelSize;
 	const float SettingsFunctionHeight = SClickGuiProperties::ms_SettingsFunctionHeight * ScreenPixelSize;
 	const float DefaultVMargin = SClickGuiProperties::ms_DefaultVMargin * ScreenPixelSize;
+	const float SmallVMargin = SClickGuiProperties::ms_SmallVMargin * ScreenPixelSize;
+	const float DefaultRounding = SClickGuiProperties::ms_Rounding * ScreenPixelSize;
+	const float ButtonSpace = SClickGuiProperties::ms_ButtonSpace * ScreenPixelSize;
+	const float SmallButtonSpace = SClickGuiProperties::ms_SmallButtonSpace * ScreenPixelSize;
+	const float ScrollbarWidth = 20.0f * ScreenPixelSize;
+
+	static int s_OpenSection = -1;
+	static CButtonContainer s_aOpenButtons[gs_NumClickGuiSettingsEntries];
+	static CButtonContainer s_aToggleButtons[gs_NumClickGuiSettingsEntries];
+	static CButtonContainer s_BackButton;
+	static CScrollRegion s_OverviewScroll;
+	static vec2 s_OverviewOffset(0.0f, 0.0f);
+	static CScrollRegion s_aDetailScroll[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
+	static vec2 s_aDetailOffsets[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
+	auto ApplyFunctionInsets = [&](CUIRect &Rect, float ScrollbarWidth, float TopInset) {
+		Rect.HSplitTop(TopInset, nullptr, &Rect);
+		Rect.HSplitBottom(DefaultVMargin, &Rect, nullptr);
+		Rect.VSplitLeft(DefaultVMargin, nullptr, &Rect);
+		Rect.VSplitRight(maximum(0.0f, DefaultVMargin - ScrollbarWidth), &Rect, nullptr);
+	};
+	auto RenderFontIcon = [&](const CUIRect &Rect, const char *pIcon, float Size, int Align, ColorRGBA Color) {
+		SLabelProperties Props;
+		Props.SetColor(Color);
+		Props.m_EnableWidthCheck = false;
+		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
+		Ui()->DoLabel(&Rect, pIcon, Size, Align, Props);
+		TextRender()->SetRenderFlags(0);
+		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+	};
+
+	if(s_OpenSection < 0)
+	{
+		CScrollRegionParams ScrollParams;
+		ScrollParams.m_ScrollbarWidth = ScrollbarWidth;
+		ScrollParams.m_ScrollUnit = 120.0f;
+		ScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+		ScrollParams.m_ScrollbarMargin = 5.0f * ScreenPixelSize;
+		if(Ui()->MouseHovered(&MainView))
+			Ui()->SetHotScrollRegion(&s_OverviewScroll);
+		s_OverviewScroll.Begin(&MainView, &s_OverviewOffset, &ScrollParams);
+
+		CUIRect ContentView = MainView;
+		ContentView.y += s_OverviewOffset.y;
+		ApplyFunctionInsets(ContentView, ScrollParams.m_ScrollbarWidth, DefaultVMargin);
+
+		const float CardGap = DefaultVMargin;
+		const float CardWidth = SettingsFunctionWidth;
+		const float CardHeight = SettingsFunctionHeight;
+
+		for(int i = 0; i < gs_NumClickGuiSettingsEntries; ++i)
+		{
+			const int Row = i / 2;
+			const int Col = i % 2;
+			CUIRect Card = {
+				ContentView.x + Col * (CardWidth + CardGap),
+				ContentView.y + Row * (CardHeight + CardGap),
+				CardWidth,
+				CardHeight};
+			CUIRect OpenRect = Card;
+			CUIRect ToggleRect;
+			OpenRect.HSplitBottom(34.0f * ScreenPixelSize, &OpenRect, &ToggleRect);
+			ToggleRect.Margin(4.0f * ScreenPixelSize, &ToggleRect);
+
+			const bool Selected = i == s_OpenSection;
+			Card.Draw(Selected ? SClickGuiProperties::Hex4E4E4EColor() : SClickGuiProperties::Hex2A2A2AColor(), IGraphics::CORNER_ALL, DefaultRounding);
+			OpenRect.Margin(10.0f * ScreenPixelSize, &OpenRect);
+
+			CUIRect TitleRect, IconRect;
+			OpenRect.HSplitTop(30.0f * ScreenPixelSize, &TitleRect, &IconRect);
+			Ui()->DoLabel(&TitleRect, RCLocalize(gs_aClickGuiSettingsEntries[i].m_pTitle), 12.0f * ScreenPixelSize, TEXTALIGN_MC);
+			RenderFontIcon(IconRect, gs_aClickGuiSettingsEntries[i].m_pIcon, 32.0f * ScreenPixelSize, TEXTALIGN_MC, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
+
+			if(Ui()->DoButtonLogic(&s_aOpenButtons[i], 0, &OpenRect, BUTTONFLAG_LEFT))
+				s_OpenSection = i;
+
+			if(int *pMainToggle = GetClickGuiSettingsMainToggle(gs_aClickGuiSettingsEntries[i].m_Section))
+			{
+				const ColorRGBA ToggleColor = *pMainToggle ? ColorRGBA(0.18f, 0.45f, 0.24f, 0.9f) : SClickGuiProperties::Hex141414Color();
+				if(GameClient()->m_Menus.DoButton_Menu(&s_aToggleButtons[i], *pMainToggle ? RCLocalize("Enabled") : RCLocalize("Disabled"), 0, &ToggleRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, DefaultRounding * 0.75f, 0.0f, ToggleColor))
+					*pMainToggle ^= 1;
+			}
+			else
+			{
+				Ui()->DoLabel(&ToggleRect, RCLocalize("No main toggle"), 10.0f * ScreenPixelSize, TEXTALIGN_MC);
+			}
+		}
+
+		CUIRect ScrollRegionRect = MainView;
+		ScrollRegionRect.y = ContentView.y + ((gs_NumClickGuiSettingsEntries + 1) / 2) * (CardHeight + CardGap);
+		ScrollRegionRect.h = 0.0f;
+		s_OverviewScroll.AddRect(ScrollRegionRect);
+		s_OverviewScroll.End();
+		return;
+	}
+
+	const SClickGuiSettingsEntry &Entry = gs_aClickGuiSettingsEntries[s_OpenSection];
+	CUIRect TopBar, BackRect, TitleRect, DetailRect;
+	MainView.HSplitTop(40.0f * ScreenPixelSize, &TopBar, &MainView);
+	TopBar.Draw(SClickGuiProperties::Hex1E1E1EColor(), IGraphics::CORNER_ALL, DefaultRounding);
+	TopBar.HMargin(SmallButtonSpace, &TopBar);
+	TopBar.VMargin(ButtonSpace, &TopBar);
+	TopBar.VSplitLeft(120.0f * ScreenPixelSize, &BackRect, &TitleRect);
+	if(GameClient()->m_Menus.DoButton_Menu(&s_BackButton, RCLocalize("Back"), 0, &BackRect))
+	{
+		s_OpenSection = -1;
+		return;
+	}
+	Ui()->DoLabel(&TopBar, RCLocalize(Entry.m_pTitle), 16.0f * ScreenPixelSize, TEXTALIGN_MC);
+	MainView.HSplitTop(SmallVMargin, nullptr, &MainView);
+	DetailRect = MainView;
+	if(Ui()->MouseHovered(&DetailRect))
+		Ui()->SetHotScrollRegion(&s_aDetailScroll[Entry.m_Section]);
+
+	CScrollRegionParams ScrollParams;
+	ScrollParams.m_ScrollbarWidth = ScrollbarWidth;
+	ScrollParams.m_ScrollUnit = 120.0f;
+	ScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+	ScrollParams.m_ScrollbarMargin = 5.0f * ScreenPixelSize;
+	s_aDetailScroll[Entry.m_Section].Begin(&DetailRect, &s_aDetailOffsets[Entry.m_Section], &ScrollParams);
+
+	CUIRect ContentView = DetailRect;
+	ContentView.y += s_aDetailOffsets[Entry.m_Section].y;
+	ApplyFunctionInsets(ContentView, ScrollParams.m_ScrollbarWidth, 5.0f * ScreenPixelSize);
+	GameClient()->m_Menus.RenderRushieSettingsSection(ContentView, Entry.m_Section);
+
+	CUIRect ScrollRegionRect = DetailRect;
+	ScrollRegionRect.y = ContentView.y + SmallVMargin;
+	ScrollRegionRect.h = 0.0f;
+	s_aDetailScroll[Entry.m_Section].AddRect(ScrollRegionRect);
+	s_aDetailScroll[Entry.m_Section].End();
 }
 
 void CMenusRClientClickGui::RenderClickGuiRushieVoice(CUIRect MainView, float ScreenPixelSize)

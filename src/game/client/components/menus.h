@@ -63,6 +63,31 @@ public:
 
 	bool DoFloatScrollBar(const void *pId, int *pOption, const CUIRect *pRect, const char *pStr, int Min, int Max, int DivideBy, const IScrollbarScale *pScale, unsigned Flags, const char *pSuffix);
 
+	enum ERushieSettingsSection
+	{
+		SETTINGS_SECTION_AUTO_CHANGE_PLAYER_INFO = 0,
+		SETTINGS_SECTION_CHAT_FUNCTIONS,
+		SETTINGS_SECTION_BLOCK_LIST,
+		SETTINGS_SECTION_CHAT,
+		SETTINGS_SECTION_SCOREBOARD,
+		SETTINGS_SECTION_CHANGED_TATER,
+		SETTINGS_SECTION_NAMEPLATES,
+		SETTINGS_SECTION_DUMMY,
+		SETTINGS_SECTION_EFFECTS,
+		SETTINGS_SECTION_TRACKER_PLAYER,
+		SETTINGS_SECTION_HUD,
+		SETTINGS_SECTION_CONTROLS,
+		SETTINGS_SECTION_LASER,
+		SETTINGS_SECTION_SPECTATOR,
+		SETTINGS_SECTION_CHAT_BUBBLES,
+		SETTINGS_SECTION_RCLIENT_INDICATOR,
+		SETTINGS_SECTION_EDGE_INFO,
+		SETTINGS_SECTION_VOICE,
+		SETTINGS_SECTION_MENUS,
+		NUM_RUSHIE_SETTINGS_SECTIONS
+	};
+	void RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection SectionId);
+
 private:
 	CUi::SColorPickerPopupContext m_ColorPickerPopupContext;
 	ColorHSLA DoLine_ColorPicker(CButtonContainer *pResetId, float LineSize, float LabelSize, float BottomMargin, CUIRect *pMainRect, const char *pText, unsigned int *pColorValue, ColorRGBA DefaultColor, bool CheckBoxSpacing = true, int *pCheckBoxValue = nullptr, bool Alpha = false);
