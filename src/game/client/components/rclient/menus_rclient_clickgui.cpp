@@ -134,50 +134,17 @@ struct SClickGuiSettingsEntry
 	CMenus::ERushieSettingsSection m_Section;
 	const char *m_pTitle;
 	const char *m_pIcon;
+	int *m_pMainToggle;
 };
 
 static const SClickGuiSettingsEntry gs_aClickGuiSettingsEntries[] = {
-	{CMenus::SETTINGS_SECTION_AUTO_CHANGE_PLAYER_INFO, "Auto Change Player Info", FontIcon::USER},
-	{CMenus::SETTINGS_SECTION_CHAT_FUNCTIONS, "Chat Functions", FontIcon::COMMENT},
-	{CMenus::SETTINGS_SECTION_BLOCK_LIST, "Block List", FontIcon::BAN},
-	{CMenus::SETTINGS_SECTION_CHAT, "Chat", FontIcon::COMMENT},
-	{CMenus::SETTINGS_SECTION_SCOREBOARD, "Scoreboard", FontIcon::LIST_UL},
-	{CMenus::SETTINGS_SECTION_CHANGED_TATER, "Changed Tater", FontIcon::ARROWS_ROTATE},
-	{CMenus::SETTINGS_SECTION_NAMEPLATES, "Nameplates", FontIcon::EYE},
-	{CMenus::SETTINGS_SECTION_DUMMY, "Dummy", FontIcon::RC_PEOPLE_GROUP},
-	{CMenus::SETTINGS_SECTION_EFFECTS, "Effects", FontIcon::STAR},
-	{CMenus::SETTINGS_SECTION_TRACKER_PLAYER, "Tracker Player", FontIcon::RC_LIST_TRACK},
-	{CMenus::SETTINGS_SECTION_HUD, "Hud", FontIcon::HEART},
-	{CMenus::SETTINGS_SECTION_CONTROLS, "Controls", FontIcon::KEYBOARD},
-	{CMenus::SETTINGS_SECTION_LASER, "Laser Settings", FontIcon::RC_PERSON_RIFLE},
-	{CMenus::SETTINGS_SECTION_SPECTATOR, "Spectator", FontIcon::EYE},
-	{CMenus::SETTINGS_SECTION_CHAT_BUBBLES, "Chat Bubbles", FontIcon::COMMENT},
-	{CMenus::SETTINGS_SECTION_RCLIENT_INDICATOR, "RClient Indicator", FontIcon::BOOKMARK},
-	{CMenus::SETTINGS_SECTION_EDGE_INFO, "Edge Info", FontIcon::TRIANGLE_EXCLAMATION},
-	{CMenus::SETTINGS_SECTION_VOICE, "Voice", FontIcon::RC_MICROPHONE},
-	{CMenus::SETTINGS_SECTION_MENUS, "Menu", FontIcon::HOUSE},
+#define CLICKGUI_SETTINGS_ENTRY(Name, Title, Icon, MainToggle) \
+	{CMenus::SETTINGS_SECTION_##Name, Title, Icon, MainToggle},
+	RUSHIE_SETTINGS_SECTION_LIST(CLICKGUI_SETTINGS_ENTRY)
+#undef CLICKGUI_SETTINGS_ENTRY
 };
 static constexpr int gs_NumClickGuiSettingsEntries = sizeof(gs_aClickGuiSettingsEntries) / sizeof(gs_aClickGuiSettingsEntries[0]);
-
-static int *GetClickGuiSettingsMainToggle(CMenus::ERushieSettingsSection SectionId)
-{
-	switch(SectionId)
-	{
-	case CMenus::SETTINGS_SECTION_AUTO_CHANGE_PLAYER_INFO: return &g_Config.m_PlayerClanAutoChange;
-	case CMenus::SETTINGS_SECTION_BLOCK_LIST: return &g_Config.m_RiEnableCensorList;
-	case CMenus::SETTINGS_SECTION_CHAT: return &g_Config.m_RiChatAnim;
-	case CMenus::SETTINGS_SECTION_CHANGED_TATER: return &g_Config.m_RiIndicatorTransparentToggle;
-	case CMenus::SETTINGS_SECTION_DUMMY: return &g_Config.m_RiShowhudDummyPosition;
-	case CMenus::SETTINGS_SECTION_TRACKER_PLAYER: return &g_Config.m_RiShowLastPosHud;
-	case CMenus::SETTINGS_SECTION_LASER: return &g_Config.m_RiBetterLasers;
-	case CMenus::SETTINGS_SECTION_SPECTATOR: return &g_Config.m_RiSpectatorMoveEnable;
-	case CMenus::SETTINGS_SECTION_CHAT_BUBBLES: return &g_Config.m_RiChatBubbles;
-	case CMenus::SETTINGS_SECTION_RCLIENT_INDICATOR: return &g_Config.m_RiShowRclientIndicator;
-	case CMenus::SETTINGS_SECTION_VOICE: return &g_Config.m_RiVoiceEnable;
-	case CMenus::SETTINGS_SECTION_MENUS: return &g_Config.m_RiUiNewMenu;
-	default: return nullptr;
-	}
-}
+static_assert(gs_NumClickGuiSettingsEntries == CMenus::NUM_RUSHIE_SETTINGS_SECTIONS, "Rushie settings list is out of sync");
 
 void CMenusRClientClickGui::SetUiMousePos(vec2 Pos)
 {
@@ -559,7 +526,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 			if(Ui()->DoButtonLogic(&s_aOpenButtons[i], 0, &OpenRect, BUTTONFLAG_LEFT))
 				s_OpenSection = i;
 
-			if(int *pMainToggle = GetClickGuiSettingsMainToggle(gs_aClickGuiSettingsEntries[i].m_Section))
+			if(int *pMainToggle = gs_aClickGuiSettingsEntries[i].m_pMainToggle)
 			{
 				const ColorRGBA ToggleColor = *pMainToggle ? ColorRGBA(0.18f, 0.45f, 0.24f, 0.9f) : SClickGuiProperties::Hex141414Color();
 				if(GameClient()->m_Menus.DoButton_Menu(&s_aToggleButtons[i], *pMainToggle ? RCLocalize("Enabled") : RCLocalize("Disabled"), 0, &ToggleRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, DefaultRounding * 0.75f, 0.0f, ToggleColor))

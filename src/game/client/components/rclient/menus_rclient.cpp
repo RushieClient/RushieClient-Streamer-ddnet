@@ -1614,9 +1614,14 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		s_SectionBoxes.back().h = Column.y - s_SectionBoxes.back().y;
 	};
 
-	static bool s_aSectionExpanded[NUM_RCLIENT_SETTINGS_SECTIONS] = {
-		true, true, true, true, true, true, true, true, true, true,
-		true, true, true, true, true, true, true, true, true};
+	static bool s_aSectionExpanded[NUM_RCLIENT_SETTINGS_SECTIONS];
+	static bool s_SectionExpandedInitialized = false;
+	if(!s_SectionExpandedInitialized)
+	{
+		for(bool &Expanded : s_aSectionExpanded)
+			Expanded = false;
+		s_SectionExpandedInitialized = true;
+	}
 	static CButtonContainer s_aSectionExpandButtons[NUM_RCLIENT_SETTINGS_SECTIONS];
 
 	auto BeginSectionHeader = [&](CUIRect &Column, float TopMargin, int SectionId, const char *pTitle) {

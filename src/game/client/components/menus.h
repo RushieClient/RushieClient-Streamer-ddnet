@@ -63,27 +63,32 @@ public:
 
 	bool DoFloatScrollBar(const void *pId, int *pOption, const CUIRect *pRect, const char *pStr, int Min, int Max, int DivideBy, const IScrollbarScale *pScale, unsigned Flags, const char *pSuffix);
 
+#define RUSHIE_SETTINGS_SECTION_LIST(X) \
+	X(AUTO_CHANGE_PLAYER_INFO, "Auto Change Player Info", FontIcon::USER, &g_Config.m_PlayerClanAutoChange) \
+	X(CHAT_FUNCTIONS, "Chat Functions", FontIcon::COMMENT, nullptr) \
+	X(BLOCK_LIST, "Block List", FontIcon::BAN, &g_Config.m_RiEnableCensorList) \
+	X(CHAT, "Chat", FontIcon::COMMENT, &g_Config.m_RiChatAnim) \
+	X(SCOREBOARD, "Scoreboard", FontIcon::LIST_UL, nullptr) \
+	X(CHANGED_TATER, "Changed Tater", FontIcon::ARROWS_ROTATE, &g_Config.m_RiIndicatorTransparentToggle) \
+	X(NAMEPLATES, "Nameplates", FontIcon::EYE, nullptr) \
+	X(DUMMY, "Dummy", FontIcon::RC_PEOPLE_GROUP, &g_Config.m_RiShowhudDummyPosition) \
+	X(EFFECTS, "Effects", FontIcon::STAR, nullptr) \
+	X(TRACKER_PLAYER, "Tracker Player", FontIcon::RC_LIST_TRACK, &g_Config.m_RiShowLastPosHud) \
+	X(HUD, "Hud", FontIcon::HEART, nullptr) \
+	X(CONTROLS, "Controls", FontIcon::KEYBOARD, nullptr) \
+	X(LASER, "Laser Settings", FontIcon::RC_PERSON_RIFLE, &g_Config.m_RiBetterLasers) \
+	X(SPECTATOR, "Spectator", FontIcon::EYE, &g_Config.m_RiSpectatorMoveEnable) \
+	X(CHAT_BUBBLES, "Chat Bubbles", FontIcon::COMMENT, &g_Config.m_RiChatBubbles) \
+	X(RCLIENT_INDICATOR, "RClient Indicator", FontIcon::BOOKMARK, &g_Config.m_RiShowRclientIndicator) \
+	X(EDGE_INFO, "Edge Info", FontIcon::TRIANGLE_EXCLAMATION, nullptr) \
+	X(VOICE, "Voice", FontIcon::RC_MICROPHONE, &g_Config.m_RiVoiceEnable) \
+	X(MENUS, "Menu", FontIcon::HOUSE, &g_Config.m_RiUiNewMenu)
+
 	enum ERushieSettingsSection
 	{
-		SETTINGS_SECTION_AUTO_CHANGE_PLAYER_INFO = 0,
-		SETTINGS_SECTION_CHAT_FUNCTIONS,
-		SETTINGS_SECTION_BLOCK_LIST,
-		SETTINGS_SECTION_CHAT,
-		SETTINGS_SECTION_SCOREBOARD,
-		SETTINGS_SECTION_CHANGED_TATER,
-		SETTINGS_SECTION_NAMEPLATES,
-		SETTINGS_SECTION_DUMMY,
-		SETTINGS_SECTION_EFFECTS,
-		SETTINGS_SECTION_TRACKER_PLAYER,
-		SETTINGS_SECTION_HUD,
-		SETTINGS_SECTION_CONTROLS,
-		SETTINGS_SECTION_LASER,
-		SETTINGS_SECTION_SPECTATOR,
-		SETTINGS_SECTION_CHAT_BUBBLES,
-		SETTINGS_SECTION_RCLIENT_INDICATOR,
-		SETTINGS_SECTION_EDGE_INFO,
-		SETTINGS_SECTION_VOICE,
-		SETTINGS_SECTION_MENUS,
+#define RUSHIE_SETTINGS_SECTION_ENUM(Name, Title, Icon, MainToggle) SETTINGS_SECTION_##Name,
+		RUSHIE_SETTINGS_SECTION_LIST(RUSHIE_SETTINGS_SECTION_ENUM)
+#undef RUSHIE_SETTINGS_SECTION_ENUM
 		NUM_RUSHIE_SETTINGS_SECTIONS
 	};
 	void RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection SectionId);
