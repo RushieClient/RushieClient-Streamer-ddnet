@@ -44,6 +44,19 @@ static ColorRGBA MusicIslandGapsColor()
 	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandSectionsColor, true));
 }
 
+static bool MusicIslandDebugEnabled()
+{
+	return g_Config.m_RiShowMusicIslandDebug != 0;
+}
+
+static void LogMusicIslandDebug(const char *pSys, const char *pMsg)
+{
+	if(!MusicIslandDebugEnabled())
+		return;
+
+	dbg_msg(pSys, "%s", pMsg);
+}
+
 static vec2 NativeMouseToScreen(IInput *pInput, IGraphics *pGraphics, vec2 ScreenTL, vec2 ScreenBR)
 {
 	const vec2 NativeMousePos = pInput->NativeMousePos();
@@ -249,6 +262,52 @@ struct SMprisPlayerState
 	std::string m_Album;
 };
 
+static void LogMprisUnavailable(const char *pReason)
+{
+	if(!MusicIslandDebugEnabled())
+		return;
+
+	static std::string s_LastReason;
+	static int64_t s_LastLogTime = 0;
+
+	const int64_t Now = time_get();
+	if(s_LastReason == pReason && Now - s_LastLogTime < time_freq() * 5)
+		return;
+
+	s_LastReason = pReason;
+	s_LastLogTime = Now;
+	dbg_msg("music-island-mpris", "%s", pReason);
+}
+
+static void LogMprisSelection(const SMprisPlayerState &State, bool FallbackSelection)
+{
+	if(!MusicIslandDebugEnabled())
+		return;
+
+	static std::string s_LastSummary;
+	static int64_t s_LastLogTime = 0;
+
+	const int64_t Now = time_get();
+	std::string Summary = "Selected ";
+	Summary += FallbackSelection ? "fallback" : "active";
+	Summary += " player: bus=";
+	Summary += State.m_BusName;
+	Summary += ", playing=";
+	Summary += State.m_Playing ? "1" : "0";
+	Summary += ", title=\"";
+	Summary += State.m_Title;
+	Summary += "\", artist=\"";
+	Summary += State.m_Artist;
+	Summary += "\"";
+
+	if(s_LastSummary == Summary && Now - s_LastLogTime < time_freq() * 5)
+		return;
+
+	s_LastSummary = std::move(Summary);
+	s_LastLogTime = Now;
+	dbg_msg("music-island-mpris", "%s", s_LastSummary.c_str());
+}
+
 static GVariant *MprisCallSync(GDBusConnection *pConnection, const char *pBusName, const char *pInterface, const char *pMethod, GVariant *pParameters, const GVariantType *pReplyType)
 {
 	GError *pError = nullptr;
@@ -266,6 +325,14 @@ static GVariant *MprisCallSync(GDBusConnection *pConnection, const char *pBusNam
 		&pError);
 	if(pError != nullptr)
 	{
+		if(MusicIslandDebugEnabled())
+		{
+			dbg_msg("music-island-mpris", "D-Bus call failed: bus=%s interface=%s method=%s error=%s",
+				pBusName != nullptr ? pBusName : "<null>",
+				pInterface != nullptr ? pInterface : "<null>",
+				pMethod != nullptr ? pMethod : "<null>",
+				pError->message != nullptr ? pError->message : "<null>");
+		}
 		g_error_free(pError);
 		return nullptr;
 	}
@@ -291,6 +358,8 @@ static std::vector<std::string> GetMprisBusNames(GDBusConnection *pConnection)
 		&pError);
 	if(pError != nullptr)
 	{
+		if(MusicIslandDebugEnabled())
+			dbg_msg("music-island-mpris", "Failed to enumerate D-Bus names: %s", pError->message != nullptr ? pError->message : "<null>");
 		g_error_free(pError);
 		return vNames;
 	}
@@ -321,24 +390,22 @@ static void ParseMprisMetadata(GVariant *pMetadata, SMprisPlayerState &State)
 	g_variant_iter_init(&Iter, pMetadata);
 	while(g_variant_iter_next(&Iter, "{&sv}", &pKey, &pValue))
 	{
-		GVariant *pInnerValue = g_variant_get_variant(pValue);
-		if(std::strcmp(pKey, "xesam:title") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_STRING))
+		if(std::strcmp(pKey, "xesam:title") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE_STRING))
 		{
-			State.m_Title = g_variant_get_string(pInnerValue, nullptr);
+			State.m_Title = g_variant_get_string(pValue, nullptr);
 		}
-		else if(std::strcmp(pKey, "xesam:album") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_STRING))
+		else if(std::strcmp(pKey, "xesam:album") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE_STRING))
 		{
-			State.m_Album = g_variant_get_string(pInnerValue, nullptr);
+			State.m_Album = g_variant_get_string(pValue, nullptr);
 		}
-		else if(std::strcmp(pKey, "xesam:artist") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE("as")))
+		else if(std::strcmp(pKey, "xesam:artist") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE("as")))
 		{
 			gsize NumArtists = 0;
-			const gchar **ppArtists = g_variant_get_strv(pInnerValue, &NumArtists);
+			const gchar **ppArtists = g_variant_get_strv(pValue, &NumArtists);
 			if(NumArtists > 0 && ppArtists[0] != nullptr)
 				State.m_Artist = ppArtists[0];
 			g_free((gpointer)ppArtists);
 		}
-		g_variant_unref(pInnerValue);
 		g_variant_unref(pValue);
 	}
 }
@@ -363,32 +430,30 @@ static bool QueryMprisPlayer(GDBusConnection *pConnection, const char *pBusName,
 	g_variant_iter_init(&Iter, pProperties);
 	while(g_variant_iter_next(&Iter, "{&sv}", &pKey, &pValue))
 	{
-		GVariant *pInnerValue = g_variant_get_variant(pValue);
-		if(std::strcmp(pKey, "PlaybackStatus") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_STRING))
+		if(std::strcmp(pKey, "PlaybackStatus") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE_STRING))
 		{
-			State.m_Playing = std::strcmp(g_variant_get_string(pInnerValue, nullptr), "Playing") == 0;
+			State.m_Playing = std::strcmp(g_variant_get_string(pValue, nullptr), "Playing") == 0;
 		}
-		else if(std::strcmp(pKey, "CanPlay") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_BOOLEAN))
+		else if(std::strcmp(pKey, "CanPlay") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE_BOOLEAN))
 		{
-			State.m_CanPlay = g_variant_get_boolean(pInnerValue);
+			State.m_CanPlay = g_variant_get_boolean(pValue);
 		}
-		else if(std::strcmp(pKey, "CanPause") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_BOOLEAN))
+		else if(std::strcmp(pKey, "CanPause") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE_BOOLEAN))
 		{
-			State.m_CanPause = g_variant_get_boolean(pInnerValue);
+			State.m_CanPause = g_variant_get_boolean(pValue);
 		}
-		else if(std::strcmp(pKey, "CanGoPrevious") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_BOOLEAN))
+		else if(std::strcmp(pKey, "CanGoPrevious") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE_BOOLEAN))
 		{
-			State.m_CanGoPrevious = g_variant_get_boolean(pInnerValue);
+			State.m_CanGoPrevious = g_variant_get_boolean(pValue);
 		}
-		else if(std::strcmp(pKey, "CanGoNext") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_BOOLEAN))
+		else if(std::strcmp(pKey, "CanGoNext") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE_BOOLEAN))
 		{
-			State.m_CanGoNext = g_variant_get_boolean(pInnerValue);
+			State.m_CanGoNext = g_variant_get_boolean(pValue);
 		}
-		else if(std::strcmp(pKey, "Metadata") == 0 && g_variant_is_of_type(pInnerValue, G_VARIANT_TYPE_VARDICT))
+		else if(std::strcmp(pKey, "Metadata") == 0 && g_variant_is_of_type(pValue, G_VARIANT_TYPE_VARDICT))
 		{
-			ParseMprisMetadata(pInnerValue, State);
+			ParseMprisMetadata(pValue, State);
 		}
-		g_variant_unref(pInnerValue);
 		g_variant_unref(pValue);
 	}
 
@@ -404,16 +469,28 @@ static bool QueryBestMprisPlayer(SMprisPlayerState &State)
 	GDBusConnection *pConnection = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &pError);
 	if(pError != nullptr)
 	{
+		if(MusicIslandDebugEnabled())
+			dbg_msg("music-island-mpris", "Failed to connect to session D-Bus: %s", pError->message != nullptr ? pError->message : "<null>");
 		g_error_free(pError);
 		return false;
 	}
 	if(pConnection == nullptr)
+	{
+		LogMprisUnavailable("Failed to connect to session D-Bus: connection is null");
 		return false;
+	}
 
 	bool FoundPlayer = false;
 	SMprisPlayerState FallbackState;
+	const std::vector<std::string> vBusNames = GetMprisBusNames(pConnection);
+	if(vBusNames.empty())
+	{
+		LogMprisUnavailable("No MPRIS services found on session D-Bus");
+		g_object_unref(pConnection);
+		return false;
+	}
 
-	for(const std::string &BusName : GetMprisBusNames(pConnection))
+	for(const std::string &BusName : vBusNames)
 	{
 		SMprisPlayerState CandidateState;
 		if(!QueryMprisPlayer(pConnection, BusName.c_str(), CandidateState))
@@ -428,6 +505,7 @@ static bool QueryBestMprisPlayer(SMprisPlayerState &State)
 		if(CandidateState.m_Playing)
 		{
 			State = std::move(CandidateState);
+			LogMprisSelection(State, false);
 			g_object_unref(pConnection);
 			return true;
 		}
@@ -435,9 +513,13 @@ static bool QueryBestMprisPlayer(SMprisPlayerState &State)
 
 	g_object_unref(pConnection);
 	if(!FoundPlayer)
+	{
+		LogMprisUnavailable("Found MPRIS services, but none returned valid player properties");
 		return false;
+	}
 
 	State = std::move(FallbackState);
+	LogMprisSelection(State, true);
 	return true;
 }
 
@@ -546,6 +628,36 @@ static bool DecodeThumbnailToImage(const winrt::Windows::Storage::Streams::IRand
 
 	std::memcpy(Image.m_pData, Pixels.data(), ExpectedSize);
 	return true;
+}
+
+static void LogWindowsSelection(bool Playing, bool CanPlay, bool CanPause, const std::string &Title, const std::string &Artist, bool HasThumbnail)
+{
+	if(!MusicIslandDebugEnabled())
+		return;
+
+	static std::string s_LastSummary;
+	static int64_t s_LastLogTime = 0;
+
+	const int64_t Now = time_get();
+	std::string Summary = "Selected session: playing=";
+	Summary += Playing ? "1" : "0";
+	Summary += ", canPlay=";
+	Summary += CanPlay ? "1" : "0";
+	Summary += ", canPause=";
+	Summary += CanPause ? "1" : "0";
+	Summary += ", title=\"";
+	Summary += Title;
+	Summary += "\", artist=\"";
+	Summary += Artist;
+	Summary += "\", thumbnail=";
+	Summary += HasThumbnail ? "1" : "0";
+
+	if(s_LastSummary == Summary && Now - s_LastLogTime < time_freq() * 5)
+		return;
+
+	s_LastSummary = std::move(Summary);
+	s_LastLogTime = Now;
+	dbg_msg("music-island-win", "%s", s_LastSummary.c_str());
 }
 #endif
 
@@ -940,15 +1052,23 @@ void CMusicIsland::UpdateMusicInfo()
 					HasThumbnail = Thumbnail != nullptr;
 				}
 			}
+
+			LogWindowsSelection(NewInfo.m_Playing, NewInfo.m_CanPlay, NewInfo.m_CanPause, NewInfo.m_Title, NewInfo.m_Artist, HasThumbnail);
 		}
-		else if(WantArtwork)
+		else
 		{
-			std::lock_guard<std::mutex> Guard(m_MusicInfoMutex);
-			UpdateArtwork = !m_CurrentArtworkKey.empty();
+			LogMusicIslandDebug("music-island-win", "No active media session");
+			if(WantArtwork)
+			{
+				std::lock_guard<std::mutex> Guard(m_MusicInfoMutex);
+				UpdateArtwork = !m_CurrentArtworkKey.empty();
+			}
 		}
 	}
-	catch(const winrt::hresult_error &)
+	catch(const winrt::hresult_error &Error)
 	{
+		if(MusicIslandDebugEnabled())
+			dbg_msg("music-island-win", "Failed to query media session: 0x%08x", (unsigned int)Error.code().value);
 		NewInfo = {};
 		if(WantArtwork)
 		{
@@ -958,6 +1078,7 @@ void CMusicIsland::UpdateMusicInfo()
 	}
 	catch(...)
 	{
+		LogMusicIslandDebug("music-island-win", "Failed to query media session: unknown exception");
 		NewInfo = {};
 		if(WantArtwork)
 		{
@@ -987,6 +1108,7 @@ void CMusicIsland::UpdateMusicInfo()
 
 	if(!HasThumbnail)
 	{
+		LogMusicIslandDebug("music-island-win", "No thumbnail for current media session");
 		std::lock_guard<std::mutex> ImageGuard(m_MusicInfoMutex);
 		m_MusicImageDirty = true;
 		m_PendingMusicImage.Free();
@@ -1007,12 +1129,15 @@ void CMusicIsland::UpdateMusicInfo()
 			if(ThumbnailRef)
 				DecodeThumbnailToImage(ThumbnailRef, DecodedImage);
 		}
-		catch(const winrt::hresult_error &)
+		catch(const winrt::hresult_error &Error)
 		{
+			if(MusicIslandDebugEnabled())
+				dbg_msg("music-island-win", "Failed to decode thumbnail: 0x%08x", (unsigned int)Error.code().value);
 			DecodedImage.Free();
 		}
 		catch(...)
 		{
+			LogMusicIslandDebug("music-island-win", "Failed to decode thumbnail: unknown exception");
 			DecodedImage.Free();
 		}
 
@@ -1089,12 +1214,22 @@ void CMusicIsland::TriggerControlAction(EControlButton Button)
 				default:
 					break;
 				}
+
+				LogMusicIslandDebug("music-island-win", "Sent media control command");
 			}
+			else
+				LogMusicIslandDebug("music-island-win", "No active media session for control command");
 
 			winrt::uninit_apartment();
 		}
+		catch(const winrt::hresult_error &Error)
+		{
+			if(MusicIslandDebugEnabled())
+				dbg_msg("music-island-win", "Failed to send media control command: 0x%08x", (unsigned int)Error.code().value);
+		}
 		catch(...)
 		{
+			LogMusicIslandDebug("music-island-win", "Failed to send media control command: unknown exception");
 		}
 	}).detach();
 #elif defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
