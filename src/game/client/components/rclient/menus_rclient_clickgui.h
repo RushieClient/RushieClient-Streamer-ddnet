@@ -1,6 +1,9 @@
 #ifndef GAME_CLIENT_COMPONENTS_RCLIENT_MENUS_RCLIENT_CLICKGUI_H
 #define GAME_CLIENT_COMPONENTS_RCLIENT_MENUS_RCLIENT_CLICKGUI_H
 
+#include <game/client/lineinput.h>
+#include <game/client/ui_rect.h>
+
 #include <engine/console.h>
 #include "game/client/render.h"
 #include <game/client/component.h>
@@ -12,6 +15,8 @@ class CMenusRClientClickGui : public CComponent
 	bool m_Active = false;
 	bool m_MouseUnlocked = false;
 	std::optional<vec2> m_LastMousePos;
+	CLineInputBuffered<64> m_SearchInput;
+	std::optional<CUIRect> m_SearchRect;
 
 	static void ConToggleClickGui(IConsole::IResult *pResult, void *pUserData);
 	void SetUiMousePos(vec2 Pos);

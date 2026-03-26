@@ -464,6 +464,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	static vec2 s_OverviewOffset(0.0f, 0.0f);
 	static CScrollRegion s_aDetailScroll[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
 	static vec2 s_aDetailOffsets[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
+	static CLineInputBuffered<64> s_SearchInput;
 	auto ApplyFunctionInsets = [&](CUIRect &Rect, float ScrollbarWidth, float TopInset) {
 		Rect.HSplitTop(TopInset, nullptr, &Rect);
 		Rect.HSplitBottom(DefaultVMargin, &Rect, nullptr);
@@ -483,27 +484,51 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 
 	if(s_OpenSection < 0)
 	{
+		s_SearchInput.SetEmptyText(RCLocalize(""));
+		CUIRect OverviewRect, SearchWrap, SearchRect, Label;
+		MainView.HSplitBottom(40.0f * ScreenPixelSize, &OverviewRect, &SearchWrap);
+		SearchWrap.HMargin(SmallButtonSpace, &SearchWrap);
+		SearchWrap.VMargin(DefaultVMargin, &SearchWrap);
+		SearchWrap.VSplitLeft(90.0f * ScreenPixelSize, &Label, &SearchWrap);
+		SearchWrap.VSplitLeft(SmallVMargin, nullptr, &SearchWrap);
+		Ui()->DoLabel(&Label, "Search:", 24.0f * ScreenPixelSize, TEXTALIGN_MC);
+		SearchRect = SearchWrap;
+		if(!Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive() && Input()->ModifierIsPressed() && Input()->KeyPress(KEY_F))
+		{
+			Ui()->SetActiveItem(&s_SearchInput);
+			s_SearchInput.SelectAll();
+		}
+		Ui()->DoEditBox(&s_SearchInput, &SearchRect, 14.0f * ScreenPixelSize);
+
+		const char *pSearch = s_SearchInput.GetString();
+		const bool HasSearch = pSearch[0] != '\0';
+
 		CScrollRegionParams ScrollParams;
 		ScrollParams.m_ScrollbarWidth = ScrollbarWidth;
 		ScrollParams.m_ScrollUnit = 120.0f;
 		ScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
 		ScrollParams.m_ScrollbarMargin = 5.0f * ScreenPixelSize;
-		if(Ui()->MouseHovered(&MainView))
+		if(Ui()->MouseHovered(&OverviewRect))
 			Ui()->SetHotScrollRegion(&s_OverviewScroll);
-		s_OverviewScroll.Begin(&MainView, &s_OverviewOffset, &ScrollParams);
+		s_OverviewScroll.Begin(&OverviewRect, &s_OverviewOffset, &ScrollParams);
 
-		CUIRect ContentView = MainView;
+		CUIRect ContentView = OverviewRect;
 		ContentView.y += s_OverviewOffset.y;
 		ApplyFunctionInsets(ContentView, ScrollParams.m_ScrollbarWidth, DefaultVMargin);
 
 		const float CardGap = DefaultVMargin;
 		const float CardWidth = SettingsFunctionWidth;
 		const float CardHeight = SettingsFunctionHeight;
+		int VisibleCount = 0;
 
 		for(int i = 0; i < gs_NumClickGuiSettingsEntries; ++i)
 		{
-			const int Row = i / 2;
-			const int Col = i % 2;
+			const char *pTitle = RCLocalize(gs_aClickGuiSettingsEntries[i].m_pTitle);
+			if(HasSearch && !str_utf8_find_nocase(pTitle, pSearch) && !str_utf8_find_nocase(gs_aClickGuiSettingsEntries[i].m_pTitle, pSearch))
+				continue;
+
+			const int Row = VisibleCount / 2;
+			const int Col = VisibleCount % 2;
 			CUIRect Card = {
 				ContentView.x + Col * (CardWidth + CardGap),
 				ContentView.y + Row * (CardHeight + CardGap),
@@ -520,7 +545,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 
 			CUIRect TitleRect, IconRect;
 			OpenRect.HSplitTop(30.0f * ScreenPixelSize, &TitleRect, &IconRect);
-			Ui()->DoLabel(&TitleRect, RCLocalize(gs_aClickGuiSettingsEntries[i].m_pTitle), 12.0f * ScreenPixelSize, TEXTALIGN_MC);
+			Ui()->DoLabel(&TitleRect, pTitle, 12.0f * ScreenPixelSize, TEXTALIGN_MC);
 			RenderFontIcon(IconRect, gs_aClickGuiSettingsEntries[i].m_pIcon, 32.0f * ScreenPixelSize, TEXTALIGN_MC, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
 
 			if(Ui()->DoButtonLogic(&s_aOpenButtons[i], 0, &OpenRect, BUTTONFLAG_LEFT))
@@ -536,10 +561,19 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 			{
 				Ui()->DoLabel(&ToggleRect, RCLocalize("No main toggle"), 10.0f * ScreenPixelSize, TEXTALIGN_MC);
 			}
+
+			++VisibleCount;
 		}
 
-		CUIRect ScrollRegionRect = MainView;
-		ScrollRegionRect.y = ContentView.y + ((gs_NumClickGuiSettingsEntries + 1) / 2) * (CardHeight + CardGap);
+		if(VisibleCount == 0)
+		{
+			CUIRect EmptyState = OverviewRect;
+			EmptyState.Margin(DefaultVMargin, &EmptyState);
+			Ui()->DoLabel(&EmptyState, RCLocalize("No matches"), 16.0f * ScreenPixelSize, TEXTALIGN_MC);
+		}
+
+		CUIRect ScrollRegionRect = OverviewRect;
+		ScrollRegionRect.y = ContentView.y + ((VisibleCount + 1) / 2) * (CardHeight + CardGap);
 		ScrollRegionRect.h = 0.0f;
 		s_OverviewScroll.AddRect(ScrollRegionRect);
 		s_OverviewScroll.End();
