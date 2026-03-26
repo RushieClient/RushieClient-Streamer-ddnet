@@ -15,11 +15,16 @@ class CMenusRClientClickGui : public CComponent
 	bool m_Active = false;
 	bool m_MouseUnlocked = false;
 	std::optional<vec2> m_LastMousePos;
+	int m_CurrentTab = 0;
+	int m_OpenSettingsSection = -1;
+	int m_FocusResetAnchor = 0;
 	CLineInputBuffered<64> m_SearchInput;
 	std::optional<CUIRect> m_SearchRect;
 
 	static void ConToggleClickGui(IConsole::IResult *pResult, void *pUserData);
 	void SetUiMousePos(vec2 Pos);
+	bool HandleEscape();
+	void ResetTransientState();
 
 	void RenderDevSkin(vec2 RenderPos, float Size, const char *pSkinName, const char *pBackupSkin, bool CustomColors, int FeetColor, int BodyColor, int Emote, bool Cute,
 			ColorRGBA ColorFeet = ColorRGBA(0, 0, 0, 0), ColorRGBA ColorBody = ColorRGBA(0, 0, 0, 0));

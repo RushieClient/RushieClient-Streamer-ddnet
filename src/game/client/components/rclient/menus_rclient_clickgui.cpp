@@ -189,6 +189,7 @@ void CMenusRClientClickGui::SetActive(bool Active)
 			Ui()->ClosePopupMenus();
 
 		m_MouseUnlocked = false;
+		ResetTransientState();
 		if(m_LastMousePos.has_value())
 			SetUiMousePos(m_LastMousePos.value());
 	}
@@ -201,6 +202,7 @@ void CMenusRClientClickGui::OnReset()
 	m_Active = false;
 	m_MouseUnlocked = false;
 	m_LastMousePos = std::nullopt;
+	ResetTransientState();
 }
 
 void CMenusRClientClickGui::OnRelease()
@@ -229,7 +231,7 @@ bool CMenusRClientClickGui::OnInput(const IInput::CEvent &Event)
 
 	if(Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE)
 	{
-		SetActive(false);
+		HandleEscape();
 		return true;
 	}
 
@@ -239,6 +241,40 @@ bool CMenusRClientClickGui::OnInput(const IInput::CEvent &Event)
 	Ui()->OnInput(Event);
 
 	return m_MouseUnlocked;
+}
+
+bool CMenusRClientClickGui::HandleEscape()
+{
+	if(m_CurrentTab == CLICKGUI_TAB_SETTINGS && m_OpenSettingsSection < 0)
+	{
+		const bool SearchActive = Ui()->CheckActiveItem(&m_SearchInput);
+		const bool HasSearchText = m_SearchInput.GetString()[0] != '\0';
+		if(SearchActive || HasSearchText)
+		{
+			m_SearchInput.Clear();
+			m_SearchInput.Deactivate();
+			Ui()->SetActiveItem(&m_FocusResetAnchor);
+			return true;
+		}
+	}
+
+	if(m_CurrentTab == CLICKGUI_TAB_SETTINGS && m_OpenSettingsSection >= 0)
+	{
+		m_OpenSettingsSection = -1;
+		return true;
+	}
+
+	SetActive(false);
+	return true;
+}
+
+void CMenusRClientClickGui::ResetTransientState()
+{
+	m_OpenSettingsSection = -1;
+	m_SearchInput.Clear();
+	m_SearchRect = std::nullopt;
+	m_SearchInput.Deactivate();
+	Ui()->SetActiveItem(&m_FocusResetAnchor);
 }
 
 void CMenusRClientClickGui::OnRender()
@@ -353,7 +389,6 @@ void CMenusRClientClickGui::OnRender()
 	const ColorRGBA SettingsTabColor = ColorRGBA(SettingsTabActiveColor.r, SettingsTabActiveColor.g, SettingsTabActiveColor.b, 0.75f);
 	const float SettingsTabsFontScale = 14.0f * PixelSize;
 
-	static int s_CurTab = CLICKGUI_TAB_SETTINGS;
 	static CButtonContainer s_aTabButtons[NUM_CLICKGUI_TABS];
 	const char *apTabNames[NUM_CLICKGUI_TABS] = {
 		Localize("Settings"),
@@ -364,8 +399,8 @@ void CMenusRClientClickGui::OnRender()
 	{
 		CUIRect Button;
 		SettingsTabs.VSplitLeft(SettingsTabsWidth, &Button, &SettingsTabs);
-		if(DoButton_MenuTab(Ui(), &s_aTabButtons[Tab], apTabNames[Tab], s_CurTab == Tab, &Button, IGraphics::CORNER_ALL, nullptr, &SettingsTabColor, &SettingsTabActiveColor, &SettingsTabActiveColor, DefaultRounding, SettingsTabsFontScale))
-			s_CurTab = Tab;
+		if(DoButton_MenuTab(Ui(), &s_aTabButtons[Tab], apTabNames[Tab], m_CurrentTab == Tab, &Button, IGraphics::CORNER_ALL, nullptr, &SettingsTabColor, &SettingsTabActiveColor, &SettingsTabActiveColor, DefaultRounding, SettingsTabsFontScale))
+			m_CurrentTab = Tab;
 
 		if(Tab != NUM_CLICKGUI_TABS - 1)
 			SettingsTabs.VSplitLeft(SettingsTabsAutoGaps, nullptr, &SettingsTabs);
@@ -376,11 +411,11 @@ void CMenusRClientClickGui::OnRender()
 
 	//Main render
 	Body.Draw(SClickGuiProperties::Hex1E1E1EColor(), IGraphics::CORNER_ALL, DefaultRounding);
-	if(s_CurTab == CLICKGUI_TAB_SETTINGS)
+	if(m_CurrentTab == CLICKGUI_TAB_SETTINGS)
 		RenderClickGuiRushieSettings(Body, PixelSize);
-	if(s_CurTab == CLICKGUI_TAB_VOICE)
+	if(m_CurrentTab == CLICKGUI_TAB_VOICE)
 		RenderClickGuiRushieVoice(Body, PixelSize);
-	if(s_CurTab == CLICKGUI_TAB_INFO)
+	if(m_CurrentTab == CLICKGUI_TAB_INFO)
 		RenderClickGuiRushieInfo(Body, PixelSize);
 
 	if(m_MouseUnlocked && !UiBlocked)
@@ -456,7 +491,6 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	const float SmallButtonSpace = SClickGuiProperties::ms_SmallButtonSpace * ScreenPixelSize;
 	const float ScrollbarWidth = 20.0f * ScreenPixelSize;
 
-	static int s_OpenSection = -1;
 	static CButtonContainer s_aOpenButtons[gs_NumClickGuiSettingsEntries];
 	static CButtonContainer s_aToggleButtons[gs_NumClickGuiSettingsEntries];
 	static CButtonContainer s_BackButton;
@@ -464,7 +498,6 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	static vec2 s_OverviewOffset(0.0f, 0.0f);
 	static CScrollRegion s_aDetailScroll[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
 	static vec2 s_aDetailOffsets[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
-	static CLineInputBuffered<64> s_SearchInput;
 	auto ApplyFunctionInsets = [&](CUIRect &Rect, float ScrollbarWidth, float TopInset) {
 		Rect.HSplitTop(TopInset, nullptr, &Rect);
 		Rect.HSplitBottom(DefaultVMargin, &Rect, nullptr);
@@ -482,25 +515,27 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 	};
 
-	if(s_OpenSection < 0)
+	if(m_OpenSettingsSection < 0)
 	{
-		s_SearchInput.SetEmptyText(RCLocalize(""));
+		m_SearchInput.SetEmptyText(RCLocalize(""));
 		CUIRect OverviewRect, SearchWrap, SearchRect, Label;
 		MainView.HSplitBottom(40.0f * ScreenPixelSize, &OverviewRect, &SearchWrap);
+		SearchWrap.Draw(SClickGuiProperties::Hex2A2A2AColor(), IGraphics::CORNER_B, DefaultRounding);
 		SearchWrap.HMargin(SmallButtonSpace, &SearchWrap);
 		SearchWrap.VMargin(DefaultVMargin, &SearchWrap);
 		SearchWrap.VSplitLeft(90.0f * ScreenPixelSize, &Label, &SearchWrap);
 		SearchWrap.VSplitLeft(SmallVMargin, nullptr, &SearchWrap);
 		Ui()->DoLabel(&Label, "Search:", 24.0f * ScreenPixelSize, TEXTALIGN_MC);
 		SearchRect = SearchWrap;
+		m_SearchRect = SearchRect;
 		if(!Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive() && Input()->ModifierIsPressed() && Input()->KeyPress(KEY_F))
 		{
-			Ui()->SetActiveItem(&s_SearchInput);
-			s_SearchInput.SelectAll();
+			Ui()->SetActiveItem(&m_SearchInput);
+			m_SearchInput.SelectAll();
 		}
-		Ui()->DoEditBox(&s_SearchInput, &SearchRect, 14.0f * ScreenPixelSize);
+		Ui()->DoEditBox(&m_SearchInput, &SearchRect, 14.0f * ScreenPixelSize);
 
-		const char *pSearch = s_SearchInput.GetString();
+		const char *pSearch = m_SearchInput.GetString();
 		const bool HasSearch = pSearch[0] != '\0';
 
 		CScrollRegionParams ScrollParams;
@@ -539,7 +574,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 			OpenRect.HSplitBottom(34.0f * ScreenPixelSize, &OpenRect, &ToggleRect);
 			ToggleRect.Margin(4.0f * ScreenPixelSize, &ToggleRect);
 
-			const bool Selected = i == s_OpenSection;
+			const bool Selected = i == m_OpenSettingsSection;
 			Card.Draw(Selected ? SClickGuiProperties::Hex4E4E4EColor() : SClickGuiProperties::Hex2A2A2AColor(), IGraphics::CORNER_ALL, DefaultRounding);
 			OpenRect.Margin(10.0f * ScreenPixelSize, &OpenRect);
 
@@ -549,7 +584,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 			RenderFontIcon(IconRect, gs_aClickGuiSettingsEntries[i].m_pIcon, 32.0f * ScreenPixelSize, TEXTALIGN_MC, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
 
 			if(Ui()->DoButtonLogic(&s_aOpenButtons[i], 0, &OpenRect, BUTTONFLAG_LEFT))
-				s_OpenSection = i;
+				m_OpenSettingsSection = i;
 
 			if(int *pMainToggle = gs_aClickGuiSettingsEntries[i].m_pMainToggle)
 			{
@@ -580,7 +615,8 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 		return;
 	}
 
-	const SClickGuiSettingsEntry &Entry = gs_aClickGuiSettingsEntries[s_OpenSection];
+	m_SearchRect = std::nullopt;
+	const SClickGuiSettingsEntry &Entry = gs_aClickGuiSettingsEntries[m_OpenSettingsSection];
 	CUIRect TopBar, BackRect, TitleRect, DetailRect;
 	MainView.HSplitTop(40.0f * ScreenPixelSize, &TopBar, &MainView);
 	TopBar.Draw(SClickGuiProperties::Hex1E1E1EColor(), IGraphics::CORNER_ALL, DefaultRounding);
@@ -589,7 +625,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	TopBar.VSplitLeft(120.0f * ScreenPixelSize, &BackRect, &TitleRect);
 	if(GameClient()->m_Menus.DoButton_Menu(&s_BackButton, RCLocalize("Back"), 0, &BackRect))
 	{
-		s_OpenSection = -1;
+		m_OpenSettingsSection = -1;
 		return;
 	}
 	Ui()->DoLabel(&TopBar, RCLocalize(Entry.m_pTitle), 16.0f * ScreenPixelSize, TEXTALIGN_MC);
