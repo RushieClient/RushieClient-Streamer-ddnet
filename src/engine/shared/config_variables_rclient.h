@@ -195,5 +195,5 @@ MACRO_CONFIG_INT(RiShowMusicIslandImage, ri_show_music_island_image, 1, 0, 1, CF
 MACRO_CONFIG_INT(RiShowMusicIslandVisualizer, ri_show_music_island_visualizer, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island visualizer (May eat fps)")
 MACRO_CONFIG_INT(RiShowMusicIslandTimerFull, ri_show_music_timer_full, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island timer full")
 MACRO_CONFIG_COL(RiShowMusicIslandColorBar, ri_show_music_color_bar, 4278190080, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of rclient's music island")
-MACRO_CONFIG_INT(RiShowMusicIslandSections, ri_show_music_island_sections, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island sections")
+MACRO_CONFIG_INT(RiShowMusicIslandSections, ri_show_music_island_sections, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island sections")
 MACRO_CONFIG_COL(RiShowMusicIslandSectionsColor, ri_show_music_island_sections_color, 4278190080, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of rclient's music island sections gaps")
