@@ -129,23 +129,6 @@ static int DoButton_MenuTab(CUi *pUi, CButtonContainer *pButtonContainer, const 
 	return pUi->DoButtonLogic(pButtonContainer, Checked, pRect, BUTTONFLAG_LEFT);
 }
 
-struct SClickGuiSettingsEntry
-{
-	CMenus::ERushieSettingsSection m_Section;
-	const char *m_pTitle;
-	const char *m_pIcon;
-	int *m_pMainToggle;
-};
-
-static const SClickGuiSettingsEntry gs_aClickGuiSettingsEntries[] = {
-#define CLICKGUI_SETTINGS_ENTRY(Name, Title, Icon, MainToggle) \
-	{CMenus::SETTINGS_SECTION_##Name, Title, Icon, MainToggle},
-	RUSHIE_SETTINGS_SECTION_LIST(CLICKGUI_SETTINGS_ENTRY)
-#undef CLICKGUI_SETTINGS_ENTRY
-};
-static constexpr int gs_NumClickGuiSettingsEntries = sizeof(gs_aClickGuiSettingsEntries) / sizeof(gs_aClickGuiSettingsEntries[0]);
-static_assert(gs_NumClickGuiSettingsEntries == CMenus::NUM_RUSHIE_SETTINGS_SECTIONS, "Rushie settings list is out of sync");
-
 void CMenusRClientClickGui::SetUiMousePos(vec2 Pos)
 {
 	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
@@ -491,13 +474,15 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	const float SmallButtonSpace = SClickGuiProperties::ms_SmallButtonSpace * ScreenPixelSize;
 	const float ScrollbarWidth = 20.0f * ScreenPixelSize;
 
-	static CButtonContainer s_aOpenButtons[gs_NumClickGuiSettingsEntries];
-	static CButtonContainer s_aToggleButtons[gs_NumClickGuiSettingsEntries];
+	static CButtonContainer s_aOpenButtons[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
+	static CButtonContainer s_aToggleButtons[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
 	static CButtonContainer s_BackButton;
 	static CScrollRegion s_OverviewScroll;
 	static vec2 s_OverviewOffset(0.0f, 0.0f);
 	static CScrollRegion s_aDetailScroll[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
 	static vec2 s_aDetailOffsets[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
+	const CMenus::SRushieSettingsSectionEntry *pEntries = CMenus::GetRushieSettingsSectionEntries();
+	const int NumEntries = CMenus::GetNumRushieSettingsSections();
 	auto ApplyFunctionInsets = [&](CUIRect &Rect, float ScrollbarWidth, float TopInset) {
 		Rect.HSplitTop(TopInset, nullptr, &Rect);
 		Rect.HSplitBottom(DefaultVMargin, &Rect, nullptr);
@@ -556,10 +541,11 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 		const float CardHeight = SettingsFunctionHeight;
 		int VisibleCount = 0;
 
-		for(int i = 0; i < gs_NumClickGuiSettingsEntries; ++i)
+		for(int i = 0; i < NumEntries; ++i)
 		{
-			const char *pTitle = RCLocalize(gs_aClickGuiSettingsEntries[i].m_pTitle);
-			if(HasSearch && !str_utf8_find_nocase(pTitle, pSearch) && !str_utf8_find_nocase(gs_aClickGuiSettingsEntries[i].m_pTitle, pSearch))
+			const CMenus::SRushieSettingsSectionEntry &Entry = pEntries[i];
+			const char *pTitle = RCLocalize(Entry.m_pTitle, Entry.m_pTitleContext);
+			if(HasSearch && !str_utf8_find_nocase(pTitle, pSearch) && !str_utf8_find_nocase(Entry.m_pTitle, pSearch))
 				continue;
 
 			const int Row = VisibleCount / 2;
@@ -581,12 +567,12 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 			CUIRect TitleRect, IconRect;
 			OpenRect.HSplitTop(30.0f * ScreenPixelSize, &TitleRect, &IconRect);
 			Ui()->DoLabel(&TitleRect, pTitle, 12.0f * ScreenPixelSize, TEXTALIGN_MC);
-			RenderFontIcon(IconRect, gs_aClickGuiSettingsEntries[i].m_pIcon, 32.0f * ScreenPixelSize, TEXTALIGN_MC, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
+			RenderFontIcon(IconRect, Entry.m_pIcon, 32.0f * ScreenPixelSize, TEXTALIGN_MC, ColorRGBA(1.0f, 1.0f, 1.0f, 0.9f));
 
 			if(Ui()->DoButtonLogic(&s_aOpenButtons[i], 0, &OpenRect, BUTTONFLAG_LEFT))
 				m_OpenSettingsSection = i;
 
-			if(int *pMainToggle = gs_aClickGuiSettingsEntries[i].m_pMainToggle)
+			if(int *pMainToggle = Entry.m_pMainToggle)
 			{
 				const ColorRGBA ToggleColor = *pMainToggle ? ColorRGBA(0.18f, 0.45f, 0.24f, 0.9f) : SClickGuiProperties::Hex141414Color();
 				if(GameClient()->m_Menus.DoButton_Menu(&s_aToggleButtons[i], *pMainToggle ? RCLocalize("Enabled") : RCLocalize("Disabled"), 0, &ToggleRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, DefaultRounding * 0.75f, 0.0f, ToggleColor))
@@ -616,7 +602,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	}
 
 	m_SearchRect = std::nullopt;
-	const SClickGuiSettingsEntry &Entry = gs_aClickGuiSettingsEntries[m_OpenSettingsSection];
+	const CMenus::SRushieSettingsSectionEntry &Entry = pEntries[m_OpenSettingsSection];
 	CUIRect TopBar, BackRect, TitleRect, DetailRect;
 	MainView.HSplitTop(40.0f * ScreenPixelSize, &TopBar, &MainView);
 	TopBar.Draw(SClickGuiProperties::Hex1E1E1EColor(), IGraphics::CORNER_ALL, DefaultRounding);
@@ -628,7 +614,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 		m_OpenSettingsSection = -1;
 		return;
 	}
-	Ui()->DoLabel(&TopBar, RCLocalize(Entry.m_pTitle), 16.0f * ScreenPixelSize, TEXTALIGN_MC);
+	Ui()->DoLabel(&TopBar, RCLocalize(Entry.m_pTitle, Entry.m_pTitleContext), 16.0f * ScreenPixelSize, TEXTALIGN_MC);
 	MainView.HSplitTop(SmallVMargin, nullptr, &MainView);
 	DetailRect = MainView;
 	if(Ui()->MouseHovered(&DetailRect))

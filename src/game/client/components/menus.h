@@ -64,33 +64,45 @@ public:
 	bool DoFloatScrollBar(const void *pId, int *pOption, const CUIRect *pRect, const char *pStr, int Min, int Max, int DivideBy, const IScrollbarScale *pScale, unsigned Flags, const char *pSuffix);
 
 #define RUSHIE_SETTINGS_SECTION_LIST(X) \
-	X(AUTO_CHANGE_PLAYER_INFO, "Auto Change Player Info", FontIcon::USER, &g_Config.m_PlayerClanAutoChange) \
-	X(CHAT_FUNCTIONS, "Chat Functions", FontIcon::COMMENT, nullptr) \
-	X(BLOCK_LIST, "Block List", FontIcon::BAN, &g_Config.m_RiEnableCensorList) \
-	X(CHAT, "Chat", FontIcon::COMMENT, &g_Config.m_RiChatAnim) \
-	X(SCOREBOARD, "Scoreboard", FontIcon::LIST_UL, nullptr) \
-	X(CHANGED_TATER, "Changed Tater", FontIcon::ARROWS_ROTATE, &g_Config.m_RiIndicatorTransparentToggle) \
-	X(NAMEPLATES, "Nameplates", FontIcon::EYE, nullptr) \
-	X(DUMMY, "Dummy", FontIcon::RC_PEOPLE_GROUP, &g_Config.m_RiShowhudDummyPosition) \
-	X(EFFECTS, "Effects", FontIcon::STAR, nullptr) \
-	X(TRACKER_PLAYER, "Tracker Player", FontIcon::RC_LIST_TRACK, &g_Config.m_RiShowLastPosHud) \
-	X(HUD, "Hud", FontIcon::HEART, nullptr) \
-	X(CONTROLS, "Controls", FontIcon::KEYBOARD, nullptr) \
-	X(LASER, "Laser Settings", FontIcon::RC_PERSON_RIFLE, &g_Config.m_RiBetterLasers) \
-	X(SPECTATOR, "Spectator", FontIcon::EYE, &g_Config.m_RiSpectatorMoveEnable) \
-	X(CHAT_BUBBLES, "Chat Bubbles", FontIcon::COMMENT, &g_Config.m_RiChatBubbles) \
-	X(RCLIENT_INDICATOR, "RClient Indicator", FontIcon::BOOKMARK, &g_Config.m_RiShowRclientIndicator) \
-	X(EDGE_INFO, "Edge Info", FontIcon::TRIANGLE_EXCLAMATION, nullptr) \
-	X(VOICE, "Voice", FontIcon::RC_MICROPHONE, &g_Config.m_RiVoiceEnable) \
-	X(MENUS, "Menu", FontIcon::HOUSE, &g_Config.m_RiUiNewMenu)
+	X(AUTO_CHANGE_PLAYER_INFO, "Auto Change Player Info", "", FontIcon::USER, &g_Config.m_PlayerClanAutoChange, 0) \
+	X(CHAT_FUNCTIONS, "Chat Functions", "", FontIcon::COMMENT, nullptr, 0) \
+	X(BLOCK_LIST, "Block List", "", FontIcon::BAN, &g_Config.m_RiEnableCensorList, 0) \
+	X(CHAT, "Chat", "", FontIcon::COMMENT, &g_Config.m_RiChatAnim, 0) \
+	X(SCOREBOARD, "Scoreboard", "", FontIcon::LIST_UL, nullptr, 0) \
+	X(CHANGED_TATER, "Changed Tater", "", FontIcon::ARROWS_ROTATE, &g_Config.m_RiIndicatorTransparentToggle, 0) \
+	X(NAMEPLATES, "Nameplates", "RClient", FontIcon::EYE, nullptr, 0) \
+	X(DUMMY, "Dummy", "RClient", FontIcon::RC_PEOPLE_GROUP, &g_Config.m_RiShowhudDummyPosition, 0) \
+	X(EFFECTS, "Effects", "", FontIcon::STAR, nullptr, 0) \
+	X(TRACKER_PLAYER, "Tracker Player", "", FontIcon::RC_LIST_TRACK, &g_Config.m_RiShowLastPosHud, 1) \
+	X(HUD, "Hud", "", FontIcon::HEART, nullptr, 1) \
+	X(CONTROLS, "Controls", "", FontIcon::KEYBOARD, nullptr, 1) \
+	X(LASER, "Laser Settings", "", FontIcon::RC_PERSON_RIFLE, &g_Config.m_RiBetterLasers, 1) \
+	X(SPECTATOR, "Spectator", "", FontIcon::EYE, &g_Config.m_RiSpectatorMoveEnable, 1) \
+	X(CHAT_BUBBLES, "Chat Bubbles", "", FontIcon::COMMENT, &g_Config.m_RiChatBubbles, 1) \
+	X(RCLIENT_INDICATOR, "RClient Indicator", "", FontIcon::BOOKMARK, &g_Config.m_RiShowRclientIndicator, 1) \
+	X(EDGE_INFO, "Edge Info", "", FontIcon::TRIANGLE_EXCLAMATION, nullptr, 1) \
+	X(VOICE, "Voice", "", FontIcon::RC_MICROPHONE, &g_Config.m_RiVoiceEnable, 1) \
+	X(MENUS, "Menu", "", FontIcon::HOUSE, &g_Config.m_RiUiNewMenu, 0)
 
 	enum ERushieSettingsSection
 	{
-#define RUSHIE_SETTINGS_SECTION_ENUM(Name, Title, Icon, MainToggle) SETTINGS_SECTION_##Name,
+#define RUSHIE_SETTINGS_SECTION_ENUM(Name, Title, TitleContext, Icon, MainToggle, Column) SETTINGS_SECTION_##Name,
 		RUSHIE_SETTINGS_SECTION_LIST(RUSHIE_SETTINGS_SECTION_ENUM)
 #undef RUSHIE_SETTINGS_SECTION_ENUM
 		NUM_RUSHIE_SETTINGS_SECTIONS
 	};
+	struct SRushieSettingsSectionEntry
+	{
+		ERushieSettingsSection m_Section;
+		const char *m_pTitle;
+		const char *m_pTitleContext;
+		const char *m_pIcon;
+		int *m_pMainToggle;
+		int m_Column;
+	};
+	static const SRushieSettingsSectionEntry *GetRushieSettingsSectionEntries();
+	static int GetNumRushieSettingsSections();
+	static const SRushieSettingsSectionEntry &GetRushieSettingsSectionEntry(ERushieSettingsSection SectionId);
 	void RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection SectionId);
 
 private:
