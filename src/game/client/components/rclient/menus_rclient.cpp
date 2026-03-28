@@ -1019,7 +1019,29 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 	}
 	case SETTINGS_SECTION_MUSIC_PLAYER:
 	{
-		Ui()->DoLabel(&Column, RCLocalize("Section content is being moved here"), FontSize, TEXTALIGN_ML);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIsland, RCLocalize("Show music island"), &g_Config.m_RiShowMusicIsland, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+
+		if(g_Config.m_RiShowMusicIsland)
+		{
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandImage, RCLocalize("Show cover image"), &g_Config.m_RiShowMusicIslandImage, &Column, LineSize);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandVisualizer, RCLocalize("Show visualizer"), &g_Config.m_RiShowMusicIslandVisualizer, &Column, LineSize);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandTimerFull, RCLocalize("Show full timer"), &g_Config.m_RiShowMusicIslandTimerFull, &Column, LineSize);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandSections, RCLocalize("Show visualizer sections"), &g_Config.m_RiShowMusicIslandSections, &Column, LineSize);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandDebug, RCLocalize("Show debug logs"), &g_Config.m_RiShowMusicIslandDebug, &Column, LineSize);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			static CButtonContainer s_MusicIslandColorButton;
+			DoLine_ColorPicker(&s_MusicIslandColorButton, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Column, RCLocalize("Music island color"), &g_Config.m_RiShowMusicIslandColorBar, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::RiShowMusicIslandColorBar, true)), false, nullptr, true);
+			if(g_Config.m_RiShowMusicIslandSections)
+			{
+				static CButtonContainer s_MusicIslandSectionsColorButton;
+				DoLine_ColorPicker(&s_MusicIslandSectionsColorButton, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Column, RCLocalize("Section gaps color"), &g_Config.m_RiShowMusicIslandSectionsColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::RiShowMusicIslandSectionsColor, true)), false, nullptr, true);
+			}
+		}
 		break;
 	}
 	case SETTINGS_SECTION_SPECTATOR:
