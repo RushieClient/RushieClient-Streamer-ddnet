@@ -27,6 +27,7 @@ struct SMusicIslandProperties
 {
 	static constexpr float ms_Padding = 1.0f;
 	static constexpr float ms_Rounding = 3.0f;
+	static constexpr float ms_ArtworkRadiusFraction = 0.2f;
 	static constexpr float ms_BaseHeight = 10.0f;
 	static constexpr float ms_ExpandedInfoHeight = 8.5f;
 	static constexpr float ms_ControlGap = 1.0f;
@@ -672,8 +673,7 @@ static bool DecodeThumbnailToImage(const winrt::Windows::Storage::Streams::IRand
 	}
 
 	std::memcpy(Image.m_pData, Pixels.data(), ExpectedSize);
-	constexpr float ArtworkRadiusFraction = 0.2f;
-	ApplyRoundedCornersToImage(Image, ArtworkRadiusFraction);
+	ApplyRoundedCornersToImage(Image, SMusicIslandProperties::ms_ArtworkRadiusFraction);
 	return true;
 }
 
@@ -1516,9 +1516,11 @@ void CMusicIsland::RenderMusicIslandImage(CUIRect *pBase)
 	ImageRect.w = CubeSize;
 	ImageRect.h = CubeSize;
 
-	ImageRect.Draw(SMusicIslandProperties::WindowColorDark(), IGraphics::CORNER_ALL, SMusicIslandProperties::ms_Rounding);
+	const bool HasArtwork = m_MusicImageTexture.IsValid() && m_MusicImageWidth > 0 && m_MusicImageHeight > 0;
+	const float ImageRounding = CubeSize * SMusicIslandProperties::ms_ArtworkRadiusFraction;
+	ImageRect.Draw(SMusicIslandProperties::WindowColorDark(), IGraphics::CORNER_ALL, ImageRounding);
 
-	if(m_MusicImageTexture.IsValid() && m_MusicImageWidth > 0 && m_MusicImageHeight > 0)
+	if(HasArtwork)
 	{
 		Graphics()->WrapClamp();
 		Graphics()->TextureSet(m_MusicImageTexture);
