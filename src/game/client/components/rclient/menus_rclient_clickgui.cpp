@@ -317,7 +317,7 @@ void CMenusRClientClickGui::OnRender()
 	TopBarContent.VSplitLeft(TeeSkinSize, &TeeSkin, &TopBarContent);
 	RenderDevSkin(TeeSkin.Center(), 40.0f * PixelSize, g_Config.m_ClPlayerSkin, "default", g_Config.m_ClPlayerUseCustomColor, g_Config.m_ClPlayerColorFeet, g_Config.m_ClPlayerColorBody, 0, true);
 	TopBarContent.VSplitLeft(SmallVMargin, nullptr, &TopBarContent);
-	Ui()->DoLabel(&TopBarContent, g_Config.m_PlayerName, 24.0f * PixelSize, TEXTALIGN_ML);
+	Ui()->DoLabel(&TopBarContent, Client()->PlayerName(), 24.0f * PixelSize, TEXTALIGN_ML);
 
 	TopBar.VSplitRight(NicknameSizeWidth, &TopBar, &TopBarContent);
 	TopBarContent.VSplitRight(TeeSkinSize, &TopBarContent, &TeeSkin);
