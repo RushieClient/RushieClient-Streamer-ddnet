@@ -544,6 +544,13 @@ if(CLIENT AND VIDEORECORDER)
   find_package(FFMPEG)
 endif()
 find_package(Freetype)
+if(TARGET_OS STREQUAL "linux" AND CLIENT)
+  find_package(Gio)
+else()
+  set(GIO_FOUND OFF)
+  set(GIO_LIBRARIES)
+  set(GIO_INCLUDE_DIRS)
+endif()
 if(DOWNLOAD_GTEST)
   find_package(Git)
 endif()
@@ -792,8 +799,8 @@ elseif(TARGET_OS STREQUAL "emscripten")
 else()
   find_package(Notify)
   find_package(OpenGL)
-  set(PLATFORM_CLIENT_LIBS ${OPENGL_gl_LIBRARY} ${NOTIFY_LIBRARIES})
-  set(PLATFORM_CLIENT_INCLUDE_DIRS ${OPENGL_INCLUDE_DIR} ${NOTIFY_INCLUDE_DIRS})
+  set(PLATFORM_CLIENT_LIBS ${OPENGL_gl_LIBRARY} ${NOTIFY_LIBRARIES} ${GIO_LIBRARIES})
+  set(PLATFORM_CLIENT_INCLUDE_DIRS ${OPENGL_INCLUDE_DIR} ${NOTIFY_INCLUDE_DIRS} ${GIO_INCLUDE_DIRS})
   set(PLATFORM_CLIENT)
   if(TARGET_OS STREQUAL "linux")
     set(PLATFORM_LIBS)
@@ -2640,6 +2647,8 @@ if(CLIENT)
     components/rclient/menus_rclient.cpp
     components/rclient/menus_rclient_clickgui.cpp
     components/rclient/menus_rclient_clickgui.h
+    components/rclient/music_island.cpp
+    components/rclient/music_island.h
     components/rclient/playermenu.cpp
     components/rclient/playermenu.h
     components/rclient/rclient.cpp
@@ -2949,6 +2958,10 @@ if(CLIENT)
   )
 
   target_link_libraries(game-client ${LIBS_CLIENT})
+
+  if(TARGET_OS STREQUAL "linux" AND GIO_FOUND)
+    target_compile_definitions(game-client PRIVATE CONF_MUSIC_ISLAND_MPRIS)
+  endif()
 
   if(MSVC)
     target_compile_options(game-client PRIVATE /bigobj) # TClient, required for ChaiScript

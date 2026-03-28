@@ -30,6 +30,13 @@
 
 char CChat::ms_aDisplayText[MAX_LINE_LENGTH] = "";
 
+static vec2 UiMouseToScreen(const CUIRect *pUiScreen, vec2 UiMousePos, float Width, float Height)
+{
+	return vec2(
+		(UiMousePos.x - pUiScreen->x) * Width / pUiScreen->w,
+		(UiMousePos.y - pUiScreen->y) * Height / pUiScreen->h);
+}
+
 CChat::CLine::CLine()
 {
 	m_TextContainerIndex.Reset();
@@ -130,6 +137,27 @@ void CChat::OnWindowResize()
 	RebuildChat();
 }
 
+void CChat::SetUiMousePos(vec2 Pos)
+{
+	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
+	const CUIRect *pScreen = Ui()->Screen();
+
+	const vec2 UpdatedMousePos = Ui()->UpdatedMousePos();
+	Pos = Pos / vec2(pScreen->w, pScreen->h) * WindowSize;
+	Ui()->OnCursorMove(Pos.x - UpdatedMousePos.x, Pos.y - UpdatedMousePos.y);
+}
+
+vec2 CChat::MouseCursorPos() const
+{
+	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
+	const CUIRect *pScreen = Ui()->Screen();
+	const vec2 UpdatedMousePos = Ui()->UpdatedMousePos();
+
+	return vec2(
+		pScreen->x + UpdatedMousePos.x * pScreen->w / WindowSize.x,
+		pScreen->y + UpdatedMousePos.y * pScreen->h / WindowSize.y);
+}
+
 void CChat::Reset()
 {
 	ClearLines();
@@ -150,6 +178,7 @@ void CChat::Reset()
 	m_ServerCommandsNeedSorting = false;
 	m_aCurrentInputText[0] = '\0';
 	DisableMode();
+	m_HasLastMousePos = false;
 	m_vServerCommands.clear();
 
 	for(int64_t &LastSoundPlayed : m_aLastSoundPlayed)
@@ -541,6 +570,7 @@ void CChat::EnableMode(int Team)
 		m_CompletionChosen = -1;
 		m_CompletionUsed = false;
 		m_Input.Activate(EInputPriority::CHAT);
+		SetUiMousePos(m_HasLastMousePos ? m_LastMousePos : Ui()->Screen()->Center());
 	}
 }
 
@@ -548,9 +578,22 @@ void CChat::DisableMode()
 {
 	if(m_Mode != MODE_NONE)
 	{
+		m_LastMousePos = MouseCursorPos();
+		m_HasLastMousePos = true;
 		m_Mode = MODE_NONE;
 		m_Input.Deactivate();
 	}
+}
+
+bool CChat::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
+{
+	if(!IsActive())
+		return false;
+
+	Ui()->ConvertMouseMove(&x, &y, CursorType);
+	Ui()->OnCursorMove(x, y);
+
+	return true;
 }
 
 void CChat::OnMessage(int MsgType, void *pRawMsg)
@@ -1400,6 +1443,8 @@ void CChat::OnRender()
 				}
 			}
 		}
+
+		RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
 	}
 
 #if defined(CONF_VIDEORECORDER)

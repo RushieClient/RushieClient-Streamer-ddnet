@@ -72,6 +72,7 @@
 #include "components/rclient/chat_bubbles.h"
 #include "components/rclient/edgehelper.h"
 #include "components/rclient/menus_rclient_clickgui.h"
+#include "components/rclient/music_island.h"
 #include "components/rclient/rclient.h"
 #include "components/rclient/rclient_indicator.h"
 #include "components/rclient/playermenu.h"
@@ -254,6 +255,7 @@ public:
 	CBindWheelSpec m_BindWheelSpec;
 	CAdminPanel m_AdminPanelRi;
 	CEdgeHelper m_EdgeHelper;
+	CMusicIsland m_MusicIsland;
 	CRClientIndicator m_RClientIndicator;
 	CPlayerMenu m_RiPlayerMenu;
 	CMenusRClientClickGui m_RClientClickGui;

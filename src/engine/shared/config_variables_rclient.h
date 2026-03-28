@@ -210,3 +210,13 @@ MACRO_CONFIG_INT(RiShowHammerHit, ri_show_hammer_hit, 1, 0, 2, CFGFLAG_CLIENT | 
 // Sound on move
 MACRO_CONFIG_INT(RiPlayOnMoveNonInactive, ri_play_on_move_nonactive, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play sound when someone moves u when u inactive")
 MACRO_CONFIG_INT(RiSoundOnMoveNonInactive, ri_sound_on_move_nonactive, 0, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Choose sound when inactive (0-WakeUp, 1-Grenade boom, 2-msg tag")
+
+//Music island
+MACRO_CONFIG_INT(RiShowMusicIsland, ri_show_music_island, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island")
+MACRO_CONFIG_INT(RiShowMusicIslandDebug, ri_show_music_island_debug, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island debug logs")
+MACRO_CONFIG_INT(RiShowMusicIslandImage, ri_show_music_island_image, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music image (May eat fps)")
+MACRO_CONFIG_INT(RiShowMusicIslandVisualizer, ri_show_music_island_visualizer, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island visualizer (May eat fps)")
+MACRO_CONFIG_INT(RiShowMusicIslandTimerFull, ri_show_music_timer_full, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island timer full")
+MACRO_CONFIG_COL(RiShowMusicIslandColorBar, ri_show_music_color_bar, 4278190080, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of rclient's music island")
+MACRO_CONFIG_INT(RiShowMusicIslandSections, ri_show_music_island_sections, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show music island sections")
+MACRO_CONFIG_COL(RiShowMusicIslandSectionsColor, ri_show_music_island_sections_color, 4278190080, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of rclient's music island sections gaps")

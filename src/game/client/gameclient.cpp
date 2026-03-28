@@ -180,6 +180,7 @@ void CGameClient::OnConsoleInit()
 					      &m_RiPlayerMenu,
 					      &m_RClientClickGui,
 					      &m_EdgeHelper,
+					      &m_MusicIsland,
 					      &m_Scoreboard,
 					      &m_Statboard,
 					      &m_Motd,
@@ -206,6 +207,7 @@ void CGameClient::OnConsoleInit()
 						  &m_Emoticon,
 						  &m_ImportantAlert,
 						  &m_Menus,
+						  &m_MusicIsland,
 						  &m_Controls,
 						  &m_TouchControls,
 						  &m_Binds});
