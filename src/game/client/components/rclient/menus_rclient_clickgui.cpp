@@ -572,11 +572,12 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 			if(Ui()->DoButtonLogic(&s_aOpenButtons[i], 0, &OpenRect, BUTTONFLAG_LEFT))
 				m_OpenSettingsSection = i;
 
-			if(int *pMainToggle = Entry.m_pMainToggle)
+			if(Entry.HasMainToggle())
 			{
-				const ColorRGBA ToggleColor = *pMainToggle ? ColorRGBA(0.18f, 0.45f, 0.24f, 0.9f) : SClickGuiProperties::Hex141414Color();
-				if(GameClient()->m_Menus.DoButton_Menu(&s_aToggleButtons[i], *pMainToggle ? RCLocalize("Enabled") : RCLocalize("Disabled"), 0, &ToggleRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, DefaultRounding * 0.75f, 0.0f, ToggleColor))
-					*pMainToggle ^= 1;
+				const bool Enabled = Entry.IsMainToggleEnabled();
+				const ColorRGBA ToggleColor = Enabled ? ColorRGBA(0.18f, 0.45f, 0.24f, 0.9f) : SClickGuiProperties::Hex141414Color();
+				if(GameClient()->m_Menus.DoButton_Menu(&s_aToggleButtons[i], Enabled ? RCLocalize("Enabled") : RCLocalize("Disabled"), 0, &ToggleRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, DefaultRounding * 0.75f, 0.0f, ToggleColor))
+					*Entry.m_pMainToggle ^= 1;
 			}
 			else
 			{

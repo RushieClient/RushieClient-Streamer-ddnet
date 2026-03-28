@@ -39,8 +39,8 @@ enum
 };
 
 static const CMenus::SRushieSettingsSectionEntry gs_aRushieSettingsSectionEntries[] = {
-#define RUSHIE_SETTINGS_SECTION_ENTRY(Name, Title, TitleContext, Icon, MainToggle, Column) \
-	{CMenus::SETTINGS_SECTION_##Name, Title, TitleContext, Icon, MainToggle, Column},
+#define RUSHIE_SETTINGS_SECTION_ENTRY(Name, Title, TitleContext, Icon, MainToggle, DefaultValue, Column) \
+	{CMenus::SETTINGS_SECTION_##Name, Title, TitleContext, Icon, MainToggle, DefaultValue, Column},
 	RUSHIE_SETTINGS_SECTION_LIST(RUSHIE_SETTINGS_SECTION_ENTRY)
 #undef RUSHIE_SETTINGS_SECTION_ENTRY
 };
@@ -565,7 +565,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 
 	switch(SectionId)
 	{
-	case SETTINGS_SECTION_AUTO_CHANGE_PLAYER_INFO:
+	case SETTINGS_SECTION_COPY_PLAYERS:
 	{
 		for(CBindChat::CBindRclient &BindchatDefault : s_aDefaultBindChatRclientFindSkin)
 			DoBindchatDefault(Column, BindchatDefault);
@@ -584,6 +584,10 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			}
 		}
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_DUMMY_CHANGE_CLAN:
+	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_PlayerClanAutoChange, RCLocalize("Auto change clan when dummy connect"), &g_Config.m_PlayerClanAutoChange, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		if(g_Config.m_PlayerClanAutoChange)
@@ -621,7 +625,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_BLOCK_LIST:
+	case SETTINGS_SECTION_CHAT_FILTER:
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowBlockedWordInConsole, RCLocalize("Show blocked word in console"), &g_Config.m_RiShowBlockedWordInConsole, &Column, LineSize);
 		GameClient()->m_Tooltips.DoToolTip(&g_Config.m_RiShowBlockedWordInConsole, &Column, RCLocalize("In console will be like 'tee said badbad'"));
@@ -677,7 +681,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_CHAT:
+	case SETTINGS_SECTION_CHAT_ANIMATE:
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiChatAnim, RCLocalize("Animate chat"), &g_Config.m_RiChatAnim, &Column, LineSize);
 		if(g_Config.m_RiChatAnim)
@@ -688,17 +692,28 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_SCOREBOARD:
+	case SETTINGS_SECTION_SCOREBOARD_SORT:
 	{
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiScoreboardFriendMark, RCLocalize("Show friend icon in scoreboard"), &g_Config.m_RiScoreboardFriendMark, &Column, LineSize);
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiScoreboardAlwaysShowQuickActions, RCLocalize("Always show quick actions"), &g_Config.m_RiScoreboardAlwaysShowQuickActions, &Column, LineSize);
 		static std::vector<CButtonContainer> s_vScoreboardSortButtonContainers = {{}, {}, {}};
 		DoLine_RadioMenu(Column, RCLocalize("Sort by id:", "ScoreboardSorting"),
 			s_vScoreboardSortButtonContainers,
 			{RCLocalize("Default", "ScoreboardSorting"), RCLocalize("Teams", "ScoreboardSorting"), RCLocalize("All", "ScoreboardSorting")},
 			{0, 1, 2},
 			g_Config.m_RiScoreboardSortById);
+		break;
+	}
+	case SETTINGS_SECTION_SCOREBOARD_HEART:
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiScoreboardFriendMark, RCLocalize("Show friend icon in scoreboard"), &g_Config.m_RiScoreboardFriendMark, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_SCOREBOARD_ACTIONS:
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiScoreboardAlwaysShowQuickActions, RCLocalize("Always show quick actions"), &g_Config.m_RiScoreboardAlwaysShowQuickActions, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiScoreboardFreezeInputs, RCLocalize("Freeze inputs when unlock mouse"), &g_Config.m_RiScoreboardFreezeInputs, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
 	case SETTINGS_SECTION_CHANGED_TATER:
@@ -732,7 +747,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			g_Config.m_RiFastInputVersion);
 		break;
 	}
-	case SETTINGS_SECTION_NAMEPLATES:
+	case SETTINGS_SECTION_NAMEPLATES_ACTIONS:
 	{
 		Column.HSplitTop(20.0f, &Label, &Column);
 		Ui()->DoLabel(&Label, RCLocalize("Nameplate Scheme"), 14.0f, TEXTALIGN_ML);
@@ -776,10 +791,14 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_DUMMY:
+	case SETTINGS_SECTION_ADVANCED_DUMMY_HUD:
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiAdvancedShowhudDummyActions, RCLocalize("Show Advanced Dummy Actions"), &g_Config.m_RiAdvancedShowhudDummyActions, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_DUMMY_TRACKER:
+	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowhudDummyPosition, TCLocalize("Show Dummy position"), &g_Config.m_RiShowhudDummyPosition, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		if(g_Config.m_RiShowhudDummyPosition)
@@ -800,12 +819,20 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_EFFECTS:
+	case SETTINGS_SECTION_TRAILS:
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowSparkleTrail, RCLocalize("Show sparkle trail"), &g_Config.m_RiShowSparkleTrail, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_SHOW_FROZEN_FLAKES:
+	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowFrozenFlakes, RCLocalize("Show frozen flakes in freeze"), &g_Config.m_RiShowFrozenFlakes, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_AFK_EMOTE_TEXTURE_IN_MENU:
+	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowAfkEmoteInMenu, RCLocalize("Show sleep emote in menu (ONLY CLIENT OTHER DON'T SEE THAT)"), &g_Config.m_RiShowAfkEmoteInMenu, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		if(g_Config.m_RiShowAfkEmoteInMenu)
@@ -816,6 +843,10 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowAfkTextureInMenu, RCLocalize("Show afk texture instead emote"), &g_Config.m_RiShowAfkTextureInMenu, &Rightoffset, LineSize);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
+		break;
+	}
+	case SETTINGS_SECTION_AFK_EMOTE_TEXTURE_IN_SPEC:
+	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowAfkEmoteInSpec, RCLocalize("Show sleep emote in spec (ONLY CLIENT OTHER DON'T SEE THAT)"), &g_Config.m_RiShowAfkEmoteInSpec, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		if(g_Config.m_RiShowAfkEmoteInSpec)
@@ -826,6 +857,10 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowAfkTextureInSpec, RCLocalize("Show spec texture instead emote"), &g_Config.m_RiShowAfkTextureInSpec, &Rightoffset, LineSize);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
+		break;
+	}
+	case SETTINGS_SECTION_SHOW_HAMMER_HIT:
+	{
 		static std::vector<CButtonContainer> s_vHammerHitEffectsButtonContainers = {{}, {}, {}};
 		DoLine_RadioMenu(Column, RCLocalize("Show Hammer Hit:", "HammerHit"),
 			s_vHammerHitEffectsButtonContainers,
@@ -833,6 +868,10 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			{0, 1, 2},
 			g_Config.m_RiShowHammerHit);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_SOUND_ON_MOVE:
+	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiPlayOnMoveNonInactive, RCLocalize("Play sound on move when window inactive"), &g_Config.m_RiPlayOnMoveNonInactive, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		static SDropDownSimple s_DropSoundChoose;
@@ -850,7 +889,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		}
 		break;
 	}
-	case SETTINGS_SECTION_TRACKER_PLAYER:
+	case SETTINGS_SECTION_TRACKER:
 	{
 		for(CBindChat::CBindRclient &BindchatDefault : s_aDefaultBindChatRclientTracker)
 			DoBindchatDefault(Column, BindchatDefault);
@@ -883,16 +922,20 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_HUD:
+	case SETTINGS_SECTION_HEART_SIZE_IN_NAMEPLATE:
 	{
 		Column.HSplitTop(20.0f, &Label, &Column);
 		Ui()->DoScrollbarOption(&g_Config.m_RiHeartSize, &g_Config.m_RiHeartSize, &Label, RCLocalize("Friend heart size"), 0, 500, &CUi::ms_LogarithmicScrollbarScale, CUi::SCROLLBAR_OPTION_NOCLAMPVALUE);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_MILLISECOND_IN_GAME_TIMER:
+	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMilliSecondsTimer, RCLocalize("Show milliseconds in timer"), &g_Config.m_RiShowMilliSecondsTimer, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_CONTROLS:
+	case SETTINGS_SECTION_BINDS:
 	{
 		static CButtonContainer s_ReaderButtonDummyPseudo, s_ClearButtonDummyPseudo,
 			s_ReaderButtonDeepfly, s_ClearButtonDeepfly,
@@ -946,7 +989,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_LASER:
+	case SETTINGS_SECTION_BETTER_LASERS:
 	{
 		Column.HSplitTop(10.0f, nullptr, &Column);
 		Column.HSplitTop(20.0f, &Button, &Column);
@@ -972,6 +1015,11 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			DoLaserPreview(&LaserPreview, g_Config.m_ClLaserShotgunInnerColor, g_Config.m_ClLaserShotgunOutlineColor, LASERTYPE_SHOTGUN);
 		}
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_MUSIC_PLAYER:
+	{
+		Ui()->DoLabel(&Column, RCLocalize("Section content is being moved here"), FontSize, TEXTALIGN_ML);
 		break;
 	}
 	case SETTINGS_SECTION_SPECTATOR:
@@ -1004,13 +1052,6 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			DoLine_KeyReader(Label, s_ReaderButtonSpectatorDown, s_ClearButtonSpectatorDown, RCLocalize("Move down"), "+ri_spec_down");
 		}
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		static std::vector<CButtonContainer> s_vSpectatorSortButtonContainers = {{}, {}, {}};
-		DoLine_RadioMenu(Column, RCLocalize("Sort by id:", "ScoreboardSorting"),
-			s_vSpectatorSortButtonContainers,
-			{RCLocalize("Default", "ScoreboardSorting"), RCLocalize("Teams", "ScoreboardSorting"), RCLocalize("All", "ScoreboardSorting")},
-			{0, 1, 2},
-			g_Config.m_RiSpectatorSortById);
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Label, &Column);
 		static CButtonContainer s_ReaderButtonFindTp, s_ClearButtonFindTp;
 		DoLine_KeyReader(Label, s_ReaderButtonFindTp, s_ClearButtonFindTp, RCLocalize("Find teleport"), "ri_goto_tele_cursor");
@@ -1026,6 +1067,17 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(LineSize, &Label, &Column);
 		static CButtonContainer s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId;
 		DoLine_KeyReader(Label, s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId, RCLocalize("Find checkpoint"), "ri_get_checkpoint_id");
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_SPECTATOR_SORT:
+	{
+		static std::vector<CButtonContainer> s_vSpectatorSortButtonContainers = {{}, {}, {}};
+		DoLine_RadioMenu(Column, RCLocalize("Sort by id:", "ScoreboardSorting"),
+			s_vSpectatorSortButtonContainers,
+			{RCLocalize("Default", "ScoreboardSorting"), RCLocalize("Teams", "ScoreboardSorting"), RCLocalize("All", "ScoreboardSorting")},
+			{0, 1, 2},
+			g_Config.m_RiSpectatorSortById);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
@@ -1048,7 +1100,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
-	case SETTINGS_SECTION_RCLIENT_INDICATOR:
+	case SETTINGS_SECTION_RI_INDICATOR:
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowRclientIndicator, RCLocalize("Show RClient User indicator"), &g_Config.m_RiShowRclientIndicator, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
@@ -1544,7 +1596,13 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		}
 		break;
 	}
-	case SETTINGS_SECTION_MENUS:
+	case SETTINGS_SECTION_RCON:
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiPlaySounds, RCLocalize("Play sounds when do command"), &g_Config.m_RiPlaySounds, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_MENU:
 	{
 		MACRO_CONFIG_CHECKBOX(RiUiNewMenu, "Show new RClient's menu");
 		MACRO_CONFIG_CHECKBOX(RiUiCustomBg, "custom RClient's menu background");
