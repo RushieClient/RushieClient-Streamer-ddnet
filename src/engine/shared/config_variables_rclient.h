@@ -188,3 +188,6 @@ MACRO_CONFIG_INT(RiSoundOnMoveNonInactive, ri_sound_on_move_nonactive, 0, 0, 2, 
 
 //Fastinput
 MACRO_CONFIG_INT(RiFastInputVersion, ri_fast_input_version, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Choose fastinput version (0-Tater's old, 1-Tater's new)")
+
+// show procent in vote
+MACRO_CONFIG_INT(RiShowProcentInVoteBar, ri_show_procent_in_vote_bar, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shows procent in vote bar")

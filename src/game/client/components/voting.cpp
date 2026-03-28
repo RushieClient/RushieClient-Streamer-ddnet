@@ -430,4 +430,17 @@ void CVoting::RenderBars(CUIRect Bars) const
 			NoArea.Draw(ColorRGBA(0.9f, 0.2f, 0.2f, 0.85f), IGraphics::CORNER_ALL, NoArea.h / 2.0f);
 		}
 	}
+
+	if(g_Config.m_RiShowProcentInVoteBar)
+	{
+		const int YesPercent = m_Total > 0 ? (100 * m_Yes + m_Total / 2) / m_Total : 0;
+		const int NoPercent = m_Total > 0 ? (100 * m_No + m_Total / 2) / m_Total : 0;
+		char aBuf[16];
+		CUIRect YesLabel, NoLabel;
+		Bars.VSplitMid(&YesLabel, &NoLabel, 4.0f);
+		str_format(aBuf, sizeof(aBuf), "%d%%", YesPercent);
+		Ui()->DoLabel(&YesLabel, aBuf, 5.0f, TEXTALIGN_MC);
+		str_format(aBuf, sizeof(aBuf), "%d%%", NoPercent);
+		Ui()->DoLabel(&NoLabel, aBuf, 5.0f, TEXTALIGN_MC);
+	}
 }
