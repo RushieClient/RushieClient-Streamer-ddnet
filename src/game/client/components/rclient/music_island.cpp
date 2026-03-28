@@ -560,6 +560,51 @@ static std::string MakeArtworkKey(const std::string &Title, const std::string &A
 	return Key;
 }
 
+static void ApplyRoundedCornersToImage(CImageInfo &Image, float RadiusFraction)
+{
+	if(Image.m_pData == nullptr || Image.m_Format != CImageInfo::FORMAT_RGBA || Image.m_Width == 0 || Image.m_Height == 0)
+		return;
+
+	const float Radius = minimum((float)Image.m_Width, (float)Image.m_Height) * RadiusFraction;
+	const float ClampedRadius = minimum(Radius, minimum((float)Image.m_Width, (float)Image.m_Height) / 2.0f);
+	if(ClampedRadius <= 0.0f)
+		return;
+
+	const float Left = ClampedRadius;
+	const float Right = (float)Image.m_Width - ClampedRadius;
+	const float Top = ClampedRadius;
+	const float Bottom = (float)Image.m_Height - ClampedRadius;
+
+	for(size_t y = 0; y < Image.m_Height; ++y)
+	{
+		const float PixelY = (float)y + 0.5f;
+		for(size_t x = 0; x < Image.m_Width; ++x)
+		{
+			const float PixelX = (float)x + 0.5f;
+			float DistanceToCorner = -1.0f;
+
+			if(PixelX < Left && PixelY < Top)
+				DistanceToCorner = std::hypot(PixelX - Left, PixelY - Top);
+			else if(PixelX > Right && PixelY < Top)
+				DistanceToCorner = std::hypot(PixelX - Right, PixelY - Top);
+			else if(PixelX < Left && PixelY > Bottom)
+				DistanceToCorner = std::hypot(PixelX - Left, PixelY - Bottom);
+			else if(PixelX > Right && PixelY > Bottom)
+				DistanceToCorner = std::hypot(PixelX - Right, PixelY - Bottom);
+
+			if(DistanceToCorner < 0.0f)
+				continue;
+
+			const float Coverage = std::clamp(ClampedRadius + 0.5f - DistanceToCorner, 0.0f, 1.0f);
+			if(Coverage >= 1.0f)
+				continue;
+
+			const size_t AlphaIndex = (y * Image.m_Width + x) * 4 + 3;
+			Image.m_pData[AlphaIndex] = (uint8_t)std::round(Image.m_pData[AlphaIndex] * Coverage);
+		}
+	}
+}
+
 static bool DecodeThumbnailToImage(const winrt::Windows::Storage::Streams::IRandomAccessStreamReference &Thumbnail, CImageInfo &Image)
 {
 	using namespace winrt::Windows::Graphics::Imaging;
@@ -627,6 +672,8 @@ static bool DecodeThumbnailToImage(const winrt::Windows::Storage::Streams::IRand
 	}
 
 	std::memcpy(Image.m_pData, Pixels.data(), ExpectedSize);
+	constexpr float ArtworkRadiusFraction = 0.2f;
+	ApplyRoundedCornersToImage(Image, ArtworkRadiusFraction);
 	return true;
 }
 
