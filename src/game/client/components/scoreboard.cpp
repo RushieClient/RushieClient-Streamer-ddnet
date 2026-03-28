@@ -742,7 +742,7 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 
 			// name
 			{
-				const bool ShowRClientIndicator = g_Config.m_RiShowRclientIndicator && g_Config.m_RiScoreboardShowRclientIndicator &&
+				const bool ShowRClientIndicator = g_Config.m_RiScoreboardShowRclientIndicator &&
 					GameClient()->m_RClientIndicator.IsPlayerRClient(pInfo->m_ClientId) &&
 					(g_Config.m_RiRclientIndicatorAboveSelf || !pInfo->m_Local);
 				CTextCursor Cursor;

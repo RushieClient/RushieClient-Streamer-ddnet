@@ -13,15 +13,27 @@ static constexpr int TOKEN_RETRY_SECONDS = 10;
 static constexpr int HTTP_TIMEOUT_MS = 25000;
 static constexpr int HTTP_CONNECT_TIMEOUT_MS = 10000;
 static constexpr int LONGPOLL_TIMEOUT_MS = (POLL_TIMEOUT_SECONDS + 5) * 1000;
+static constexpr const char *RCLIENT_INDICATOR_USERS_URL = "https://server.rushie-client.ru/users.json";
+static constexpr const char *RCLIENT_INDICATOR_TOKEN_URL = "https://server.rushie-client.ru/token";
 
 static const char *GetRclientUsersUrl()
 {
-	return g_Config.m_RiRclientIndicatorUsersUrl[0] != '\0' ? g_Config.m_RiRclientIndicatorUsersUrl : nullptr;
+	return RCLIENT_INDICATOR_USERS_URL;
 }
 
 static const char *GetRclientTokenUrl()
 {
-	return g_Config.m_RiRclientIndicatorTokenUrl[0] != '\0' ? g_Config.m_RiRclientIndicatorTokenUrl : nullptr;
+	return RCLIENT_INDICATOR_TOKEN_URL;
+}
+
+static bool ShouldIgnoreIndicatorErrors()
+{
+	return g_Config.m_RiRclientIndicatorIgnoreErrors != 0;
+}
+
+static HTTPLOG GetIndicatorHttpLogLevel()
+{
+	return ShouldIgnoreIndicatorErrors() ? HTTPLOG::NONE : HTTPLOG::FAILURE;
 }
 
 CRClientIndicator::CRClientIndicator()
@@ -30,8 +42,7 @@ CRClientIndicator::CRClientIndicator()
 
 void CRClientIndicator::OnInit()
 {
-	if(g_Config.m_RiShowRclientIndicator)
-		FetchAuthToken();
+	FetchAuthToken();
 }
 
 void CRClientIndicator::OnRender()
@@ -46,22 +57,6 @@ void CRClientIndicator::OnRender()
 	HandleTaskDone(m_pAuthTokenTask, [this]() { FinishAuthToken(); }, [this]() { ResetAuthToken(); });
 	HandleTaskDone(m_pRClientUsersTask, [this]() { FinishRClientUsers(); }, [this]() { ResetRClientUsers(); });
 	HandleTaskDone(m_pRClientUsersTaskSend, [this]() { FinishRClientUsersSend(); }, [this]() { ResetRClientUsersSend(); });
-
-	if(!g_Config.m_RiShowRclientIndicator)
-	{
-		if(m_WasOnline && !m_LastServerAddress.empty() && m_LastLocalId >= 0)
-			SendPlayerData(m_LastServerAddress.c_str(), m_LastLocalId, m_LastDummyId, false);
-
-		ResetRClientUsers();
-		ClearUsers();
-		m_WasOnline = false;
-		m_LastServerAddress.clear();
-		m_LastLocalId = -1;
-		m_LastDummyId = -1;
-		m_LastPollAttempt = 0;
-		m_ServerRev = 0;
-		return;
-	}
 
 	const int64_t Now = time_get();
 	if(m_aAuthToken[0] == '\0' && Now - m_LastTokenAttempt > time_freq() * TOKEN_RETRY_SECONDS)
@@ -184,7 +179,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 	m_pRClientUsersTaskSend->PostJson(aJsonData);
 	m_pRClientUsersTaskSend->Timeout(CTimeout{HTTP_TIMEOUT_MS, 0, 500, 5});
 	m_pRClientUsersTaskSend->IpResolve(IPRESOLVE::V4);
-	m_pRClientUsersTaskSend->LogProgress(HTTPLOG::FAILURE);
+	m_pRClientUsersTaskSend->LogProgress(GetIndicatorHttpLogLevel());
 	Http()->Run(m_pRClientUsersTaskSend);
 }
 
@@ -201,7 +196,7 @@ void CRClientIndicator::FetchRClientUsers(const char *pServerAddress, int Client
 	ApplyPollHeaders(*m_pRClientUsersTask, pServerAddress, ClientId, DummyClientId);
 	m_pRClientUsersTask->Timeout(CTimeout{HTTP_CONNECT_TIMEOUT_MS, LONGPOLL_TIMEOUT_MS, 0, 0});
 	m_pRClientUsersTask->IpResolve(IPRESOLVE::V4);
-	m_pRClientUsersTask->LogProgress(HTTPLOG::FAILURE);
+	m_pRClientUsersTask->LogProgress(GetIndicatorHttpLogLevel());
 	Http()->Run(m_pRClientUsersTask);
 }
 
@@ -217,6 +212,7 @@ void CRClientIndicator::FetchAuthToken()
 	m_pAuthTokenTask = HttpGet(pTokenUrl);
 	m_pAuthTokenTask->Timeout(CTimeout{HTTP_TIMEOUT_MS, 0, 500, 5});
 	m_pAuthTokenTask->IpResolve(IPRESOLVE::V4);
+	m_pAuthTokenTask->LogProgress(GetIndicatorHttpLogLevel());
 	Http()->Run(m_pAuthTokenTask);
 }
 
@@ -228,7 +224,8 @@ void CRClientIndicator::FinishAuthToken()
 	json_value *pJson = m_pAuthTokenTask->ResultJson();
 	if(!pJson)
 	{
-		GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Failed to fetch auth token: no JSON");
+		if(!ShouldIgnoreIndicatorErrors())
+			GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Failed to fetch auth token: no JSON");
 		return;
 	}
 
@@ -244,7 +241,8 @@ void CRClientIndicator::FinishAuthToken()
 	}
 	else
 	{
-		GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Failed to fetch auth token: token not found in JSON");
+		if(!ShouldIgnoreIndicatorErrors())
+			GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Failed to fetch auth token: token not found in JSON");
 	}
 	json_value_free(pJson);
 }
