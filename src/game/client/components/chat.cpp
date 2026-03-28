@@ -1444,15 +1444,18 @@ void CChat::OnRender()
 			}
 		}
 
-		RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
 	}
 
-#if defined(CONF_VIDEORECORDER)
+	#if defined(CONF_VIDEORECORDER)
 	if(!((g_Config.m_ClShowChat && !IVideo::Current()) || (g_Config.m_ClVideoShowChat && IVideo::Current())))
-#else
+	#else
 	if(!g_Config.m_ClShowChat)
-#endif
+	#endif
+	{
+		if(m_Mode != MODE_NONE)
+			RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
 		return;
+	}
 
 	y -= ScaledFontSize;
 
@@ -1543,6 +1546,9 @@ void CChat::OnRender()
 			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, 0, (y + RealMsgPaddingY / 2.0f + SlideOffset) - Line.m_TextYOffset);
 		}
 	}
+
+	if(m_Mode != MODE_NONE)
+		RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
 }
 
 void CChat::EnsureCoherentFontSize() const
