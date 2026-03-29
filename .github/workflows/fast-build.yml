@@ -5,6 +5,9 @@ on:
     branches-ignore:
       - gh-readonly-queue/**
 
+env:
+  RCLIENT_SECRET_TOKEN: ${{ secrets.RCLIENT_SECRET_TOKEN }}
+
 jobs:
   build-cmake:
     runs-on: ${{ matrix.os }}

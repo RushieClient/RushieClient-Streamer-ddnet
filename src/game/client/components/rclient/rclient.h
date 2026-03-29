@@ -145,7 +145,6 @@ class CRClient : public CComponent
 	class IEngineGraphics *m_pGraphics = nullptr;
 	bool m_SoundPlayed = false;
 
-
 public:
 
 	CRClient();

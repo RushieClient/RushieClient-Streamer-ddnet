@@ -14,6 +14,9 @@ on:
   schedule:
     - cron: '0 13 * * 0'
 
+env:
+  RCLIENT_SECRET_TOKEN: ${{ secrets.RCLIENT_SECRET_TOKEN }}
+
 permissions:
   contents: read
   security-events: write  # Required to upload CodeQL results to code scanning

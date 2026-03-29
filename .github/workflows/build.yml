@@ -7,6 +7,9 @@ on:
   pull_request:
   merge_group:
 
+env:
+  RCLIENT_SECRET_TOKEN: ${{ secrets.RCLIENT_SECRET_TOKEN }}
+
 jobs:
   build-cmake:
     runs-on: ${{ matrix.os }}
