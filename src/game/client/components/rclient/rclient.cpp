@@ -51,9 +51,9 @@ CRClient::CRClient()
 
 void CRClient::OnInit()
 {
-	std::string SecretToken = DecodeBuildSecretToken();
-	const char *pSecretToken = SecretToken.empty() ? nullptr : SecretToken.c_str();
-	ClearBuildSecretToken(SecretToken);
+	// std::string SecretToken = DecodeBuildSecretToken();
+	// const char *pSecretToken = SecretToken.empty() ? nullptr : SecretToken.c_str();
+	// ClearBuildSecretToken(SecretToken);
 
 	FetchRclientVersionCheck();
 	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
