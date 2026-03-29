@@ -5019,6 +5019,10 @@ int main(int argc, const char **argv)
 		pConsole->ExecuteFile(AUTOEXEC_FILE, IConsole::CLIENT_ID_UNSPECIFIED);
 	}
 
+	// RCLIENT
+	if(g_Config.m_RiVoiceAudioBackend[0] != '\0')
+		SDL_SetHint(SDL_HINT_AUDIODRIVER, g_Config.m_RiVoiceAudioBackend);
+
 	if(g_Config.m_ClConfigVersion < 1)
 	{
 		if(g_Config.m_ClAntiPing == 0)

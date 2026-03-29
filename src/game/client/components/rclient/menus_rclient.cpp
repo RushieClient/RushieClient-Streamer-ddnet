@@ -1432,6 +1432,10 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 				const char *pDriver = SDL_GetAudioDriver(i);
 				if(pDriver && pDriver[0] != '\0')
 				{
+					// Skip backends that are only useful for debugging or dumping audio.
+					if(str_comp_nocase(pDriver, "dummy") == 0 || str_comp_nocase(pDriver, "disk") == 0)
+						continue;
+
 					vBackendNames.emplace_back(pDriver);
 					vBackendValues.emplace_back(pDriver);
 				}
@@ -1561,7 +1565,7 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize - 4, &Label, &Column);
 		Label.VSplitLeft(LineSize, nullptr, &Label);
-		Ui()->DoLabel(&Label, RCLocalize("If change backend u need restart game"), FontSize - 4, TEXTALIGN_ML);
+		Ui()->DoLabel(&Label, RCLocalize("Backend affects all audio. Restart the game after changing it."), FontSize - 4, TEXTALIGN_ML);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoVoiceDeviceDropDown(Column, RCLocalize("Input device"), g_Config.m_RiVoiceInputDevice, sizeof(g_Config.m_RiVoiceInputDevice), true, s_VoiceInputDropDownState);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);

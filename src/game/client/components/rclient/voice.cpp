@@ -612,7 +612,7 @@ bool CRClientVoice::EnsureAudio()
 	const char *pRequestedBackend = g_Config.m_RiVoiceAudioBackend[0] ? g_Config.m_RiVoiceAudioBackend : nullptr;
 	if((SDL_WasInit(SDL_INIT_AUDIO) & SDL_INIT_AUDIO) == 0)
 	{
-		if(SDL_AudioInit(pRequestedBackend) < 0)
+		if(SDL_InitSubSystem(SDL_INIT_AUDIO) < 0)
 		{
 			if(pRequestedBackend)
 			{
