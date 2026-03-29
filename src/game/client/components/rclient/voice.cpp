@@ -51,6 +51,27 @@ static void VoiceLogErrorOnce(char *pLastMessage, size_t LastMessageSize, const 
 	log_error("voice", "%s", pMessage);
 }
 
+static void VoiceLogInfoOnce(char *pLastMessage, size_t LastMessageSize, const char *pMessage)
+{
+	if(!VoiceRememberLogMessage(pLastMessage, LastMessageSize, pMessage))
+		return;
+
+	log_info("voice", "%s", pMessage);
+}
+
+static bool VoiceDebugLoggingEnabled()
+{
+	return g_Config.m_RiVoiceDebug != 0;
+}
+
+static void VoiceLogDebugOnce(char *pLastMessage, size_t LastMessageSize, const char *pMessage)
+{
+	if(!VoiceDebugLoggingEnabled())
+		return;
+
+	VoiceLogInfoOnce(pLastMessage, LastMessageSize, pMessage);
+}
+
 static bool VoiceListMatch(const char *pList, const char *pName)
 {
 	if(!pList || pList[0] == '\0')
@@ -634,13 +655,15 @@ bool CRClientVoice::EnsureAudio()
 		{
 			if(str_comp_nocase(m_aAudioInitLoggedBackend, pDriver) != 0)
 			{
-				log_info("voice", "audio initialized using backend '%s'", pDriver);
+				if(VoiceDebugLoggingEnabled())
+					log_info("voice", "audio initialized using backend '%s'", pDriver);
 				str_copy(m_aAudioInitLoggedBackend, pDriver, sizeof(m_aAudioInitLoggedBackend));
 			}
 		}
 		else if(m_aAudioInitLoggedBackend[0] == '\0')
 		{
-			log_info("voice", "audio initialized");
+			if(VoiceDebugLoggingEnabled())
+				log_info("voice", "audio initialized");
 			str_copy(m_aAudioInitLoggedBackend, "<unknown>", sizeof(m_aAudioInitLoggedBackend));
 		}
 	}
@@ -651,7 +674,7 @@ bool CRClientVoice::EnsureAudio()
 		{
 			const bool ReqChanged = str_comp_nocase(m_aAudioBackendMismatchReq, pRequestedBackend) != 0;
 			const bool CurChanged = str_comp_nocase(m_aAudioBackendMismatchCur, pDriver) != 0;
-			if(ReqChanged || CurChanged)
+			if((ReqChanged || CurChanged) && VoiceDebugLoggingEnabled())
 			{
 				log_info("voice", "audio backend already initialized as '%s' (requested '%s')", pDriver, pRequestedBackend);
 				str_copy(m_aAudioBackendMismatchReq, pRequestedBackend, sizeof(m_aAudioBackendMismatchReq));
@@ -749,19 +772,20 @@ bool CRClientVoice::EnsureAudio()
 			{
 				char aError[256];
 				str_format(aError, sizeof(aError), "Output device not found: '%s'", m_aOutputDeviceName);
-				VoiceLogErrorOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), aError);
+				VoiceLogDebugOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), aError);
 			}
 			m_OutputUnavailable = true;
 		}
 		else if(NoOutputDevices)
 		{
 			if(!m_OutputUnavailable)
-				VoiceLogErrorOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), "No output devices available");
+				VoiceLogDebugOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), "No output devices available");
 			m_OutputUnavailable = true;
 		}
 		else
 		{
-			log_info("voice", "attempting to open output device '%s'", pOutputName ? pOutputName : "<default>");
+			if(VoiceDebugLoggingEnabled())
+				log_info("voice", "attempting to open output device '%s'", pOutputName ? pOutputName : "<default>");
 			m_OutputDevice = SDL_OpenAudioDevice(pOutputName, 0, &WantOutput, &m_OutputSpec, 0);
 			if(!m_OutputDevice)
 			{
@@ -769,17 +793,20 @@ bool CRClientVoice::EnsureAudio()
 				{
 					char aError[256];
 					str_format(aError, sizeof(aError), "Failed to open output device: %s", SDL_GetError());
-					VoiceLogErrorOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), aError);
+					VoiceLogDebugOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), aError);
 				}
 				m_OutputUnavailable = true;
 			}
 			else
 			{
 				const int Channels = m_OutputSpec.channels > 0 ? m_OutputSpec.channels : (WantStereo ? 2 : 1);
-				log_info("voice", "output device opened '%s' %dch@%d",
-					pOutputName ? pOutputName : "<default>",
-					Channels,
-					m_OutputSpec.freq);
+				if(VoiceDebugLoggingEnabled())
+				{
+					log_info("voice", "output device opened '%s' %dch@%d",
+						pOutputName ? pOutputName : "<default>",
+						Channels,
+						m_OutputSpec.freq);
+				}
 				m_OutputChannels.store(Channels);
 				m_MixBuffer.resize((size_t)m_OutputSpec.samples * Channels);
 				SDL_PauseAudioDevice(m_OutputDevice, 0);
@@ -812,19 +839,20 @@ bool CRClientVoice::EnsureAudio()
 			{
 				char aError[256];
 				str_format(aError, sizeof(aError), "Input device not found: '%s'", m_aInputDeviceName);
-				VoiceLogErrorOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), aError);
+				VoiceLogDebugOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), aError);
 			}
 			m_CaptureUnavailable = true;
 		}
 		else if(NoCaptureDevices)
 		{
 			if(!m_CaptureUnavailable)
-				VoiceLogErrorOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), "No capture devices available");
+				VoiceLogDebugOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), "No capture devices available");
 			m_CaptureUnavailable = true;
 		}
 		else
 		{
-			log_info("voice", "attempting to open capture device '%s'", pInputName ? pInputName : "<default>");
+			if(VoiceDebugLoggingEnabled())
+				log_info("voice", "attempting to open capture device '%s'", pInputName ? pInputName : "<default>");
 			m_CaptureDevice = SDL_OpenAudioDevice(pInputName, 1, &WantCapture, &m_CaptureSpec, 0);
 			if(!m_CaptureDevice)
 			{
@@ -832,16 +860,19 @@ bool CRClientVoice::EnsureAudio()
 				{
 					char aError[256];
 					str_format(aError, sizeof(aError), "Failed to open capture device: %s", SDL_GetError());
-					VoiceLogErrorOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), aError);
+					VoiceLogDebugOnce(m_aAudioErrorLog, sizeof(m_aAudioErrorLog), aError);
 				}
 				m_CaptureUnavailable = true;
 			}
 			else
 			{
-				log_info("voice", "capture device opened '%s' %dch@%d",
-					pInputName ? pInputName : "<default>",
-					m_CaptureSpec.channels,
-					m_CaptureSpec.freq);
+				if(VoiceDebugLoggingEnabled())
+				{
+					log_info("voice", "capture device opened '%s' %dch@%d",
+						pInputName ? pInputName : "<default>",
+						m_CaptureSpec.channels,
+						m_CaptureSpec.freq);
+				}
 				SDL_PauseAudioDevice(m_CaptureDevice, 0);
 				m_CaptureUnavailable = false;
 			}
@@ -859,10 +890,13 @@ bool CRClientVoice::EnsureAudio()
 		const char *pOutputReq = m_aOutputDeviceName[0] ? m_aOutputDeviceName : "<default>";
 		const char *pInputResolved = pInputName ? pInputName : "<default>";
 		const char *pOutputResolved = pOutputName ? pOutputName : "<default>";
-		log_info("voice", "audio devices set input='%s' resolved='%s' output='%s' resolved='%s' capture=%dch@%d output=%dch@%d",
-			pInputReq, pInputResolved, pOutputReq, pOutputResolved,
-			m_CaptureSpec.channels, m_CaptureSpec.freq,
-			m_OutputSpec.channels, m_OutputSpec.freq);
+		if(VoiceDebugLoggingEnabled())
+		{
+			log_info("voice", "audio devices set input='%s' resolved='%s' output='%s' resolved='%s' capture=%dch@%d output=%dch@%d",
+				pInputReq, pInputResolved, pOutputReq, pOutputResolved,
+				m_CaptureSpec.channels, m_CaptureSpec.freq,
+				m_OutputSpec.channels, m_OutputSpec.freq);
+		}
 		m_LogDeviceChange = false;
 	}
 
