@@ -166,10 +166,11 @@ static bool VoiceNameVolume(const char *pList, const char *pName, int &OutPercen
 }
 
 static constexpr char VOICE_MAGIC[4] = {'R', 'V', '0', '1'};
-static constexpr uint8_t VOICE_VERSION = 3;
+static constexpr uint8_t VOICE_VERSION = 4;
 static constexpr uint8_t VOICE_TYPE_AUDIO = 1;
 static constexpr uint8_t VOICE_TYPE_PING = 2;
 static constexpr uint8_t VOICE_TYPE_PONG = 3;
+static constexpr const char *VOICE_FORCED_SERVER_ADDR = "server.rushie-client.ru:9987";
 static constexpr int VOICE_SAMPLE_RATE = 48000;
 static constexpr int VOICE_CHANNELS = 1;
 static constexpr int VOICE_FRAME_SAMPLES = 960;
@@ -1248,9 +1249,9 @@ void CRClientVoice::UpdateServerAddrConfig()
 	bool AddrChanged = false;
 	{
 		std::lock_guard<std::mutex> Guard(m_ServerAddrMutex);
-		AddrChanged = str_comp(m_aServerAddrStr, g_Config.m_RiVoiceServer) != 0;
+		AddrChanged = str_comp(m_aServerAddrStr, VOICE_FORCED_SERVER_ADDR) != 0;
 		if(AddrChanged)
-			str_copy(m_aServerAddrStr, g_Config.m_RiVoiceServer, sizeof(m_aServerAddrStr));
+			str_copy(m_aServerAddrStr, VOICE_FORCED_SERVER_ADDR, sizeof(m_aServerAddrStr));
 	}
 
 	if(!AddrChanged)
