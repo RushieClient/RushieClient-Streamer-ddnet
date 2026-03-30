@@ -1,29 +1,27 @@
-﻿#include "rclient_indicator.h"
+#include "rclient_indicator.h"
 
 #include <base/system.h>
+
+#include <generated/rclient_secret_token.h>
 
 #include "engine/client.h"
 #include "engine/external/json-parser/json.h"
 #include "engine/serverbrowser.h"
 #include "game/client/gameclient.h"
 
+#include <cstdint>
+#include <string>
+
 static constexpr int POLL_TIMEOUT_SECONDS = 20;
 static constexpr int POLL_RETRY_SECONDS = 1;
-static constexpr int TOKEN_RETRY_SECONDS = 10;
 static constexpr int HTTP_TIMEOUT_MS = 25000;
 static constexpr int HTTP_CONNECT_TIMEOUT_MS = 10000;
 static constexpr int LONGPOLL_TIMEOUT_MS = (POLL_TIMEOUT_SECONDS + 5) * 1000;
 static constexpr const char *RCLIENT_INDICATOR_USERS_URL = "https://server.rushie-client.ru/users.json";
-static constexpr const char *RCLIENT_INDICATOR_TOKEN_URL = "https://server.rushie-client.ru/token";
 
 static const char *GetRclientUsersUrl()
 {
 	return RCLIENT_INDICATOR_USERS_URL;
-}
-
-static const char *GetRclientTokenUrl()
-{
-	return RCLIENT_INDICATOR_TOKEN_URL;
 }
 
 static bool ShouldIgnoreIndicatorErrors()
@@ -36,13 +34,240 @@ static HTTPLOG GetIndicatorHttpLogLevel()
 	return ShouldIgnoreIndicatorErrors() ? HTTPLOG::NONE : HTTPLOG::FAILURE;
 }
 
+static unsigned char BuildIndicatorDataMask(int Index)
+{
+	const unsigned char OffsetA = static_cast<unsigned char>((Index * RCLIENT_BUILD_DATA_STEP_A) & 0xFF);
+	const unsigned char OffsetB = static_cast<unsigned char>((((Index + 1) * RCLIENT_BUILD_DATA_STEP_B) + RCLIENT_BUILD_DATA_SALT) & 0xFF);
+	return static_cast<unsigned char>((RCLIENT_BUILD_DATA_SEED + OffsetA) ^ OffsetB);
+}
+
+static std::string DecodeBuildIndicatorSecretToken()
+{
+	std::string Result;
+	Result.reserve(RCLIENT_BUILD_DATA_LENGTH);
+	for(int i = 0; i < RCLIENT_BUILD_DATA_LENGTH; ++i)
+		Result.push_back(static_cast<char>(gs_aRclientBuildData[i] ^ BuildIndicatorDataMask(i)));
+	return Result;
+}
+
+static void ClearBuildSecretToken(std::string &Token)
+{
+	for(char &Byte : Token)
+		Byte = '\0';
+	Token.clear();
+}
+
+static bool ParseServerAddress(const char *pAddrStr, char *pHost, size_t HostSize, int &Port)
+{
+	const char *pColon = str_rchr(pAddrStr, ':');
+	if(!pColon || pColon == pAddrStr || *(pColon + 1) == '\0')
+		return false;
+
+	str_truncate(pHost, HostSize, pAddrStr, pColon - pAddrStr);
+	if(pHost[0] == '[')
+	{
+		const int Len = str_length(pHost);
+		if(Len >= 2 && pHost[Len - 1] == ']')
+		{
+			mem_move(pHost, pHost + 1, Len - 2);
+			pHost[Len - 2] = '\0';
+		}
+	}
+
+	Port = str_toint(pColon + 1);
+	return Port > 0 && Port <= 65535;
+}
+
+static uint64_t RotL64(uint64_t Value, int Count)
+{
+	return (Value << Count) | (Value >> (64 - Count));
+}
+
+static uint64_t ReadU64LE(const uint8_t *pData)
+{
+	uint64_t Value = 0;
+	for(int i = 0; i < 8; ++i)
+		Value |= (uint64_t)pData[i] << (i * 8);
+	return Value;
+}
+
+static void WriteU16LE(uint8_t *pData, uint16_t Value)
+{
+	pData[0] = Value & 0xff;
+	pData[1] = (Value >> 8) & 0xff;
+}
+
+static void WriteU32LE(uint8_t *pData, uint32_t Value)
+{
+	pData[0] = Value & 0xff;
+	pData[1] = (Value >> 8) & 0xff;
+	pData[2] = (Value >> 16) & 0xff;
+	pData[3] = (Value >> 24) & 0xff;
+}
+
+static void WriteU64LE(uint8_t *pData, uint64_t Value)
+{
+	for(int i = 0; i < 8; ++i)
+		pData[i] = (Value >> (i * 8)) & 0xff;
+}
+
+static void FormatHexLower(const uint8_t *pData, int DataSize, char *pBuffer, int BufferSize)
+{
+	static const char s_aHex[] = "0123456789abcdef";
+	const int Required = DataSize * 2 + 1;
+	if(BufferSize < Required)
+	{
+		if(BufferSize > 0)
+			pBuffer[0] = '\0';
+		return;
+	}
+
+	for(int i = 0; i < DataSize; ++i)
+	{
+		pBuffer[i * 2] = s_aHex[(pData[i] >> 4) & 0xf];
+		pBuffer[i * 2 + 1] = s_aHex[pData[i] & 0xf];
+	}
+	pBuffer[DataSize * 2] = '\0';
+}
+
+static uint64_t SipHash24(const uint8_t aKey[16], const uint8_t *pData, size_t Size)
+{
+	const uint64_t K0 = ReadU64LE(aKey);
+	const uint64_t K1 = ReadU64LE(aKey + 8);
+	uint64_t V0 = 0x736f6d6570736575ULL ^ K0;
+	uint64_t V1 = 0x646f72616e646f6dULL ^ K1;
+	uint64_t V2 = 0x6c7967656e657261ULL ^ K0;
+	uint64_t V3 = 0x7465646279746573ULL ^ K1;
+
+	auto SipRound = [&]() {
+		V0 += V1;
+		V1 = RotL64(V1, 13);
+		V1 ^= V0;
+		V0 = RotL64(V0, 32);
+		V2 += V3;
+		V3 = RotL64(V3, 16);
+		V3 ^= V2;
+		V0 += V3;
+		V3 = RotL64(V3, 21);
+		V3 ^= V0;
+		V2 += V1;
+		V1 = RotL64(V1, 17);
+		V1 ^= V2;
+		V2 = RotL64(V2, 32);
+	};
+
+	const uint8_t *pCur = pData;
+	const uint8_t *pEnd = pData + (Size & ~size_t(7));
+	while(pCur != pEnd)
+	{
+		const uint64_t M = ReadU64LE(pCur);
+		pCur += 8;
+		V3 ^= M;
+		SipRound();
+		SipRound();
+		V0 ^= M;
+	}
+
+	uint64_t Last = (uint64_t)Size << 56;
+	switch(Size & 7)
+	{
+	case 7: Last |= (uint64_t)pCur[6] << 48; [[fallthrough]];
+	case 6: Last |= (uint64_t)pCur[5] << 40; [[fallthrough]];
+	case 5: Last |= (uint64_t)pCur[4] << 32; [[fallthrough]];
+	case 4: Last |= (uint64_t)pCur[3] << 24; [[fallthrough]];
+	case 3: Last |= (uint64_t)pCur[2] << 16; [[fallthrough]];
+	case 2: Last |= (uint64_t)pCur[1] << 8; [[fallthrough]];
+	case 1: Last |= (uint64_t)pCur[0]; [[fallthrough]];
+	default: break;
+	}
+
+	V3 ^= Last;
+	SipRound();
+	SipRound();
+	V0 ^= Last;
+	V2 ^= 0xff;
+	for(int i = 0; i < 4; ++i)
+		SipRound();
+	return V0 ^ V1 ^ V2 ^ V3;
+}
+
+static int BuildSipHashMessage(int ClientId, const char *pServerIp, int Port, uint32_t Timestamp, uint8_t *pBuffer, int BufferSize)
+{
+	const int ServerIpLen = str_length(pServerIp);
+	if(ServerIpLen < 0 || ServerIpLen > 0xffff)
+		return -1;
+
+	const int Required = 4 + 2 + ServerIpLen + 2 + 4;
+	if(BufferSize < Required)
+		return -1;
+
+	int Offset = 0;
+	WriteU32LE(pBuffer + Offset, (uint32_t)ClientId);
+	Offset += 4;
+	WriteU16LE(pBuffer + Offset, (uint16_t)ServerIpLen);
+	Offset += 2;
+	mem_copy(pBuffer + Offset, pServerIp, ServerIpLen);
+	Offset += ServerIpLen;
+	WriteU16LE(pBuffer + Offset, (uint16_t)Port);
+	Offset += 2;
+	WriteU32LE(pBuffer + Offset, Timestamp);
+	Offset += 4;
+	return Offset;
+}
+
+static bool ComputeIndicatorAuthHex(int ClientId, const char *pServerIp, int Port, uint32_t Timestamp, char *pHashHex, int HashHexSize)
+{
+	std::string SecretToken = DecodeBuildIndicatorSecretToken();
+	if(SecretToken.size() != 16)
+	{
+		ClearBuildSecretToken(SecretToken);
+		return false;
+	}
+
+	uint8_t aMessage[512];
+	const int MessageSize = BuildSipHashMessage(ClientId, pServerIp, Port, Timestamp, aMessage, sizeof(aMessage));
+	if(MessageSize < 0)
+	{
+		ClearBuildSecretToken(SecretToken);
+		return false;
+	}
+
+	const uint64_t Hash = SipHash24(reinterpret_cast<const uint8_t *>(SecretToken.data()), aMessage, (size_t)MessageSize);
+	uint8_t aHashBytes[8];
+	WriteU64LE(aHashBytes, Hash);
+	FormatHexLower(aHashBytes, sizeof(aHashBytes), pHashHex, HashHexSize);
+	ClearBuildSecretToken(SecretToken);
+	return true;
+}
+
+static bool TryParseVoiceAuth(const json_value &VoiceAuth, uint32_t &Timestamp, uint64_t &Hash)
+{
+	if(VoiceAuth.type != json_object)
+		return false;
+
+	const json_value &TimestampValue = VoiceAuth["timestamp"];
+	const json_value &HashValue = VoiceAuth["hash"];
+	if(TimestampValue.type != json_integer || HashValue.type != json_string)
+		return false;
+	if(TimestampValue.u.integer < 0 || TimestampValue.u.integer > 0xffffffffLL)
+		return false;
+
+	uint8_t aHashBytes[8];
+	if(str_hex_decode(aHashBytes, sizeof(aHashBytes), HashValue.u.string.ptr) != 0)
+		return false;
+
+	Timestamp = (uint32_t)TimestampValue.u.integer;
+	Hash = ReadU64LE(aHashBytes);
+	return true;
+}
+
 CRClientIndicator::CRClientIndicator()
 {
-};
+}
 
 void CRClientIndicator::OnInit()
 {
-	FetchAuthToken();
+	ClearVoiceAuth();
 }
 
 void CRClientIndicator::OnRender()
@@ -54,17 +279,10 @@ void CRClientIndicator::OnRender()
 		Reset();
 	};
 
-	HandleTaskDone(m_pAuthTokenTask, [this]() { FinishAuthToken(); }, [this]() { ResetAuthToken(); });
 	HandleTaskDone(m_pRClientUsersTask, [this]() { FinishRClientUsers(); }, [this]() { ResetRClientUsers(); });
 	HandleTaskDone(m_pRClientUsersTaskSend, [this]() { FinishRClientUsersSend(); }, [this]() { ResetRClientUsersSend(); });
 
 	const int64_t Now = time_get();
-	if(m_aAuthToken[0] == '\0' && Now - m_LastTokenAttempt > time_freq() * TOKEN_RETRY_SECONDS)
-	{
-		m_LastTokenAttempt = Now;
-		FetchAuthToken();
-	}
-
 	const bool Online = Client()->State() == IClient::STATE_ONLINE;
 	if(!Online)
 	{
@@ -74,6 +292,7 @@ void CRClientIndicator::OnRender()
 		ResetRClientUsers();
 		m_WasOnline = false;
 		ClearUsers();
+		ClearVoiceAuth();
 		m_LastPollAttempt = 0;
 		m_ServerRev = 0;
 		return;
@@ -102,6 +321,7 @@ void CRClientIndicator::OnRender()
 
 		ResetRClientUsers();
 		ClearUsers();
+		ClearVoiceAuth();
 		m_LastServerAddress = pServerAddress;
 		m_ServerRev = 0;
 		ForceSync = true;
@@ -115,11 +335,9 @@ void CRClientIndicator::OnRender()
 		m_LastLocalId = LocalClientId;
 		m_LastDummyId = DummyClientId;
 		m_ServerRev = 0;
+		ClearVoiceAuth();
 		ForceSync = true;
 	}
-
-	if(m_aAuthToken[0] == '\0')
-		return;
 
 	const int64_t PollRetry = time_freq() * POLL_RETRY_SECONDS;
 	if(!m_pRClientUsersTask && (ForceSync || Now - m_LastPollAttempt >= PollRetry))
@@ -132,48 +350,72 @@ void CRClientIndicator::OnRender()
 
 void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId, int DummyClientId, bool Online)
 {
-	if(m_aAuthToken[0] == '\0')
-	{
-		if(!m_pAuthTokenTask)
-			FetchAuthToken();
-		return;
-	}
-
 	const char *pUsersUrl = GetRclientUsersUrl();
-	if(!pUsersUrl)
+	if(!pUsersUrl || ClientId < 0)
+		return;
+
+	char aServerIp[128];
+	int ServerPort = 0;
+	if(!ParseServerAddress(pServerAddress, aServerIp, sizeof(aServerIp), ServerPort))
+		return;
+
+	const uint32_t AuthTimestamp = (uint32_t)time_timestamp();
+	char aAuthHash[32];
+	if(!ComputeIndicatorAuthHex(ClientId, aServerIp, ServerPort, AuthTimestamp, aAuthHash, sizeof(aAuthHash)))
 		return;
 
 	ResetRClientUsersSend();
 
 	const char *pOnlineStr = Online ? "true" : "false";
-	char aJsonData[512];
+	const char *pVoiceEnabledStr = g_Config.m_RiVoiceEnable ? "true" : "false";
+	char aJsonData[768];
 
 	if(DummyClientId >= 0)
+	{
 		str_format(aJsonData, sizeof(aJsonData),
 			"{"
 			"\"server_address\":\"%s\","
+			"\"server_ip\":\"%s\","
+			"\"server_port\":%d,"
 			"\"player_id\":%d,"
 			"\"dummy_id\":%d,"
 			"\"online\":%s,"
-			"\"auth_token\":\"%s\""
+			"\"voice_enabled\":%s,"
+			"\"auth_timestamp\":%u,"
+			"\"auth_hash\":\"%s\""
 			"}",
 			pServerAddress,
+			aServerIp,
+			ServerPort,
 			ClientId,
 			DummyClientId,
 			pOnlineStr,
-			m_aAuthToken);
+			pVoiceEnabledStr,
+			AuthTimestamp,
+			aAuthHash);
+	}
 	else
+	{
 		str_format(aJsonData, sizeof(aJsonData),
 			"{"
 			"\"server_address\":\"%s\","
+			"\"server_ip\":\"%s\","
+			"\"server_port\":%d,"
 			"\"player_id\":%d,"
 			"\"online\":%s,"
-			"\"auth_token\":\"%s\""
+			"\"voice_enabled\":%s,"
+			"\"auth_timestamp\":%u,"
+			"\"auth_hash\":\"%s\""
 			"}",
 			pServerAddress,
+			aServerIp,
+			ServerPort,
 			ClientId,
 			pOnlineStr,
-			m_aAuthToken);
+			pVoiceEnabledStr,
+			AuthTimestamp,
+			aAuthHash);
+	}
 
 	m_pRClientUsersTaskSend = std::make_shared<CHttpRequest>(pUsersUrl);
 	m_pRClientUsersTaskSend->PostJson(aJsonData);
@@ -188,72 +430,23 @@ void CRClientIndicator::FetchRClientUsers(const char *pServerAddress, int Client
 	if(m_pRClientUsersTask && !m_pRClientUsersTask->Done())
 		return;
 
+	char aServerIp[128];
+	int ServerPort = 0;
+	if(!ParseServerAddress(pServerAddress, aServerIp, sizeof(aServerIp), ServerPort))
+		return;
+
 	const char *pUsersUrl = GetRclientUsersUrl();
 	if(!pUsersUrl)
 		return;
 
 	m_pRClientUsersTask = HttpGet(pUsersUrl);
 	ApplyPollHeaders(*m_pRClientUsersTask, pServerAddress, ClientId, DummyClientId);
+	m_pRClientUsersTask->HeaderString("X-RClient-Server-Ip", aServerIp);
+	m_pRClientUsersTask->HeaderInt("X-RClient-Server-Port", ServerPort);
 	m_pRClientUsersTask->Timeout(CTimeout{HTTP_CONNECT_TIMEOUT_MS, LONGPOLL_TIMEOUT_MS, 0, 0});
 	m_pRClientUsersTask->IpResolve(IPRESOLVE::V4);
 	m_pRClientUsersTask->LogProgress(GetIndicatorHttpLogLevel());
 	Http()->Run(m_pRClientUsersTask);
-}
-
-void CRClientIndicator::FetchAuthToken()
-{
-	if(m_pAuthTokenTask && !m_pAuthTokenTask->Done())
-		return;
-
-	const char *pTokenUrl = GetRclientTokenUrl();
-	if(!pTokenUrl)
-		return;
-
-	m_pAuthTokenTask = HttpGet(pTokenUrl);
-	m_pAuthTokenTask->Timeout(CTimeout{HTTP_TIMEOUT_MS, 0, 500, 5});
-	m_pAuthTokenTask->IpResolve(IPRESOLVE::V4);
-	m_pAuthTokenTask->LogProgress(GetIndicatorHttpLogLevel());
-	Http()->Run(m_pAuthTokenTask);
-}
-
-void CRClientIndicator::FinishAuthToken()
-{
-	if(m_pAuthTokenTask->State() != EHttpState::DONE)
-		return;
-
-	json_value *pJson = m_pAuthTokenTask->ResultJson();
-	if(!pJson)
-	{
-		if(!ShouldIgnoreIndicatorErrors())
-			GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Failed to fetch auth token: no JSON");
-		return;
-	}
-
-	const json_value &Json = *pJson;
-	const json_value &Token = Json["token"];
-
-	if(Token.type == json_string)
-	{
-		str_copy(m_aAuthToken, Token.u.string.ptr, sizeof(m_aAuthToken));
-		str_utf8_trim_right(m_aAuthToken);
-		m_LastPollAttempt = 0;
-		GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "RClient", "Fetched auth token");
-	}
-	else
-	{
-		if(!ShouldIgnoreIndicatorErrors())
-			GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Failed to fetch auth token: token not found in JSON");
-	}
-	json_value_free(pJson);
-}
-
-void CRClientIndicator::ResetAuthToken()
-{
-	if(m_pAuthTokenTask)
-	{
-		m_pAuthTokenTask->Abort();
-		m_pAuthTokenTask = nullptr;
-	}
 }
 
 void CRClientIndicator::FinishRClientUsersSend()
@@ -262,11 +455,8 @@ void CRClientIndicator::FinishRClientUsersSend()
 		return;
 
 	const int Status = m_pRClientUsersTaskSend->StatusCode();
-	if(Status == 401 || Status == 403)
-	{
-		m_aAuthToken[0] = '\0';
-		FetchAuthToken();
-	}
+	if((Status == 401 || Status == 403) && !ShouldIgnoreIndicatorErrors())
+		GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Indicator POST auth rejected");
 }
 
 void CRClientIndicator::ResetRClientUsersSend()
@@ -286,8 +476,9 @@ void CRClientIndicator::FinishRClientUsers()
 	const int Status = m_pRClientUsersTask->StatusCode();
 	if(Status == 401 || Status == 403)
 	{
-		m_aAuthToken[0] = '\0';
-		FetchAuthToken();
+		ClearVoiceAuth();
+		if(!ShouldIgnoreIndicatorErrors())
+			GameClient()->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "RClient", "Indicator GET auth rejected");
 		return;
 	}
 
@@ -299,9 +490,14 @@ void CRClientIndicator::FinishRClientUsers()
 	const json_value &Error = Json["error"];
 	if(Error.type == json_string)
 	{
+		ClearVoiceAuth();
 		json_value_free(pJson);
 		return;
 	}
+
+	uint32_t VoiceTimestamp = 0;
+	uint64_t VoiceHash = 0;
+	const bool HasVoiceAuth = TryParseVoiceAuth(Json["_voice_auth"], VoiceTimestamp, VoiceHash);
 
 	m_vRClientUsers.clear();
 
@@ -361,6 +557,16 @@ void CRClientIndicator::FinishRClientUsers()
 		}
 	}
 
+	if(HasVoiceAuth)
+	{
+		m_VoiceAuthTimestamp.store(VoiceTimestamp);
+		m_VoiceAuthHash.store(VoiceHash);
+	}
+	else
+	{
+		ClearVoiceAuth();
+	}
+
 	json_value_free(pJson);
 }
 
@@ -375,15 +581,32 @@ void CRClientIndicator::ResetRClientUsers()
 
 void CRClientIndicator::ApplyPollHeaders(CHttpRequest &Request, const char *pServerAddress, int ClientId, int DummyClientId)
 {
-	Request.HeaderString("X-RClient-Token", m_aAuthToken);
+	char aServerIp[128];
+	int ServerPort = 0;
+	if(!ParseServerAddress(pServerAddress, aServerIp, sizeof(aServerIp), ServerPort))
+		return;
+
+	const uint32_t AuthTimestamp = (uint32_t)time_timestamp();
+	char aAuthHash[32];
+	if(!ComputeIndicatorAuthHex(ClientId, aServerIp, ServerPort, AuthTimestamp, aAuthHash, sizeof(aAuthHash)))
+		return;
+
 	Request.HeaderString("X-RClient-Server", pServerAddress);
 	Request.HeaderInt("X-RClient-Since", m_ServerRev);
 	Request.HeaderInt("X-RClient-Timeout", POLL_TIMEOUT_SECONDS);
 	Request.HeaderInt("X-RClient-Voice", g_Config.m_RiVoiceEnable);
+	Request.HeaderString("X-RClient-Auth-Hash", aAuthHash);
+	Request.HeaderInt("X-RClient-Auth-Timestamp", (int)AuthTimestamp);
 	if(ClientId >= 0)
 		Request.HeaderInt("X-RClient-Player", ClientId);
 	if(DummyClientId >= 0)
 		Request.HeaderInt("X-RClient-Dummy", DummyClientId);
+}
+
+void CRClientIndicator::ClearVoiceAuth()
+{
+	m_VoiceAuthTimestamp.store(0);
+	m_VoiceAuthHash.store(0);
 }
 
 void CRClientIndicator::ClearUsers()
@@ -423,4 +646,11 @@ bool CRClientIndicator::IsPlayerRClientVoiceEnabled(int ClientId)
 	}
 
 	return false;
+}
+
+bool CRClientIndicator::GetCachedVoiceAuth(uint32_t &Timestamp, uint64_t &Hash) const
+{
+	Timestamp = m_VoiceAuthTimestamp.load();
+	Hash = m_VoiceAuthHash.load();
+	return Timestamp != 0 && Hash != 0;
 }

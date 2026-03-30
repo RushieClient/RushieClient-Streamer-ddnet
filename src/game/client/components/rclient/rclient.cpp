@@ -15,34 +15,7 @@
 #include <engine/shared/config.h>
 #include <engine/shared/json.h>
 
-#include <generated/rclient_secret_token.h>
-
 #include "rclient.h"
-
-static unsigned char BuildDataMask(int Index)
-{
-	const unsigned char OffsetA = static_cast<unsigned char>((Index * RCLIENT_BUILD_DATA_STEP_A) & 0xFF);
-	const unsigned char OffsetB = static_cast<unsigned char>((((Index + 1) * RCLIENT_BUILD_DATA_STEP_B) + RCLIENT_BUILD_DATA_SALT) & 0xFF);
-	return static_cast<unsigned char>((RCLIENT_BUILD_DATA_SEED + OffsetA) ^ OffsetB);
-}
-
-static std::string DecodeBuildSecretToken()
-{
-	std::string Result;
-	Result.reserve(RCLIENT_BUILD_DATA_LENGTH);
-	for(int i = 0; i < RCLIENT_BUILD_DATA_LENGTH; ++i)
-	{
-		Result.push_back(static_cast<char>(gs_aRclientBuildData[i] ^ BuildDataMask(i)));
-	}
-	return Result;
-}
-
-static void ClearBuildSecretToken(std::string &Token)
-{
-	for(char &Byte : Token)
-		Byte = '\0';
-	Token.clear();
-}
 
 CRClient::CRClient()
 {
@@ -51,10 +24,6 @@ CRClient::CRClient()
 
 void CRClient::OnInit()
 {
-	// std::string SecretToken = DecodeBuildSecretToken();
-	// const char *pSecretToken = SecretToken.empty() ? nullptr : SecretToken.c_str();
-	// ClearBuildSecretToken(SecretToken);
-
 	FetchRclientVersionCheck();
 	m_pGraphics = Kernel()->RequestInterface<IEngineGraphics>();
 	m_Voice.Init(GameClient(), Client(), Console());

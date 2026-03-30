@@ -180,6 +180,8 @@ class CRClientVoice
 	std::atomic<uint32_t> m_ContextHash = 0;
 	int64_t m_LastKeepalive = 0;
 	uint32_t m_LastTokenHashSent = 0;
+	uint32_t m_LastVoiceAuthTimestampSent = 0;
+	uint64_t m_LastVoiceAuthHashSent = 0;
 
 	// Debug counters (worker thread only)
 	int64_t m_TxLastLog = 0;

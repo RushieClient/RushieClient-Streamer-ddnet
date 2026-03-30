@@ -175,13 +175,15 @@ static constexpr int VOICE_CHANNELS = 1;
 static constexpr int VOICE_FRAME_SAMPLES = 960;
 static constexpr int VOICE_FRAME_BYTES = VOICE_FRAME_SAMPLES * sizeof(int16_t);
 static constexpr int VOICE_MAX_PACKET = 1200;
-static constexpr int VOICE_HEADER_SIZE = sizeof(VOICE_MAGIC) + 1 + 1 + 2 + 4 + 4 + 1 + 2 + 2 + 4 + 4;
-static constexpr int VOICE_MAX_PAYLOAD = VOICE_MAX_PACKET - VOICE_HEADER_SIZE;
+static constexpr int VOICE_MAX_SERVER_IP_BYTES = 128;
+static constexpr int VOICE_HEADER_FIXED_SIZE = sizeof(VOICE_MAGIC) + 1 + 1 + 2 + 4 + 4 + 4 + 8 + 2 + 2 + 1 + 2 + 2 + 4 + 4;
+static constexpr int VOICE_MAX_PAYLOAD = VOICE_MAX_PACKET - (VOICE_HEADER_FIXED_SIZE + VOICE_MAX_SERVER_IP_BYTES);
 static constexpr uint32_t VOICE_GROUP_MASK = 0x3fffffff;
 static constexpr uint32_t VOICE_MODE_SHIFT = 30;
 static constexpr uint32_t VOICE_MODE_MASK = 0x3u;
 static constexpr uint8_t VOICE_FLAG_VAD = 1 << 0;
 static constexpr uint8_t VOICE_FLAG_LOOPBACK = 1 << 1;
+static constexpr int VOICE_AUTH_MAX_AGE_SECONDS = 60;
 #if defined(CONF_RNNOISE)
 static constexpr int RNNOISE_FRAME_SAMPLES = 480;
 #endif
@@ -238,6 +240,12 @@ static void WriteU32(uint8_t *pBuf, uint32_t Value)
 	pBuf[3] = (Value >> 24) & 0xff;
 }
 
+static void WriteU64(uint8_t *pBuf, uint64_t Value)
+{
+	for(int i = 0; i < 8; i++)
+		pBuf[i] = (Value >> (i * 8)) & 0xff;
+}
+
 static void WriteFloat(uint8_t *pBuf, float Value)
 {
 	static_assert(sizeof(float) == 4, "float must be 4 bytes");
@@ -254,6 +262,14 @@ static uint16_t ReadU16(const uint8_t *pBuf)
 static uint32_t ReadU32(const uint8_t *pBuf)
 {
 	return (uint32_t)pBuf[0] | ((uint32_t)pBuf[1] << 8) | ((uint32_t)pBuf[2] << 16) | ((uint32_t)pBuf[3] << 24);
+}
+
+static uint64_t ReadU64(const uint8_t *pBuf)
+{
+	uint64_t Value = 0;
+	for(int i = 0; i < 8; i++)
+		Value |= (uint64_t)pBuf[i] << (i * 8);
+	return Value;
 }
 
 static float ReadFloat(const uint8_t *pBuf)
@@ -273,6 +289,15 @@ static float SanitizeFloat(float Value)
 	if(Value < -1000000.0f)
 		return -1000000.0f;
 	return Value;
+}
+
+static bool VoiceAuthFresh(uint32_t Timestamp)
+{
+	if(Timestamp == 0)
+		return false;
+	const int64_t Now = time_timestamp();
+	const int64_t Delta = Now - (int64_t)Timestamp;
+	return Delta >= -VOICE_AUTH_MAX_AGE_SECONDS && Delta <= VOICE_AUTH_MAX_AGE_SECONDS;
 }
 
 static float VoiceFramePeak(const int16_t *pSamples, int Count)
@@ -506,6 +531,16 @@ static bool ParseHostPort(const char *pAddrStr, char *pHost, size_t HostSize, in
 
 	Port = str_toint(pColon + 1);
 	return Port > 0 && Port <= 65535;
+}
+
+static bool GetCurrentGameServerIdentity(IClient *pClient, char *pServerIp, size_t ServerIpSize, int &ServerPort)
+{
+	if(!pClient)
+		return false;
+
+	CServerInfo CurrentServerInfo;
+	pClient->GetServerInfo(&CurrentServerInfo);
+	return ParseHostPort(CurrentServerInfo.m_aAddress, pServerIp, ServerIpSize, ServerPort);
 }
 
 void CRClientVoice::Init(CGameClient *pGameClient, IClient *pClient, IConsole *pConsole)
@@ -1363,6 +1398,14 @@ void CRClientVoice::ProcessCapture()
 	if(!Online || LocalClientId < 0 || LocalClientId >= MAX_CLIENTS)
 		return;
 
+	char aGameServerIp[VOICE_MAX_SERVER_IP_BYTES];
+	int GameServerPort = 0;
+	if(!GetCurrentGameServerIdentity(m_pClient, aGameServerIp, sizeof(aGameServerIp), GameServerPort))
+		return;
+	const int GameServerIpLen = str_length(aGameServerIp);
+	if(GameServerIpLen <= 0 || GameServerIpLen > VOICE_MAX_SERVER_IP_BYTES)
+		return;
+
 	const int64_t Now = time_get();
 	const bool UseVad = Config.m_RiVoiceVadEnable != 0;
 	if(!UseVad)
@@ -1382,7 +1425,14 @@ void CRClientVoice::ProcessCapture()
 		m_VadActive = false;
 		m_VadReleaseDeadline = 0;
 	}
+
+	uint32_t VoiceAuthTimestamp = 0;
+	uint64_t VoiceAuthHash = 0;
+	if(m_pGameClient)
+		m_pGameClient->m_RClientIndicator.GetCachedVoiceAuth(VoiceAuthTimestamp, VoiceAuthHash);
+	const bool VoiceAuthValid = VoiceAuthHash != 0 && VoiceAuthFresh(VoiceAuthTimestamp);
 	const bool TokenChanged = Config.m_RiVoiceTokenHash != m_LastTokenHashSent;
+	const bool VoiceAuthChanged = VoiceAuthTimestamp != m_LastVoiceAuthTimestampSent || VoiceAuthHash != m_LastVoiceAuthHashSent;
 	const bool NeedKeepalive = m_LastKeepalive == 0 || Now - m_LastKeepalive > time_freq() * 2;
 	const bool TxActiveSnapshot = UseVad ? m_VadActive : PttHeld;
 	const uint8_t ProtocolVersion = VoiceProtocolVersion(Config);
@@ -1390,7 +1440,7 @@ void CRClientVoice::ProcessCapture()
 	if(TestMode == 2)
 		TxFlags |= VOICE_FLAG_LOOPBACK;
 
-	if(TokenChanged || (!TxActiveSnapshot && NeedKeepalive))
+	if(VoiceAuthValid && (TokenChanged || VoiceAuthChanged || NeedKeepalive))
 	{
 		NETADDR ServerAddrLocal = NETADDR_ZEROED;
 		{
@@ -1409,8 +1459,18 @@ void CRClientVoice::ProcessCapture()
 		Offset += sizeof(uint32_t);
 		WriteU32(aPacket + Offset, Config.m_RiVoiceTokenHash);
 		Offset += sizeof(uint32_t);
+		WriteU32(aPacket + Offset, VoiceAuthTimestamp);
+		Offset += sizeof(uint32_t);
+		WriteU64(aPacket + Offset, VoiceAuthHash);
+		Offset += sizeof(uint64_t);
+		WriteU16(aPacket + Offset, (uint16_t)GameServerIpLen);
+		Offset += sizeof(uint16_t);
+		mem_copy(aPacket + Offset, aGameServerIp, GameServerIpLen);
+		Offset += GameServerIpLen;
+		WriteU16(aPacket + Offset, (uint16_t)GameServerPort);
+		Offset += sizeof(uint16_t);
 		aPacket[Offset++] = TxFlags;
-		WriteU16(aPacket + Offset, 0);
+		WriteU16(aPacket + Offset, (uint16_t)LocalClientId);
 		Offset += sizeof(uint16_t);
 		WriteU16(aPacket + Offset, m_Sequence);
 		Offset += sizeof(uint16_t);
@@ -1423,6 +1483,8 @@ void CRClientVoice::ProcessCapture()
 		m_LastPingSeq = m_Sequence;
 		m_LastKeepalive = Now;
 		m_LastTokenHashSent = Config.m_RiVoiceTokenHash;
+		m_LastVoiceAuthTimestampSent = VoiceAuthTimestamp;
+		m_LastVoiceAuthHashSent = VoiceAuthHash;
 	}
 
 	if(MicMuted)
@@ -1523,6 +1585,11 @@ void CRClientVoice::ProcessCapture()
 			m_TxWasActive = false;
 			continue;
 		}
+		if(!VoiceAuthValid)
+		{
+			m_TxWasActive = false;
+			continue;
+		}
 		if(!m_TxWasActive)
 		{
 			if(m_pEncoder)
@@ -1562,6 +1629,16 @@ void CRClientVoice::ProcessCapture()
 		Offset += sizeof(uint32_t);
 		WriteU32(aPacket + Offset, Config.m_RiVoiceTokenHash);
 		Offset += sizeof(uint32_t);
+		WriteU32(aPacket + Offset, VoiceAuthTimestamp);
+		Offset += sizeof(uint32_t);
+		WriteU64(aPacket + Offset, VoiceAuthHash);
+		Offset += sizeof(uint64_t);
+		WriteU16(aPacket + Offset, (uint16_t)GameServerIpLen);
+		Offset += sizeof(uint16_t);
+		mem_copy(aPacket + Offset, aGameServerIp, GameServerIpLen);
+		Offset += GameServerIpLen;
+		WriteU16(aPacket + Offset, (uint16_t)GameServerPort);
+		Offset += sizeof(uint16_t);
 		aPacket[Offset++] = TxFlags;
 		WriteU16(aPacket + Offset, (uint16_t)ClientId);
 		Offset += sizeof(uint16_t);
@@ -1633,7 +1710,7 @@ void CRClientVoice::ProcessIncoming()
 		if(net_addr_comp(&Addr, &ServerAddrLocal) != 0)
 			continue;
 
-		if(Bytes < VOICE_HEADER_SIZE)
+		if(Bytes < VOICE_HEADER_FIXED_SIZE)
 			continue;
 
 		size_t Offset = 0;
@@ -1647,15 +1724,25 @@ void CRClientVoice::ProcessIncoming()
 			continue;
 		if(Type != VOICE_TYPE_AUDIO && Type != VOICE_TYPE_PING && Type != VOICE_TYPE_PONG)
 			continue;
-		if(Bytes < VOICE_HEADER_SIZE)
-			continue;
-
 		const uint16_t PayloadSize = ReadU16(pData + Offset);
 		Offset += sizeof(uint16_t);
 		const uint32_t ContextHash = ReadU32(pData + Offset);
 		Offset += sizeof(uint32_t);
 		const uint32_t TokenHash = ReadU32(pData + Offset);
 		Offset += sizeof(uint32_t);
+		const uint32_t VoiceAuthTimestamp = ReadU32(pData + Offset);
+		Offset += sizeof(uint32_t);
+		const uint64_t VoiceAuthHash = ReadU64(pData + Offset);
+		Offset += sizeof(uint64_t);
+		const uint16_t ServerIpLen = ReadU16(pData + Offset);
+		Offset += sizeof(uint16_t);
+		if(ServerIpLen > VOICE_MAX_SERVER_IP_BYTES)
+			continue;
+		if(Bytes < VOICE_HEADER_FIXED_SIZE + ServerIpLen)
+			continue;
+		Offset += ServerIpLen;
+		const uint16_t ServerPort = ReadU16(pData + Offset);
+		Offset += sizeof(uint16_t);
 		const uint8_t Flags = pData[Offset++];
 		const uint16_t SenderId = ReadU16(pData + Offset);
 		Offset += sizeof(uint16_t);
@@ -1674,6 +1761,9 @@ void CRClientVoice::ProcessIncoming()
 		}
 		if(Type == VOICE_TYPE_PING || Type == VOICE_TYPE_PONG)
 		{
+			(void)VoiceAuthTimestamp;
+			(void)VoiceAuthHash;
+			(void)ServerPort;
 			if(TokenHash != 0 && TokenHash != Config.m_RiVoiceTokenHash)
 				continue;
 			if(m_LastPingSentTime != 0 && Sequence == m_LastPingSeq)
@@ -1756,7 +1846,7 @@ void CRClientVoice::ProcessIncoming()
 		}
 		m_aLastHeard[SenderId].store(time_get());
 
-		if(PayloadSize > (uint16_t)(VOICE_MAX_PACKET - VOICE_HEADER_SIZE))
+		if(PayloadSize > (uint16_t)(VOICE_MAX_PACKET - (int)Offset))
 			continue;
 		if(Offset + PayloadSize > (size_t)Bytes)
 			continue;
