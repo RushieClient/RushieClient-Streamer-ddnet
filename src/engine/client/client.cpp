@@ -89,6 +89,18 @@ using namespace std::chrono_literals;
 static constexpr ColorRGBA CLIENT_NETWORK_PRINT_COLOR = ColorRGBA(0.7f, 1, 0.7f, 1.0f);
 static constexpr ColorRGBA CLIENT_NETWORK_PRINT_ERROR_COLOR = ColorRGBA(1.0f, 0.25f, 0.25f, 1.0f);
 
+static void ApplyAudioBackendOverride()
+{
+	if(g_Config.m_RiVoiceAudioBackend[0] == '\0')
+		return;
+
+	if(SDL_setenv("SDL_AUDIODRIVER", g_Config.m_RiVoiceAudioBackend, 1) != 0)
+		log_warn("client", "failed to set SDL_AUDIODRIVER override: %s", SDL_GetError());
+
+	SDL_SetHint("SDL_AUDIODRIVER", g_Config.m_RiVoiceAudioBackend);
+	log_info("client", "requested SDL audio backend '%s'", g_Config.m_RiVoiceAudioBackend);
+}
+
 CClient::CClient() :
 	m_DemoPlayer(&m_SnapshotDelta, true, [&]() { UpdateDemoIntraTimers(); }),
 	m_InputtimeMarginGraph(128, 2, true),
@@ -5019,10 +5031,6 @@ int main(int argc, const char **argv)
 		pConsole->ExecuteFile(AUTOEXEC_FILE, IConsole::CLIENT_ID_UNSPECIFIED);
 	}
 
-	// RCLIENT
-	if(g_Config.m_RiVoiceAudioBackend[0] != '\0')
-		SDL_SetHint(SDL_HINT_AUDIODRIVER, g_Config.m_RiVoiceAudioBackend);
-
 	if(g_Config.m_ClConfigVersion < 1)
 	{
 		if(g_Config.m_ClAntiPing == 0)
@@ -5068,6 +5076,8 @@ int main(int argc, const char **argv)
 #if defined(CONF_FAMILY_WINDOWS)
 	pClient->ShellRegister();
 #endif
+
+	ApplyAudioBackendOverride();
 
 	// Do not automatically translate touch events to mouse events and vice versa.
 	SDL_SetHint("SDL_TOUCH_MOUSE_EVENTS", "0");
