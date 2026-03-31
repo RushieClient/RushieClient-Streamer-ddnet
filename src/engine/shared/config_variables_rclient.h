@@ -16,6 +16,8 @@ MACRO_CONFIG_INT(RiEnableCensorList, ri_enable_censor_list, 0, 0, 1, CFGFLAG_CLI
 MACRO_CONFIG_INT(RiMultipleReplacementChar, ri_multiple_replacement_char, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Multiple replacement char on blocked word len")
 MACRO_CONFIG_STR(RiBlockedContentReplacementChar, ri_blocked_content_replacement_char, 64, "*", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Character used to replace blocked content")
 MACRO_CONFIG_STR(RiRegexPlayerWhitelist, ri_regex_player_whitelist, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Chat filer whitelist")
+MACRO_CONFIG_INT(RiJoinSoundEnable, ri_join_sound_names, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play highlight chat sound when listed names join the game")
+MACRO_CONFIG_STR(RiJoinSoundNames, ri_join_sound_names, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play highlight chat sound when listed names join the game")
 MACRO_CONFIG_INT(RiFilterChangeWholeWord, ri_filter_change_whole_word, 1, 0, 2, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Change whole word to replacement character")
 MACRO_CONFIG_STR(RiBlockedContentPartialReplacementChar, ri_blocked_content_partial_replacement_char, 64, "*", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Character used to replace partial blocked content")
 

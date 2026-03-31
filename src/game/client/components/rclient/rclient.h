@@ -151,6 +151,7 @@ public:
 	int Sizeof() const override { return sizeof(*this); }
 	void OnInit() override;
 	void OnConsoleInit() override;
+	void OnMessage(int MsgType, void *pRawMsg) override;
 	void OnRender() override;
 	void OnShutdown() override;
 

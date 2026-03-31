@@ -17,6 +17,35 @@
 
 #include "rclient.h"
 
+static bool ExtractJoinedPlayerName(const char *pLine, char *pName, int NameSize)
+{
+	static constexpr const char *pJoinSuffix = "' entered and joined the game";
+
+	if(!pLine || pLine[0] != '\'')
+		return false;
+
+	const char *pSuffixStart = str_endswith(pLine, pJoinSuffix);
+	if(!pSuffixStart)
+		return false;
+
+	const char *pNameStart = pLine + 1;
+	if(pSuffixStart <= pNameStart)
+		return false;
+
+	str_truncate(pName, NameSize, pNameStart, (int)(pSuffixStart - pNameStart));
+	return pName[0] != '\0';
+}
+
+static bool ShouldPlayJoinSound(const char *pLine)
+{
+	if(!g_Config.m_RiJoinSoundNames[0])
+		return false;
+
+	char aJoinedName[MAX_NAME_LENGTH];
+	return ExtractJoinedPlayerName(pLine, aJoinedName, sizeof(aJoinedName)) &&
+		CRClient::VoiceListHasName(g_Config.m_RiJoinSoundNames, aJoinedName);
+}
+
 CRClient::CRClient()
 {
 	OnReset();
@@ -97,6 +126,19 @@ void CRClient::OnConsoleInit()
 			pfnCallback(pResult, pCallbackUserData);
 		},
 		this);
+}
+
+void CRClient::OnMessage(int MsgType, void *pRawMsg)
+{
+	if(GameClient()->m_SuppressEvents)
+		return;
+
+	if(MsgType == NETMSGTYPE_SV_CHAT)
+	{
+		const CNetMsg_Sv_Chat *pMsg = (const CNetMsg_Sv_Chat *)pRawMsg;
+		if(pMsg->m_ClientId == -1 && ShouldPlayJoinSound(pMsg->m_pMessage))
+			GameClient()->m_Sounds.Play(CSounds::CHN_GUI, SOUND_CHAT_HIGHLIGHT, 1.0f);
+	}
 }
 
 void CRClient::OnRender()
