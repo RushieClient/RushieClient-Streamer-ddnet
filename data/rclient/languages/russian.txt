@@ -908,3 +908,6 @@ VAD threshold (%)
 
 VAD release delay (ms)
 == Задержка VAD (мс)
+
+Checkpoint:
+== Чекпоинт

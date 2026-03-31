@@ -1960,7 +1960,7 @@ void CHud::RenderMovementInformation()
 	if(g_Config.m_RiShowCheckpointInHud)
 	{
 		const int CheckpointId = GameClient()->m_RClient.GetCheckpointId();
-		TextRender()->Text(LeftX, y, Fontsize, Localize("CP:"), -1.0f);
+		TextRender()->Text(LeftX, y, Fontsize, Localize("Checkpoint:"), -1.0f);
 
 		if(!g_Config.m_RiHudOneLine)
 			y += MOVEMENT_INFORMATION_LINE_HEIGHT;
