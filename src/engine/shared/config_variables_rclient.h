@@ -189,3 +189,9 @@ MACRO_CONFIG_INT(RiFastInputVersion, ri_fast_input_version, 1, 0, 1, CFGFLAG_CLI
 
 // show procent in vote
 MACRO_CONFIG_INT(RiShowProcentInVoteBar, ri_show_procent_in_vote_bar, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shows procent in vote bar")
+
+// Show checkpoint in hud
+MACRO_CONFIG_INT(RiShowCheckpointInHud, ri_show_checkpoint_in_hud, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shows checkpoint in hud")
+
+// Angle/Checkpoint in one line hud
+MACRO_CONFIG_INT(RiHudOneLine, ri_hud_one_line, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Make angle and checkpoint in hud in one line")

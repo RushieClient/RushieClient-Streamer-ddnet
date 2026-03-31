@@ -52,6 +52,10 @@ class CHud : public CComponent
 	STextContainerIndex m_DDRaceEffectsTextContainerIndex;
 	STextContainerIndex m_PlayerAngleTextContainerIndex;
 	float m_PlayerPrevAngle;
+	//RCLIENT CHECKPOINT START
+	STextContainerIndex m_PlayerCheckpointTextContainerIndex;
+	int m_PlayerPrevCheckpoint;
+	//RCLIENT CHECKPOINT END
 	STextContainerIndex m_aPlayerSpeedTextContainers[2];
 	float m_aPlayerPrevSpeed[2];
 	int m_aPlayerSpeed[2];
@@ -87,6 +91,7 @@ class CHud : public CComponent
 	void RenderMovementInformation();
 
 	void UpdateMovementInformationTextContainer(STextContainerIndex &TextContainer, float FontSize, float Value, float &PrevValue);
+	void UpdateMovementInformationTextContainer(STextContainerIndex &TextContainer, float FontSize, int Value, int &PrevValue);
 	void RenderMovementInformationTextContainer(STextContainerIndex &TextContainer, const ColorRGBA &Color, float X, float Y);
 
 	class CMovementInformation

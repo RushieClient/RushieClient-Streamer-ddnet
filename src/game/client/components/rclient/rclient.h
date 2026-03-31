@@ -208,6 +208,9 @@ public:
 	int VoiceNameVolume(const char *pName, int DefaultPercent = 100) const;
 	void VoiceNameVolumeSet(const char *pName, int Percent);
 	void VoiceNameVolumeClear(const char *pName);
+
+	//Checkpoint
+	int GetCheckpointId();
 };
 
 #endif

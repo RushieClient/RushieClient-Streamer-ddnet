@@ -1408,6 +1408,28 @@ void CRClient::ConGetCheckpointId(IConsole::IResult *pResult, void *pUserData)
 	}
 }
 
+int CRClient::GetCheckpointId()
+{
+	int PlayerId = -1;
+	if(GameClient()->m_Snap.m_SpecInfo.m_SpectatorId != SPEC_FREEVIEW && GameClient()->m_Snap.m_SpecInfo.m_Active)
+	{
+		const auto &Player = GameClient()->m_aClients[GameClient()->m_Snap.m_SpecInfo.m_SpectatorId];
+		PlayerId = Player.ClientId();
+	}
+	else if(!GameClient()->m_Snap.m_SpecInfo.m_Active)
+		PlayerId = GameClient()->m_Snap.m_LocalClientId;
+
+	if(PlayerId != -1)
+	{
+		const auto &Char = GameClient()->m_Snap.m_aCharacters[PlayerId];
+		if(!Char.m_Active || !Char.m_HasExtendedData)
+			return -1;
+		return Char.m_ExtendedData.m_TeleCheckpoint;
+	}
+
+	return -1;
+}
+
 void CRClient::TargetPlayerPosAdd(const char *Nickname)
 {
 	int ClientID = -1;

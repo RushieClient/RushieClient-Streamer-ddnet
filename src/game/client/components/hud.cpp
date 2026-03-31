@@ -32,7 +32,9 @@ CHud::CHud()
 	m_FPSTextContainerIndex.Reset();
 	m_DDRaceEffectsTextContainerIndex.Reset();
 	m_PlayerAngleTextContainerIndex.Reset();
+	m_PlayerCheckpointTextContainerIndex.Reset();
 	m_PlayerPrevAngle = -INFINITY;
+	m_PlayerPrevCheckpoint = -1;
 
 	for(int i = 0; i < 2; i++)
 	{
@@ -62,7 +64,9 @@ void CHud::ResetHudContainers()
 	TextRender()->DeleteTextContainer(m_FPSTextContainerIndex);
 	TextRender()->DeleteTextContainer(m_DDRaceEffectsTextContainerIndex);
 	TextRender()->DeleteTextContainer(m_PlayerAngleTextContainerIndex);
+	TextRender()->DeleteTextContainer(m_PlayerCheckpointTextContainerIndex);
 	m_PlayerPrevAngle = -INFINITY;
+	m_PlayerPrevCheckpoint = -1;
 	for(int i = 0; i < 2; i++)
 	{
 		TextRender()->DeleteTextContainer(m_aPlayerSpeedTextContainers[i]);
@@ -1545,7 +1549,7 @@ void CHud::RenderSpectatorCount()
 
 	float StartX = m_Width - BoxWidth;
 	float StartY = 285.0f - BoxHeight - 4; // 4 units distance to the next display;
-	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle)
+	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle || g_Config.m_RiShowCheckpointInHud || GameClient()->m_RClient.TargetCount || g_Config.m_RiShowhudDummyPosition)
 	{
 		StartY -= 4;
 	}
@@ -1584,7 +1588,7 @@ void CHud::RenderDummyActions()
 
 	float StartX = m_Width - BoxWidth;
 	float StartY = 285.0f - BoxHeight - 4; // 4 units distance to the next display;
-	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle)
+	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle || g_Config.m_RiShowCheckpointInHud)
 	{
 		StartY -= 4;
 	}
@@ -1655,12 +1659,14 @@ inline int CHud::GetDigitsIndex(int Value, int Max)
 
 inline float CHud::GetMovementInformationBoxHeight()
 {
-	float TargetCountLines = GameClient()->m_RClient.TargetCount ? GameClient()->m_RClient.TargetCount * 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT : 0.0f;
-	float DummyPosLines = g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected() ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT: 0.0f;
+	float TargetCountLines = GameClient()->m_RClient.TargetCount * 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT;
+	float DummyPosLines = g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected() ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT : 0.0f;
+	float CheckpointHudLines = g_Config.m_RiShowCheckpointInHud * MOVEMENT_INFORMATION_LINE_HEIGHT * (!g_Config.m_RiHudOneLine ? 2.0f : 1.0f);
+	float AngleHudLines = g_Config.m_ClShowhudPlayerAngle * MOVEMENT_INFORMATION_LINE_HEIGHT * (!g_Config.m_RiHudOneLine ? 2.0f : 1.0f);
 	if(GameClient()->m_Snap.m_SpecInfo.m_Active && (GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == SPEC_FREEVIEW || GameClient()->m_aClients[GameClient()->m_Snap.m_SpecInfo.m_SpectatorId].m_SpecCharPresent))
-		return (g_Config.m_ClShowhudPlayerPosition ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f) + TargetCountLines + DummyPosLines;
-	float BoxHeight = 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * (g_Config.m_ClShowhudPlayerPosition + g_Config.m_ClShowhudPlayerSpeed) + 2.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * g_Config.m_ClShowhudPlayerAngle + TargetCountLines + DummyPosLines;
-	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle || GameClient()->m_RClient.TargetCount || g_Config.m_RiShowhudDummyPosition)
+		return (g_Config.m_ClShowhudPlayerPosition ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f) + TargetCountLines + DummyPosLines + CheckpointHudLines;
+	float BoxHeight = 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * (g_Config.m_ClShowhudPlayerPosition + g_Config.m_ClShowhudPlayerSpeed) + AngleHudLines + TargetCountLines + DummyPosLines + CheckpointHudLines;
+	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle || g_Config.m_RiShowCheckpointInHud || GameClient()->m_RClient.TargetCount || g_Config.m_RiShowhudDummyPosition)
 	{
 		BoxHeight += 2.0f;
 	}
@@ -1676,6 +1682,20 @@ void CHud::UpdateMovementInformationTextContainer(STextContainerIndex &TextConta
 
 	char aBuf[128];
 	str_format(aBuf, sizeof(aBuf), "%.2f", Value);
+
+	CTextCursor Cursor;
+	Cursor.m_FontSize = FontSize;
+	TextRender()->RecreateTextContainer(TextContainer, &Cursor, aBuf);
+}
+
+void CHud::UpdateMovementInformationTextContainer(STextContainerIndex &TextContainer, float FontSize, int Value, int &PrevValue)
+{
+	if(TextContainer.Valid() && PrevValue == Value)
+		return;
+	PrevValue = Value;
+
+	char aBuf[32];
+	str_format(aBuf, sizeof(aBuf), "%d", Value);
 
 	CTextCursor Cursor;
 	Cursor.m_FontSize = FontSize;
@@ -1747,7 +1767,7 @@ void CHud::RenderMovementInformation()
 	const bool PosOnly = ClientId == SPEC_FREEVIEW || (GameClient()->m_aClients[ClientId].m_SpecCharPresent);
 	// Draw the information depending on settings: Position, speed and target angle
 	// This display is only to present the available information from the last snapshot, not to interpolate or predict
-	if(!g_Config.m_ClShowhudPlayerPosition && (PosOnly || (!g_Config.m_ClShowhudPlayerSpeed && !g_Config.m_ClShowhudPlayerAngle)) && !(GameClient()->m_RClient.TargetCount) && !(g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected()))
+	if(!g_Config.m_ClShowhudPlayerPosition && (PosOnly || (!g_Config.m_ClShowhudPlayerSpeed && !g_Config.m_ClShowhudPlayerAngle)) && !g_Config.m_RiShowCheckpointInHud && !(GameClient()->m_RClient.TargetCount) && !(g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected()))
 	{
 		return;
 	}
@@ -1900,38 +1920,60 @@ void CHud::RenderMovementInformation()
 		}
 	}
 
-	if(PosOnly)
-		return;
-
-	if(g_Config.m_ClShowhudPlayerSpeed)
+	if(!PosOnly)
 	{
-		TextRender()->Text(LeftX, y, Fontsize, Localize("Speed:"), -1.0f);
-		y += MOVEMENT_INFORMATION_LINE_HEIGHT;
-
-		const char aaCoordinates[][4] = {"X:", "Y:"};
-		for(int i = 0; i < 2; i++)
+		if(g_Config.m_ClShowhudPlayerSpeed)
 		{
-			ColorRGBA Color(1.0f, 1.0f, 1.0f, 1.0f);
-			if(m_aLastPlayerSpeedChange[i] == ESpeedChange::INCREASE)
-				Color = ColorRGBA(0.0f, 1.0f, 0.0f, 1.0f);
-			if(m_aLastPlayerSpeedChange[i] == ESpeedChange::DECREASE)
-				Color = ColorRGBA(1.0f, 0.5f, 0.5f, 1.0f);
-			TextRender()->Text(LeftX, y, Fontsize, aaCoordinates[i], -1.0f);
-			UpdateMovementInformationTextContainer(m_aPlayerSpeedTextContainers[i], Fontsize, i == 0 ? Info.m_Speed.x : Info.m_Speed.y, m_aPlayerPrevSpeed[i]);
-			RenderMovementInformationTextContainer(m_aPlayerSpeedTextContainers[i], Color, RightX, y);
+			TextRender()->Text(LeftX, y, Fontsize, Localize("Speed:"), -1.0f);
 			y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+
+			const char aaCoordinates[][4] = {"X:", "Y:"};
+			for(int i = 0; i < 2; i++)
+			{
+				ColorRGBA Color(1.0f, 1.0f, 1.0f, 1.0f);
+				if(m_aLastPlayerSpeedChange[i] == ESpeedChange::INCREASE)
+					Color = ColorRGBA(0.0f, 1.0f, 0.0f, 1.0f);
+				if(m_aLastPlayerSpeedChange[i] == ESpeedChange::DECREASE)
+					Color = ColorRGBA(1.0f, 0.5f, 0.5f, 1.0f);
+				TextRender()->Text(LeftX, y, Fontsize, aaCoordinates[i], -1.0f);
+				UpdateMovementInformationTextContainer(m_aPlayerSpeedTextContainers[i], Fontsize, i == 0 ? Info.m_Speed.x : Info.m_Speed.y, m_aPlayerPrevSpeed[i]);
+				RenderMovementInformationTextContainer(m_aPlayerSpeedTextContainers[i], Color, RightX, y);
+				y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+			}
+
+			TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 		}
 
-		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		if(g_Config.m_ClShowhudPlayerAngle)
+		{
+			TextRender()->Text(LeftX, y, Fontsize, Localize("Angle:"), -1.0f);
+
+			if(!g_Config.m_RiHudOneLine)
+				y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+
+			UpdateMovementInformationTextContainer(m_PlayerAngleTextContainerIndex, Fontsize, Info.m_Angle, m_PlayerPrevAngle);
+			RenderMovementInformationTextContainer(m_PlayerAngleTextContainerIndex, TextRender()->DefaultTextColor(), RightX, y);
+			y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+		}
 	}
 
-	if(g_Config.m_ClShowhudPlayerAngle)
+	if(g_Config.m_RiShowCheckpointInHud)
 	{
-		TextRender()->Text(LeftX, y, Fontsize, Localize("Angle:"), -1.0f);
-		y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+		const int CheckpointId = GameClient()->m_RClient.GetCheckpointId();
+		TextRender()->Text(LeftX, y, Fontsize, Localize("CP:"), -1.0f);
 
-		UpdateMovementInformationTextContainer(m_PlayerAngleTextContainerIndex, Fontsize, Info.m_Angle, m_PlayerPrevAngle);
-		RenderMovementInformationTextContainer(m_PlayerAngleTextContainerIndex, TextRender()->DefaultTextColor(), RightX, y);
+		if(!g_Config.m_RiHudOneLine)
+			y += MOVEMENT_INFORMATION_LINE_HEIGHT;
+
+		if(CheckpointId < 0)
+		{
+			TextRender()->Text(RightX - TextRender()->TextWidth(Fontsize, "No Info", -1, -1.0f), y, Fontsize, "No Info", -1.0f);
+		}
+		else
+		{
+			UpdateMovementInformationTextContainer(m_PlayerCheckpointTextContainerIndex, Fontsize, CheckpointId, m_PlayerPrevCheckpoint);
+			RenderMovementInformationTextContainer(m_PlayerCheckpointTextContainerIndex, TextRender()->DefaultTextColor(), RightX, y);
+		}
 	}
 }
 
