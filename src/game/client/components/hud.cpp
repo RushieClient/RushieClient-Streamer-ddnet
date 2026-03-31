@@ -1655,10 +1655,12 @@ inline int CHud::GetDigitsIndex(int Value, int Max)
 
 inline float CHud::GetMovementInformationBoxHeight()
 {
+	float TargetCountLines = GameClient()->m_RClient.TargetCount ? GameClient()->m_RClient.TargetCount * 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT : 0.0f;
+	float DummyPosLines = g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected() ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT: 0.0f;
 	if(GameClient()->m_Snap.m_SpecInfo.m_Active && (GameClient()->m_Snap.m_SpecInfo.m_SpectatorId == SPEC_FREEVIEW || GameClient()->m_aClients[GameClient()->m_Snap.m_SpecInfo.m_SpectatorId].m_SpecCharPresent))
-		return (g_Config.m_ClShowhudPlayerPosition ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f) + (GameClient()->m_RClient.TargetCount ? GameClient()->m_RClient.TargetCount * 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f) + (g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected() ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f);
-	float BoxHeight = 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * (g_Config.m_ClShowhudPlayerPosition + g_Config.m_ClShowhudPlayerSpeed + GameClient()->m_RClient.TargetCount + (g_Config.m_RiShowhudDummyPosition && Client()->DummyConnected() ? 1.0f : 0.0f)) + 2.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * g_Config.m_ClShowhudPlayerAngle;
-	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle)
+		return (g_Config.m_ClShowhudPlayerPosition ? 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT + 2.0f : 0.0f) + TargetCountLines + DummyPosLines;
+	float BoxHeight = 3.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * (g_Config.m_ClShowhudPlayerPosition + g_Config.m_ClShowhudPlayerSpeed) + 2.0f * MOVEMENT_INFORMATION_LINE_HEIGHT * g_Config.m_ClShowhudPlayerAngle + TargetCountLines + DummyPosLines;
+	if(g_Config.m_ClShowhudPlayerPosition || g_Config.m_ClShowhudPlayerSpeed || g_Config.m_ClShowhudPlayerAngle || GameClient()->m_RClient.TargetCount || g_Config.m_RiShowhudDummyPosition)
 	{
 		BoxHeight += 2.0f;
 	}
