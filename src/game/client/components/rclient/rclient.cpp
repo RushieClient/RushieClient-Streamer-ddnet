@@ -136,7 +136,7 @@ void CRClient::OnMessage(int MsgType, void *pRawMsg)
 	if(MsgType == NETMSGTYPE_SV_CHAT)
 	{
 		const CNetMsg_Sv_Chat *pMsg = (const CNetMsg_Sv_Chat *)pRawMsg;
-		if(pMsg->m_ClientId == -1 && ShouldPlayJoinSound(pMsg->m_pMessage))
+		if(g_Config.m_RiJoinSoundEnable && pMsg->m_ClientId == -1 && ShouldPlayJoinSound(pMsg->m_pMessage))
 			GameClient()->m_Sounds.Play(CSounds::CHN_GUI, SOUND_CHAT_HIGHLIGHT, 1.0f);
 	}
 }
