@@ -15,6 +15,7 @@ class CRClient : public CComponent
 	static void ConFindPlayerFromDdstats(IConsole::IResult *pResult, void *pUserData);
 	static void ConFindSkinFromDdstats(IConsole::IResult *pResult, void *pUserData);
 	static void ConCopySkinFromDdstats(IConsole::IResult *pResult, void *pUserData);
+	static void ConLaunchSecondClient(IConsole::IResult *pResult, void *pUserData);
 	static void ConBackupPlayerProfile(IConsole::IResult *pResult, void *pUserData);
 
 	static void ConSpectatorAddTracker(IConsole::IResult *pResult, void *pUserData);

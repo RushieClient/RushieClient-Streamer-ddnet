@@ -1,4 +1,5 @@
 #include <base/log.h>
+#include <base/process.h>
 #include <base/str.h>
 
 #include <cctype>
@@ -73,6 +74,7 @@ void CRClient::OnConsoleInit()
 	Console()->Register("ri_find_player_from_ddstats", "s[type]", CFGFLAG_CLIENT, ConFindPlayerFromDdstats, this, "Fetch player from DDstats");
 	Console()->Register("ri_find_skin_from_ddstats", "s[type]", CFGFLAG_CLIENT, ConFindSkinFromDdstats, this, "Fetch player's skin from DDstats");
 	Console()->Register("ri_copy_skin_from_ddstats", "s[type]", CFGFLAG_CLIENT, ConCopySkinFromDdstats, this, "Fetch and copy player's skin from DDstats");
+	Console()->Register("ri_launch_second_client", "", CFGFLAG_CLIENT | CFGFLAG_STORE, ConLaunchSecondClient, this, "Launch a second client window");
 	Console()->Register("ri_backup_player_profile", "", CFGFLAG_CLIENT, ConBackupPlayerProfile, this, "Backup player profile");
 	Console()->Register("ri_tracker_spectator", "", CFGFLAG_CLIENT, ConSpectatorAddTracker, this, "Backup player profile");
 	Console()->Register("ri_find_time_on_map", "s[nickname] s[map] ?s[map1] ?s[map2] ?s[map3] ?s[map4] ?s[map5]", CFGFLAG_CLIENT, ConFindTimeMap, this, "Search time on map. Example: ri_find_time_on_map \"[D] Voix\" Grandma");
@@ -126,6 +128,25 @@ void CRClient::OnConsoleInit()
 			pfnCallback(pResult, pCallbackUserData);
 		},
 		this);
+}
+
+void CRClient::ConLaunchSecondClient(IConsole::IResult *pResult, void *pUserData)
+{
+	CRClient *pSelf = (CRClient *)pUserData;
+#if !defined(CONF_PLATFORM_ANDROID)
+	char aClientBinaryPath[IO_MAX_PATH_LENGTH];
+	pSelf->Storage()->GetBinaryPathAbsolute(PLAT_CLIENT_EXEC, aClientBinaryPath, sizeof(aClientBinaryPath));
+	const PROCESS Process = process_execute(aClientBinaryPath, EShellExecuteWindowState::FOREGROUND);
+	if(Process == INVALID_PROCESS)
+	{
+		log_error("rclient", "failed to launch second client from '%s'", aClientBinaryPath);
+		pSelf->GameClient()->Echo(Localize("Failed to launch second client. See local console for details."));
+		return;
+	}
+#else
+	log_warn("rclient", "launch_client is not supported on Android");
+	pSelf->GameClient()->Echo(Localize("Launching a second client is not supported on Android."));
+#endif
 }
 
 void CRClient::OnMessage(int MsgType, void *pRawMsg)

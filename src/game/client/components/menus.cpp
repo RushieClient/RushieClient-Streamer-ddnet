@@ -559,6 +559,16 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 			NewPage = PAGE_DEMOS;
 		}
 		GameClient()->m_Tooltips.DoToolTip(&s_DemoButton, &Button, Localize("Demos"));
+
+		Box.VSplitRight(10.0f, &Box, nullptr);
+		Box.VSplitRight(33.0f, &Box, &Button);
+
+		static CButtonContainer s_LaunchClientButton;
+		if(DoButton_MenuTab(&s_LaunchClientButton, FontIcon::SQUARE_PLUS, 0, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_LAUNCH_CLIENT]))
+		{
+			Console()->ExecuteLine("ri_launch_second_client", IConsole::CLIENT_ID_UNSPECIFIED);
+		}
+		GameClient()->m_Tooltips.DoToolTip(&s_LaunchClientButton, &Button, Localize("Launch another client window. It uses the same config and user files."));
 		Box.VSplitRight(10.0f, &Box, nullptr);
 
 		Box.VSplitLeft(33.0f, &Button, &Box);
@@ -724,7 +734,19 @@ void CMenus::RenderMenubar(CUIRect Box, IClient::EClientState ClientState)
 				NewPage = PAGE_DEMOS;
 			}
 			GameClient()->m_Tooltips.DoToolTip(&s_DemoButton, &Button, Localize("Demos"));
-			Box.VSplitRight(10.0f, &Box, nullptr);
+
+			if(Box.w >= 10.0f + 33.0f + 10.0f)
+			{
+				Box.VSplitRight(10.0f, &Box, nullptr);
+				Box.VSplitRight(33.0f, &Box, &Button);
+				static CButtonContainer s_LaunchClientButton;
+				if(DoButton_MenuTab(&s_LaunchClientButton, FontIcon::SQUARE_PLUS, 0, &Button, IGraphics::CORNER_T, &m_aAnimatorsSmallPage[SMALL_TAB_LAUNCH_CLIENT]))
+				{
+					Console()->ExecuteLine("ri_launch_second_client", IConsole::CLIENT_ID_UNSPECIFIED);
+				}
+				GameClient()->m_Tooltips.DoToolTip(&s_LaunchClientButton, &Button, Localize("Launch another client window."));
+				Box.VSplitRight(10.0f, &Box, nullptr);
+			}
 
 			TextRender()->SetRenderFlags(0);
 			TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
