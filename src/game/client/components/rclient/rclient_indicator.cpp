@@ -8,6 +8,7 @@
 #include "engine/external/json-parser/json.h"
 #include "engine/serverbrowser.h"
 #include "game/client/gameclient.h"
+#include <game/version.h>
 
 #include <cstdint>
 #include <string>
@@ -22,6 +23,11 @@ static constexpr const char *RCLIENT_INDICATOR_USERS_URL = "https://server.rushi
 static const char *GetRclientUsersUrl()
 {
 	return RCLIENT_INDICATOR_USERS_URL;
+}
+
+static const char *GetRclientClientVersion()
+{
+	return RCLIENT_VERSION;
 }
 
 static bool ShouldIgnoreIndicatorErrors()
@@ -381,6 +387,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			"\"dummy_id\":%d,"
 			"\"online\":%s,"
 			"\"voice_enabled\":%s,"
+			"\"client_version\":\"%s\","
 			"\"auth_timestamp\":%u,"
 			"\"auth_hash\":\"%s\""
 			"}",
@@ -391,6 +398,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			DummyClientId,
 			pOnlineStr,
 			pVoiceEnabledStr,
+			GetRclientClientVersion(),
 			AuthTimestamp,
 			aAuthHash);
 	}
@@ -404,6 +412,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			"\"player_id\":%d,"
 			"\"online\":%s,"
 			"\"voice_enabled\":%s,"
+			"\"client_version\":\"%s\","
 			"\"auth_timestamp\":%u,"
 			"\"auth_hash\":\"%s\""
 			"}",
@@ -413,6 +422,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			ClientId,
 			pOnlineStr,
 			pVoiceEnabledStr,
+			GetRclientClientVersion(),
 			AuthTimestamp,
 			aAuthHash);
 	}
@@ -595,6 +605,7 @@ void CRClientIndicator::ApplyPollHeaders(CHttpRequest &Request, const char *pSer
 	Request.HeaderInt("X-RClient-Since", m_ServerRev);
 	Request.HeaderInt("X-RClient-Timeout", POLL_TIMEOUT_SECONDS);
 	Request.HeaderInt("X-RClient-Voice", g_Config.m_RiVoiceEnable);
+	Request.HeaderString("X-RClient-Version", GetRclientClientVersion());
 	Request.HeaderString("X-RClient-Auth-Hash", aAuthHash);
 	Request.HeaderInt("X-RClient-Auth-Timestamp", (int)AuthTimestamp);
 	if(ClientId >= 0)
