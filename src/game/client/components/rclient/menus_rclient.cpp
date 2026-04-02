@@ -39,8 +39,8 @@ enum
 };
 
 static const CMenus::SRushieSettingsSectionEntry gs_aRushieSettingsSectionEntries[] = {
-#define RUSHIE_SETTINGS_SECTION_ENTRY(Name, Title, TitleContext, Icon, MainToggle, DefaultValue, Column) \
-	{CMenus::SETTINGS_SECTION_##Name, Title, TitleContext, Icon, MainToggle, DefaultValue, Column},
+#define RUSHIE_SETTINGS_SECTION_ENTRY(Name, Title, TitleContext, Icon, MainToggle, DisabledValue, EnabledValue, Column) \
+	{CMenus::SETTINGS_SECTION_##Name, Title, TitleContext, Icon, MainToggle, DisabledValue, EnabledValue, Column},
 	RUSHIE_SETTINGS_SECTION_LIST(RUSHIE_SETTINGS_SECTION_ENTRY)
 #undef RUSHIE_SETTINGS_SECTION_ENTRY
 };
@@ -565,7 +565,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 
 	switch(SectionId)
 	{
-	case SETTINGS_SECTION_COPY_PLAYERS:
+	case SETTINGS_SECTION_COPY_SKINS:
 	{
 		for(CBindChat::CBindRclient &BindchatDefault : s_aDefaultBindChatRclientFindSkin)
 			DoBindchatDefault(Column, BindchatDefault);
@@ -747,7 +747,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			g_Config.m_RiFastInputVersion);
 		break;
 	}
-	case SETTINGS_SECTION_NAMEPLATES_ACTIONS:
+	case SETTINGS_SECTION_NAMEPLATES_SCHEME:
 	{
 		Column.HSplitTop(20.0f, &Label, &Column);
 		Ui()->DoLabel(&Label, RCLocalize("Nameplate Scheme"), 14.0f, TEXTALIGN_ML);
@@ -760,6 +760,10 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(20.0f, &Label, &Column);
 		Ui()->DoLabel(&Label, RCLocalize("p=ping i=ignore m=ID n=name c=clan d=direction f=friend h=hook r=reason s=skin H=HookName F=FireName l=newline"), 10.0f, TEXTALIGN_ML);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_NAMEPLATES_FIRE:
+	{
 		DoLine_RadioMenu(Column, RCLocalize("Show you' fire presses"),
 			m_vButtonContainersNamePlateFirePresses,
 			{Localize("None", "Show players' key presses"), Localize("Own", "Show players' key presses RC"), Localize("Dummy", "Show players' key presses"), Localize("Both", "Show players' key presses")},
@@ -774,6 +778,10 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowFireDynamic, RCLocalize("Fire will change pos when some nearby"), &g_Config.m_RiShowFireDynamic, &Column, LineSize);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 		}
+		break;
+	}
+	case SETTINGS_SECTION_NAMEPLATES_HOOK:
+	{
 		DoLine_RadioMenu(Column, RCLocalize("Show players' hook presses"),
 			m_vButtonContainersNamePlateHookPresses,
 			{Localize("None", "Show players' key presses"), Localize("Own", "Show players' key presses RC"), Localize("Others", "Show players' key presses"), Localize("All", "Show players' key presses")},
@@ -954,7 +962,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		DoLine_KeyReader(Label, s_ReaderButtonDeepflyToggle, s_ClearButtonDeepflyToggle, RCLocalize("Deepfly toggle"), "ri_deepfly_toggle");
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Label, &Column);
-		DoLine_KeyReader(Label, s_ReaderButton45Degrees, s_ClearButton45Degrees, RCLocalize("45Â° bind"), "+ri_45_degrees");
+		DoLine_KeyReader(Label, s_ReaderButton45Degrees, s_ClearButton45Degrees, RCLocalize("45° bind"), "+ri_45_degrees");
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		{
 			CUIRect Rightoffset;
@@ -1075,20 +1083,32 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		}
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		Column.HSplitTop(LineSize, &Label, &Column);
+		static CButtonContainer s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId;
+		DoLine_KeyReader(Label, s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId, RCLocalize("Find checkpoint"), "ri_get_checkpoint_id");
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_FIND_TELEPORT:
+	{
+		Column.HSplitTop(LineSize, &Label, &Column);
 		static CButtonContainer s_ReaderButtonFindTp, s_ClearButtonFindTp;
 		DoLine_KeyReader(Label, s_ReaderButtonFindTp, s_ClearButtonFindTp, RCLocalize("Find teleport"), "ri_goto_tele_cursor");
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_FIND_FINISH:
+	{
 		Column.HSplitTop(LineSize, &Label, &Column);
 		static CButtonContainer s_ReaderButtonFindFinish, s_ClearButtonFindFinish;
 		DoLine_KeyReader(Label, s_ReaderButtonFindFinish, s_ClearButtonFindFinish, RCLocalize("Find finish"), "ri_goto_finish_cursor");
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
+	case SETTINGS_SECTION_PLAYER_MENU:
+	{
 		Column.HSplitTop(LineSize, &Label, &Column);
 		static CButtonContainer s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu;
 		DoLine_KeyReader(Label, s_ReaderButtonPlayerMenu, s_ClearButtonPlayerMenu, RCLocalize("Player menu"), "toggle_playermenu");
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Label, &Column);
-		static CButtonContainer s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId;
-		DoLine_KeyReader(Label, s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId, RCLocalize("Find checkpoint"), "ri_get_checkpoint_id");
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
@@ -1630,6 +1650,8 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		MACRO_CONFIG_CHECKBOX(RiUiCustomBg, "custom RClient's menu background");
 		MACRO_CONFIG_CHECKBOX(RiUiShowTopBar, "show RClient's menu topbar");
 		MACRO_CONFIG_CHECKBOX(RiUiShowBottomBar, "show RClient's menu bottombar");
+		MACRO_CONFIG_CHECKBOX(RiUiSkipOpenMenu, "Skip open new RClient's menu");
+		MACRO_CONFIG_CHECKBOX(RiNewMenuFreezeInputs, "Freeze inputs when new menu opened");
 		static CButtonContainer s_MenuColor;
 		Column.HSplitTop(LineSize, &Button, &Column);
 		DoLine_ColorPicker(&s_MenuColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Button, RCLocalize("Color of settings menu"), &g_Config.m_RiMenusSettingsColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::RiMenusSettingsColor, true)), false, nullptr, true);
@@ -1637,7 +1659,9 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 	}
 	default:
 	{
-		Ui()->DoLabel(&Column, RCLocalize("Section content is being moved here"), FontSize, TEXTALIGN_ML);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		Ui()->DoLabel(&Label, RCLocalize("Section content is being moved here"), FontSize, TEXTALIGN_ML);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
 	}

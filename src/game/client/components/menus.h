@@ -64,42 +64,47 @@ public:
 	bool DoFloatScrollBar(const void *pId, int *pOption, const CUIRect *pRect, const char *pStr, int Min, int Max, int DivideBy, const IScrollbarScale *pScale, unsigned Flags, const char *pSuffix);
 
 #define RUSHIE_SETTINGS_SECTION_LIST(X) \
-	X(COPY_PLAYERS, "Copy Skins/Find Info", "", FontIcon::USER, nullptr, 0, 0) \
-	X(DUMMY_CHANGE_CLAN, "Dummy Change Clan", "", FontIcon::USER, &g_Config.m_PlayerClanAutoChange, DefaultConfig::PlayerClanAutoChange, 0) \
-	X(CHAT_FUNCTIONS, "Chat Functions", "", FontIcon::COMMENT, nullptr, 0, 0) \
-	X(CHAT_FILTER, "Chat Filter", "", FontIcon::BAN, &g_Config.m_RiEnableCensorList, DefaultConfig::RiEnableCensorList, 0) \
-	X(RI_INDICATOR, "Ri Indicator", "", FontIcon::BOOKMARK, &g_Config.m_RiShowRclientIndicator, DefaultConfig::RiShowRclientIndicator, 0) \
-	X(SCOREBOARD_SORT, "Scoreboard Sort", "", FontIcon::LIST_UL, nullptr, 0, 0) \
-	X(SCOREBOARD_HEART, "Scoreboard Heart", "", FontIcon::HEART, &g_Config.m_RiScoreboardFriendMark, DefaultConfig::RiScoreboardFriendMark, 0) \
-	X(SCOREBOARD_ACTIONS, "Scoreboard Actions", "", FontIcon::LIST_UL, nullptr, 0, 0) \
-	X(BETTER_LASERS, "Better Lasers", "", FontIcon::RC_PERSON_RIFLE, &g_Config.m_RiBetterLasers, DefaultConfig::RiBetterLasers, 0) \
-	X(TRACKER, "Tracker", "", FontIcon::RC_LIST_TRACK, &g_Config.m_RiShowLastPosHud, DefaultConfig::RiShowLastPosHud, 0) \
-	X(DUMMY_TRACKER, "Dummy Tracker", "", FontIcon::RC_LIST_TRACK, &g_Config.m_RiShowhudDummyPosition, DefaultConfig::RiShowhudDummyPosition, 0) \
-	X(MUSIC_PLAYER, "Music Player", "", FontIcon::MUSIC, nullptr, 0, 0) \
-	X(VOICE, "Voice", "", FontIcon::RC_MICROPHONE, &g_Config.m_RiVoiceEnable, DefaultConfig::RiVoiceEnable, 0) \
-	X(BINDS, "Binds", "", FontIcon::KEYBOARD, nullptr, 0, 0) \
-	X(MILLISECOND_IN_GAME_TIMER, "Millisecond In Game Timer", "", FontIcon::COMMENT, &g_Config.m_RiShowMilliSecondsTimer, DefaultConfig::RiShowMilliSecondsTimer, 1) \
-	X(HEART_SIZE_IN_NAMEPLATE, "Heart Size In Nameplate", "RClient", FontIcon::HEART, nullptr, 0, 1) \
-	X(ADVANCED_DUMMY_HUD, "Show Advanced Dummy Hud", "RClient", FontIcon::ICON_USERS, &g_Config.m_RiAdvancedShowhudDummyActions, DefaultConfig::RiAdvancedShowhudDummyActions, 1) \
-	X(NAMEPLATES_ACTIONS, "Nameplates Actions", "RClient", FontIcon::EYE, nullptr, 0, 1) \
-	X(CHANGED_TATER, "Changed Tater", "", FontIcon::ARROWS_ROTATE, &g_Config.m_RiIndicatorTransparentToggle, DefaultConfig::RiIndicatorTransparentToggle, 1) \
-	X(CHAT_ANIMATE, "Chat Animate", "", FontIcon::COMMENT, &g_Config.m_RiChatAnim, DefaultConfig::RiChatAnim, 1) \
-	X(SPECTATOR, "Spectator", "", FontIcon::EYE, &g_Config.m_RiSpectatorMoveEnable, DefaultConfig::RiSpectatorMoveEnable, 1) \
-	X(CHAT_BUBBLES, "Chat Bubbles", "", FontIcon::COMMENT, &g_Config.m_RiChatBubbles, DefaultConfig::RiChatBubbles, 1) \
-	X(RCON, "RCON", "", FontIcon::RC_GAVEL, &g_Config.m_RiPlaySounds, DefaultConfig::RiPlaySounds, 1) \
-	X(EDGE_INFO, "Edge Info", "", FontIcon::TRIANGLE_EXCLAMATION, nullptr, 0, 1) \
-	X(MENU, "Menu", "", FontIcon::HOUSE, &g_Config.m_RiUiNewMenu, DefaultConfig::RiUiNewMenu, 1) \
-	X(SPECTATOR_SORT, "Spectator Sort", "", FontIcon::LIST_UL, nullptr, 0, 1) \
-	X(TRAILS, "Trails", "", FontIcon::STAR, &g_Config.m_RiShowSparkleTrail, DefaultConfig::RiShowSparkleTrail, 1) \
-	X(AFK_EMOTE_TEXTURE_IN_MENU, "AFK Emote/Texture In Menu", "", FontIcon::HOUSE, &g_Config.m_RiShowAfkEmoteInMenu, DefaultConfig::RiShowAfkEmoteInMenu, 1) \
-	X(AFK_EMOTE_TEXTURE_IN_SPEC, "AFK Emote/Texture In Spec", "", FontIcon::EYE, &g_Config.m_RiShowAfkEmoteInSpec, DefaultConfig::RiShowAfkEmoteInSpec, 1) \
-	X(SHOW_FROZEN_FLAKES, "Disable Frozen Flakes", "", FontIcon::STAR, &g_Config.m_RiShowFrozenFlakes, DefaultConfig::RiShowFrozenFlakes, 1) \
-	X(SHOW_HAMMER_HIT, "Show Hammer Hit", "", FontIcon::RC_GAVEL, nullptr, 0, 1) \
-	X(SOUND_ON_MOVE, "Sound On Move", "", FontIcon::MUSIC, &g_Config.m_RiPlayOnMoveNonInactive, DefaultConfig::RiPlayOnMoveNonInactive, 1)
+	X(COPY_SKINS, "Copy Skins/Find Info", "", FontIcon::USER, nullptr, 0, 0, 0) \
+	X(DUMMY_CHANGE_CLAN, "Dummy Change Clan", "", FontIcon::USER, &g_Config.m_PlayerClanAutoChange, 0, 1, 0) \
+	X(CHAT_FUNCTIONS, "Chat Functions", "", FontIcon::COMMENT, nullptr, 0, 0, 0) \
+	X(CHAT_FILTER, "Chat Filter", "", FontIcon::BAN, &g_Config.m_RiEnableCensorList, 0, 1, 0) \
+	X(CHAT_ANIMATE, "Chat Animate", "", FontIcon::COMMENT, &g_Config.m_RiChatAnim, 0, 1, 0) \
+	X(SCOREBOARD_SORT, "Scoreboard Sort", "", FontIcon::LIST_UL, nullptr, 0, 0, 0) \
+	X(SCOREBOARD_HEART, "Scoreboard Heart", "", FontIcon::HEART, &g_Config.m_RiScoreboardFriendMark, 0, 1, 0) \
+	X(SCOREBOARD_ACTIONS, "Scoreboard Actions", "", FontIcon::LIST_UL, &g_Config.m_RiScoreboardAlwaysShowQuickActions, 0, 1, 0) \
+	X(CHANGED_TATER, "Changed Tater", "", FontIcon::ARROWS_ROTATE, nullptr, 0, 0, 0) \
+	X(NAMEPLATES_SCHEME, "Nameplates Scheme", "RClient", FontIcon::EYE, nullptr, 0, 0, 0) \
+	X(NAMEPLATES_FIRE, "Nameplates Show Fire", "RClient", FontIcon::EYE, &g_Config.m_RiShowFire, 0, 2, 0) \
+	X(NAMEPLATES_HOOK, "Nameplates Show Hook", "RClient", FontIcon::EYE, &g_Config.m_RiShowHook, 0, 2, 0) \
+	X(DUMMY_TRACKER, "Dummy Tracker", "", FontIcon::RC_LIST_TRACK, &g_Config.m_RiShowhudDummyPosition, 0, 1, 0) \
+	X(ADVANCED_DUMMY_HUD, "Advanced Dummy Hud", "RClient", FontIcon::ICON_USERS, &g_Config.m_RiAdvancedShowhudDummyActions, 0, 1, 0) \
+	X(TRAILS, "Trails", "", FontIcon::STAR, &g_Config.m_RiShowSparkleTrail, 0, 1, 0) \
+	X(AFK_EMOTE_TEXTURE_IN_MENU, "AFK Emote/Texture In Menu", "", FontIcon::HOUSE, &g_Config.m_RiShowAfkEmoteInMenu, 0, 1, 0) \
+	X(AFK_EMOTE_TEXTURE_IN_SPEC, "AFK Emote/Texture In Spec", "", FontIcon::EYE, &g_Config.m_RiShowAfkEmoteInSpec, 0, 1, 0) \
+	X(SHOW_FROZEN_FLAKES, "Disable Frozen Flakes", "", FontIcon::STAR, &g_Config.m_RiShowFrozenFlakes, 1, 0, 0) \
+	X(SHOW_HAMMER_HIT, "Hide Hammer Hit", "", FontIcon::RC_GAVEL, &g_Config.m_RiShowHammerHit, 1, 0, 0) \
+	X(SOUND_ON_MOVE, "Sound On Move", "", FontIcon::MUSIC, &g_Config.m_RiPlayOnMoveNonInactive, 0, 1, 0) \
+	X(MENU, "Menu", "", FontIcon::HOUSE, &g_Config.m_RiUiNewMenu, 0, 1, 0) \
+	X(MUSIC_PLAYER, "Music Player", "", FontIcon::MUSIC, &g_Config.m_RiShowMusicIsland, 0, 1, 0) \
+	X(TRACKER, "Tracker", "", FontIcon::RC_LIST_TRACK, nullptr, 0, 0, 1) \
+	X(MILLISECOND_IN_GAME_TIMER, "Millisecond In Game Timer", "", FontIcon::COMMENT, &g_Config.m_RiShowMilliSecondsTimer, 0, 1, 1) \
+	X(HEART_SIZE_IN_NAMEPLATE, "Heart Size In Nameplate", "RClient", FontIcon::HEART, nullptr, 0, 0, 1) \
+	X(BINDS, "Binds", "", FontIcon::KEYBOARD, nullptr, 0, 0, 1) \
+	X(BETTER_LASERS, "Better Lasers (Pulse)", "", FontIcon::RC_PERSON_RIFLE, &g_Config.m_RiBetterLasers, 0, 1, 1) \
+	X(SPECTATOR, "Spectator Move", "", FontIcon::EYE, &g_Config.m_RiSpectatorMoveEnable, 0, 1, 1) \
+	X(SPECTATOR_SORT, "Spectator Sort", "", FontIcon::LIST_UL, &g_Config.m_RiSpectatorSortById, 0, 2, 1) \
+	X(FIND_TELEPORT, "Find teleport", "", FontIcon::EYE, nullptr, 0, 0, 1) \
+	X(FIND_FINISH, "Find finish", "", FontIcon::EYE, nullptr, 0, 0, 1) \
+	X(PLAYER_MENU, "Player Menu", "", FontIcon::EYE, nullptr, 0, 0, 1) \
+	X(CHAT_BUBBLES, "Chat Bubbles (Entity)", "", FontIcon::COMMENT, &g_Config.m_RiChatBubbles, 0, 1, 1) \
+	X(RI_INDICATOR, "RClient User Indicator", "", FontIcon::BOOKMARK, &g_Config.m_RiShowRclientIndicator, 0, 1, 1) \
+	X(EDGE_INFO, "Edge Info", "", FontIcon::TRIANGLE_EXCLAMATION, nullptr, 0, 0, 1) \
+	X(VOICE, "Voice", "", FontIcon::RC_MICROPHONE, &g_Config.m_RiVoiceEnable, 0, 1, 1) \
+	X(RCON, "Admin Panel", "", FontIcon::RC_GAVEL, nullptr, 0, 1, 1) \
 
 	enum ERushieSettingsSection
 	{
-#define RUSHIE_SETTINGS_SECTION_ENUM(Name, Title, TitleContext, Icon, MainToggle, DefaultValue, Column) SETTINGS_SECTION_##Name,
+#define RUSHIE_SETTINGS_SECTION_ENUM(Name, Title, TitleContext, Icon, MainToggle, DisabledValue, EnabledValue, Column) SETTINGS_SECTION_##Name,
 		RUSHIE_SETTINGS_SECTION_LIST(RUSHIE_SETTINGS_SECTION_ENUM)
 #undef RUSHIE_SETTINGS_SECTION_ENUM
 		NUM_RUSHIE_SETTINGS_SECTIONS
@@ -111,11 +116,17 @@ public:
 		const char *m_pTitleContext;
 		const char *m_pIcon;
 		int *m_pMainToggle;
-		int m_MainToggleDefault;
+		int m_MainToggleDisabledValue;
+		int m_MainToggleEnabledValue;
 		int m_Column;
 
 		bool HasMainToggle() const { return m_pMainToggle != nullptr; }
-		bool IsMainToggleEnabled() const { return HasMainToggle() && *m_pMainToggle != m_MainToggleDefault; }
+		bool IsMainToggleEnabled() const { return HasMainToggle() && *m_pMainToggle != m_MainToggleDisabledValue; }
+		void SetMainToggleEnabled(bool Enabled) const
+		{
+			if(HasMainToggle())
+				*m_pMainToggle = Enabled ? m_MainToggleEnabledValue : m_MainToggleDisabledValue;
+		}
 	};
 	static const SRushieSettingsSectionEntry *GetRushieSettingsSectionEntries();
 	static int GetNumRushieSettingsSections();

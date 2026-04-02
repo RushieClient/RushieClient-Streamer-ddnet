@@ -577,7 +577,7 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 				const bool Enabled = Entry.IsMainToggleEnabled();
 				const ColorRGBA ToggleColor = Enabled ? ColorRGBA(0.18f, 0.45f, 0.24f, 0.9f) : SClickGuiProperties::Hex141414Color();
 				if(GameClient()->m_Menus.DoButton_Menu(&s_aToggleButtons[i], Enabled ? RCLocalize("Enabled") : RCLocalize("Disabled"), 0, &ToggleRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, DefaultRounding * 0.75f, 0.0f, ToggleColor))
-					*Entry.m_pMainToggle ^= 1;
+					Entry.SetMainToggleEnabled(!Enabled);
 			}
 			else
 			{
