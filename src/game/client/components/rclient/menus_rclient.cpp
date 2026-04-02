@@ -50,6 +50,8 @@ static_assert(gs_NumRushieSettingsSectionEntries == CMenus::NUM_RUSHIE_SETTINGS_
 
 static float s_Time = 0.0f;
 static bool s_StartedTime = false;
+static int s_CurRushieTab = 0;
+static int s_CurRushieVoiceMixTab = 0;
 
 const float FontSize = 14.0f;
 const float EditBoxFontSize = 12.0f;
@@ -200,6 +202,68 @@ static bool VoiceNameVolumesGet(const char *pList, const char *pName, int &OutPe
 	return false;
 }
 
+struct SVoiceNameVolumeEntry
+{
+	char m_aName[MAX_NAME_LENGTH];
+	int m_Percent;
+};
+
+static void VoiceNameVolumesCollect(const char *pList, std::vector<SVoiceNameVolumeEntry> &vEntries)
+{
+	vEntries.clear();
+	if(!pList || pList[0] == '\0')
+		return;
+
+	const char *p = pList;
+	while(*p)
+	{
+		while(*p == ',' || *p == ' ' || *p == '\t')
+			p++;
+		if(*p == '\0')
+			break;
+
+		const char *pStart = p;
+		while(*p && *p != ',')
+			p++;
+		const char *pEnd = p;
+		while(pEnd > pStart && std::isspace((unsigned char)pEnd[-1]))
+			pEnd--;
+		if(pEnd <= pStart)
+			continue;
+
+		const char *pSep = nullptr;
+		for(const char *q = pStart; q < pEnd; q++)
+		{
+			if(*q == '=' || *q == ':')
+			{
+				pSep = q;
+				break;
+			}
+		}
+		if(!pSep)
+			continue;
+
+		const char *pNameEnd = pSep;
+		while(pNameEnd > pStart && std::isspace((unsigned char)pNameEnd[-1]))
+			pNameEnd--;
+		const char *pValueStart = pSep + 1;
+		while(pValueStart < pEnd && std::isspace((unsigned char)*pValueStart))
+			pValueStart++;
+
+		const int NameLen = (int)(pNameEnd - pStart);
+		const int ValueLen = (int)(pEnd - pValueStart);
+		if(NameLen <= 0 || ValueLen <= 0)
+			continue;
+
+		SVoiceNameVolumeEntry Entry;
+		str_truncate(Entry.m_aName, sizeof(Entry.m_aName), pStart, NameLen);
+		char aValue[16];
+		str_truncate(aValue, sizeof(aValue), pValueStart, ValueLen);
+		Entry.m_Percent = std::clamp(str_toint(aValue), 0, 200);
+		vEntries.push_back(Entry);
+	}
+}
+
 const float ColorPickerLineSize = 25.0f;
 const float HeadlineFontSize = 20.0f;
 
@@ -295,8 +359,6 @@ void CMenus::RenderSettingsRushie(CUIRect MainView)
 		SetFlag(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_RCON, 1);
 	}
 
-	static int s_CurCustomTab = 0;
-
 	CUIRect TabBar, Button;
 	int TabCount = NUMBER_OF_RUSHIE_TABS;
 	for(int Tab = 0; Tab < NUMBER_OF_RUSHIE_TABS; ++Tab)
@@ -304,8 +366,8 @@ void CMenus::RenderSettingsRushie(CUIRect MainView)
 		if(IsFlagSet(g_Config.m_RiRClientSettingsTabs, Tab))
 		{
 			TabCount--;
-			if(s_CurCustomTab == Tab)
-				s_CurCustomTab++;
+			if(s_CurRushieTab == Tab)
+				s_CurRushieTab++;
 		}
 	}
 
@@ -327,35 +389,35 @@ void CMenus::RenderSettingsRushie(CUIRect MainView)
 
 		TabBar.VSplitLeft(TabWidth, &Button, &TabBar);
 		const int Corners = Tab == 0 ? IGraphics::CORNER_L : Tab == NUMBER_OF_RUSHIE_TABS - 1 ? IGraphics::CORNER_R : IGraphics::CORNER_NONE;
-		if(DoButton_MenuTab(&s_aPageTabs[Tab], apTabNames[Tab], s_CurCustomTab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
-			s_CurCustomTab = Tab;
+		if(DoButton_MenuTab(&s_aPageTabs[Tab], apTabNames[Tab], s_CurRushieTab == Tab, &Button, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+			s_CurRushieTab = Tab;
 	}
 
 	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
 
-	if(s_CurCustomTab == RCLIENT_TAB_SETTINGS)
+	if(s_CurRushieTab == RCLIENT_TAB_SETTINGS)
 	{
 		RenderSettingsRushieSettings(MainView);
 	}
 
-	if(s_CurCustomTab == RCLIENT_TAB_BINDWHEEL)
+	if(s_CurRushieTab == RCLIENT_TAB_BINDWHEEL)
 	{
 		RenderSettingsRushieBindWheelSpec(MainView);
 	}
 
-	if(s_CurCustomTab == RCLIENT_TAB_NAMEPLATES_EDITOR)
+	if(s_CurRushieTab == RCLIENT_TAB_NAMEPLATES_EDITOR)
 	{
 		RenderSettingsRushieNameplatesEditor(MainView);
 	}
-	if(s_CurCustomTab == RCLIENT_TAB_RCON)
+	if(s_CurRushieTab == RCLIENT_TAB_RCON)
 	{
 		RenderSettingsRushieRCON(MainView);
 	}
-	if(s_CurCustomTab == RCLIENT_TAB_VOICE)
+	if(s_CurRushieTab == RCLIENT_TAB_VOICE)
 	{
 		RenderSettingsRushieVoiceVolumes(MainView);
 	}
-	if(s_CurCustomTab == RCLIENT_TAB_INFO)
+	if(s_CurRushieTab == RCLIENT_TAB_INFO)
 	{
 		RenderSettingsRushieInfo(MainView);
 	}
@@ -363,6 +425,13 @@ void CMenus::RenderSettingsRushie(CUIRect MainView)
 void CMenus::RenderSettingsRushieVoiceVolumes(CUIRect MainView)
 {
 	static CScrollRegion s_ScrollRegion;
+	static CButtonContainer s_aVoiceMixTabs[2] = {};
+	struct SChangedVoiceVolumeId
+	{
+		std::string m_Name;
+		CButtonContainer m_Id;
+	};
+	static std::vector<SChangedVoiceVolumeId> s_vChangedVoiceVolumeIds;
 	vec2 ScrollOffset(0.0f, 0.0f);
 	CScrollRegionParams ScrollParams;
 	ScrollParams.m_ScrollUnit = 120.0f;
@@ -372,9 +441,21 @@ void CMenus::RenderSettingsRushieVoiceVolumes(CUIRect MainView)
 
 	MainView.y += ScrollOffset.y;
 
-	CUIRect Header, Row, SkinRect, RightRect, TextRect, SliderRect, NameRect, SkinNameRect;
+	CUIRect Header, Row, SkinRect, RightRect, TextRect, SliderRect, NameRect, SkinNameRect, TabBar, TabButton;
 	MainView.HSplitTop(HeadlineHeight, &Header, &MainView);
 	Ui()->DoLabel(&Header, RCLocalize("Voice mix"), HeadlineFontSize, TEXTALIGN_MC);
+	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+
+	MainView.HSplitTop(LineSize * 1.1f, &TabBar, &MainView);
+	const char *apVoiceMixTabs[] = {RCLocalize("On server"), RCLocalize("Changed")};
+	const float VoiceMixTabWidth = TabBar.w / 2.0f;
+	for(int Tab = 0; Tab < 2; Tab++)
+	{
+		TabBar.VSplitLeft(VoiceMixTabWidth, &TabButton, &TabBar);
+		const int Corners = Tab == 0 ? IGraphics::CORNER_L : IGraphics::CORNER_R;
+		if(DoButton_MenuTab(&s_aVoiceMixTabs[Tab], apVoiceMixTabs[Tab], s_CurRushieVoiceMixTab == Tab, &TabButton, Corners, nullptr, nullptr, nullptr, nullptr, 4.0f))
+			s_CurRushieVoiceMixTab = Tab;
+	}
 	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
 
 	CUIRect SearchRect;
@@ -387,56 +468,128 @@ void CMenus::RenderSettingsRushieVoiceVolumes(CUIRect MainView)
 
 	const char *pSearch = s_VoiceSearchInput.GetString();
 	const bool HasSearch = pSearch && pSearch[0] != '\0';
-	int ActiveCount = 0;
-	int MatchCount = 0;
 	const float RowHeight = LineSize * 2.0f;
-	for(int i = 0; i < MAX_CLIENTS; i++)
-	{
-		const auto &Client = GameClient()->m_aClients[i];
-		if(!Client.m_Active || Client.m_aName[0] == '\0')
-			continue;
-		ActiveCount++;
-		if(HasSearch && !str_find_nocase(Client.m_aName, pSearch) && !str_find_nocase(Client.m_aSkinName, pSearch))
-			continue;
-		MatchCount++;
+	auto SearchMatches = [&](const char *pName, const char *pAlt) {
+		if(!HasSearch)
+			return true;
+		return str_find_nocase(pName, pSearch) || (pAlt && pAlt[0] != '\0' && str_find_nocase(pAlt, pSearch));
+	};
 
+	auto RenderVoiceVolumeRow = [&](void *pId, int ClientId, const char *pName, const char *pSubtitle) {
 		MainView.HSplitTop(RowHeight, &Row, &MainView);
 		if(!s_ScrollRegion.AddRect(Row))
-			continue;
+			return;
 
 		Row.VSplitLeft(RowHeight, &SkinRect, &RightRect);
 		RightRect.HSplitMid(&TextRect, &SliderRect);
 		TextRect.HSplitMid(&NameRect, &SkinNameRect);
 
-		CTeeRenderInfo TeeRenderInfo = Client.m_RenderInfo;
-		TeeRenderInfo.m_Size = RowHeight;
-		RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, EMOTE_NORMAL, vec2(1, 0), SkinRect.Center());
+		if(ClientId >= 0)
+		{
+			const auto &Client = GameClient()->m_aClients[ClientId];
+			CTeeRenderInfo TeeRenderInfo = Client.m_RenderInfo;
+			TeeRenderInfo.m_Size = RowHeight;
+			RenderTools()->RenderTee(CAnimState::GetIdle(), &TeeRenderInfo, EMOTE_NORMAL, vec2(1, 0), SkinRect.Center());
+		}
+		else
+		{
+			SkinRect.Draw(ColorRGBA(0.0f, 0.0f, 0.0f, 0.15f), IGraphics::CORNER_ALL, 5.0f);
+		}
 
-		Ui()->DoLabel(&NameRect, Client.m_aName, FontSize, TEXTALIGN_ML);
-		Ui()->DoLabel(&SkinNameRect, Client.m_aSkinName, FontSize * 0.9f, TEXTALIGN_ML);
+		Ui()->DoLabel(&NameRect, pName, FontSize, TEXTALIGN_ML);
+		Ui()->DoLabel(&SkinNameRect, pSubtitle, FontSize * 0.9f, TEXTALIGN_ML);
 
 		int Volume = 100;
-		VoiceNameVolumesGet(g_Config.m_RiVoiceNameVolumes, Client.m_aName, Volume);
-		if(Ui()->DoScrollbarOption(&GameClient()->m_aClients[i], &Volume, &SliderRect, RCLocalize("Volume"), 0, 200))
+		VoiceNameVolumesGet(g_Config.m_RiVoiceNameVolumes, pName, Volume);
+		if(Ui()->DoScrollbarOption(pId, &Volume, &SliderRect, RCLocalize("Volume"), 0, 200, &CUi::ms_LinearScrollbarScale, CUi::SCROLLBAR_OPTION_DELAYUPDATE))
 		{
 			if(Volume == 100)
-				VoiceNameVolumesRemove(g_Config.m_RiVoiceNameVolumes, sizeof(g_Config.m_RiVoiceNameVolumes), Client.m_aName);
+				VoiceNameVolumesRemove(g_Config.m_RiVoiceNameVolumes, sizeof(g_Config.m_RiVoiceNameVolumes), pName);
 			else
-				VoiceNameVolumesSet(g_Config.m_RiVoiceNameVolumes, sizeof(g_Config.m_RiVoiceNameVolumes), Client.m_aName, Volume);
+				VoiceNameVolumesSet(g_Config.m_RiVoiceNameVolumes, sizeof(g_Config.m_RiVoiceNameVolumes), pName, Volume);
 		}
 
 		MainView.HSplitTop(MarginSmall, nullptr, &MainView);
-	}
+	};
 
-	if(ActiveCount == 0)
+	if(s_CurRushieVoiceMixTab == 0)
 	{
-		MainView.HSplitTop(LineSize, &Header, &MainView);
-		Ui()->DoLabel(&Header, RCLocalize("No active players"), FontSize, TEXTALIGN_ML);
+		int ActiveCount = 0;
+		int MatchCount = 0;
+		for(int i = 0; i < MAX_CLIENTS; i++)
+		{
+			const auto &Client = GameClient()->m_aClients[i];
+			if(!Client.m_Active || Client.m_aName[0] == '\0')
+				continue;
+			ActiveCount++;
+			if(!SearchMatches(Client.m_aName, Client.m_aSkinName))
+				continue;
+			MatchCount++;
+			RenderVoiceVolumeRow(&GameClient()->m_aClients[i], i, Client.m_aName, Client.m_aSkinName);
+		}
+
+		if(ActiveCount == 0)
+		{
+			MainView.HSplitTop(LineSize, &Header, &MainView);
+			Ui()->DoLabel(&Header, RCLocalize("No active players"), FontSize, TEXTALIGN_ML);
+		}
+		else if(MatchCount == 0)
+		{
+			MainView.HSplitTop(LineSize, &Header, &MainView);
+			Ui()->DoLabel(&Header, RCLocalize("No matching players"), FontSize, TEXTALIGN_ML);
+		}
 	}
-	else if(MatchCount == 0)
+	else
 	{
-		MainView.HSplitTop(LineSize, &Header, &MainView);
-		Ui()->DoLabel(&Header, RCLocalize("No matching players"), FontSize, TEXTALIGN_ML);
+		std::vector<SVoiceNameVolumeEntry> vEntries;
+		VoiceNameVolumesCollect(g_Config.m_RiVoiceNameVolumes, vEntries);
+		std::sort(vEntries.begin(), vEntries.end(), [](const SVoiceNameVolumeEntry &Left, const SVoiceNameVolumeEntry &Right) {
+			return str_comp_nocase(Left.m_aName, Right.m_aName) < 0;
+		});
+
+		int MatchCount = 0;
+		for(size_t i = 0; i < vEntries.size(); i++)
+		{
+			const auto &Entry = vEntries[i];
+			int FoundClientId = -1;
+			for(int ClientId = 0; ClientId < MAX_CLIENTS; ClientId++)
+			{
+				const auto &Client = GameClient()->m_aClients[ClientId];
+				if(Client.m_Active && str_comp_nocase(Client.m_aName, Entry.m_aName) == 0)
+				{
+					FoundClientId = ClientId;
+					break;
+				}
+			}
+
+			const char *pSubtitle = FoundClientId >= 0 ? GameClient()->m_aClients[FoundClientId].m_aSkinName : RCLocalize("Not on server");
+			if(!SearchMatches(Entry.m_aName, pSubtitle))
+				continue;
+
+			auto It = std::find_if(s_vChangedVoiceVolumeIds.begin(), s_vChangedVoiceVolumeIds.end(), [&](const SChangedVoiceVolumeId &Item) {
+				return str_comp_nocase(Item.m_Name.c_str(), Entry.m_aName) == 0;
+			});
+			if(It == s_vChangedVoiceVolumeIds.end())
+			{
+				s_vChangedVoiceVolumeIds.push_back({});
+				s_vChangedVoiceVolumeIds.back().m_Name = Entry.m_aName;
+				It = std::prev(s_vChangedVoiceVolumeIds.end());
+			}
+
+			MatchCount++;
+			RenderVoiceVolumeRow(&It->m_Id, FoundClientId, Entry.m_aName, pSubtitle);
+		}
+
+		if(vEntries.empty())
+		{
+			MainView.HSplitTop(LineSize, &Header, &MainView);
+			Ui()->DoLabel(&Header, RCLocalize("No changed players"), FontSize, TEXTALIGN_ML);
+		}
+		else if(MatchCount == 0)
+		{
+			MainView.HSplitTop(LineSize, &Header, &MainView);
+			Ui()->DoLabel(&Header, RCLocalize("No matching players"), FontSize, TEXTALIGN_ML);
+		}
 	}
 
 	CUIRect ScrollRegion;
@@ -1685,11 +1838,13 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			Column.HSplitTop(LineSize, &Label, &Column);
 			Ui()->DoLabel(&Label, RCLocalize("Example: Name=80,Other=120"), FontSize * 0.9f, TEXTALIGN_ML);
-			Column.HSplitTop(LineSize, &Label, &Column);
-			SLabelProperties NameVolumeListProps;
-			NameVolumeListProps.m_MaxWidth = Label.w;
-			NameVolumeListProps.m_EllipsisAtEnd = true;
-			Ui()->DoLabel(&Label, g_Config.m_RiVoiceNameVolumes[0] ? g_Config.m_RiVoiceNameVolumes : RCLocalize("Name volume list empty"), FontSize * 0.9f, TEXTALIGN_ML, NameVolumeListProps);
+			Column.HSplitTop(LineSize, &Button, &Column);
+			static CButtonContainer s_OpenVoiceMixButton;
+			if(DoButton_Menu(&s_OpenVoiceMixButton, RCLocalize("Open changed voice mix"), 0, &Button))
+			{
+				s_CurRushieTab = RCLIENT_TAB_VOICE;
+				s_CurRushieVoiceMixTab = 1;
+			}
 			Column.HSplitTop(LineSize, nullptr, &Column);
 			DoVoiceSubHeader(RCLocalize("Chatbinds"));
 			for(CBindChat::CBindRclient &BindchatDefault : s_aDefaultBindChatRclientVoice)
