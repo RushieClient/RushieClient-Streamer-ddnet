@@ -1655,6 +1655,11 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		static CButtonContainer s_MenuColor;
 		Column.HSplitTop(LineSize, &Button, &Column);
 		DoLine_ColorPicker(&s_MenuColor, ColorPickerLineSize, ColorPickerLabelSize, ColorPickerLineSpacing, &Button, RCLocalize("Color of settings menu"), &g_Config.m_RiMenusSettingsColor, color_cast<ColorRGBA>(ColorHSLA(DefaultConfig::RiMenusSettingsColor, true)), false, nullptr, true);
+		Column.HSplitTop(ColorPickerLineSpacing, nullptr, &Column);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		static CButtonContainer s_ReaderButtonMenuOpen, s_ClearButtonMenuOpen;
+		Column.HSplitTop(LineSize, &Label, &Column);
+		DoLine_KeyReader(Label, s_ReaderButtonMenuOpen, s_ClearButtonMenuOpen, RCLocalize("Open new menu"), "toggle_rclient_clickgui");
 		break;
 	}
 	default:

@@ -897,7 +897,7 @@ void CMusicIsland::RenderMusicIsland()
 				ControlsRect.HSplitTop(AnimatedGap, &GapsRect, &ControlsRect);
 				GapsRect.VMargin(5.0f, &GapsRect);
 				GapsRect.HSplitTop(0.75f, &GapsRect, nullptr);
-				GapsRect.Draw(SMusicIslandProperties::WindowColorDark(), IGraphics::CORNER_NONE, 0.0f);
+				GapsRect.Draw(MusicIslandGapsColor(), IGraphics::CORNER_NONE, 0.0f);
 			}
 			else
 				ControlsRect.HSplitTop(AnimatedGap, nullptr, &ControlsRect);
