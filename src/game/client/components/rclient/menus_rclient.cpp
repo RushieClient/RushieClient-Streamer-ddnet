@@ -1836,8 +1836,6 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			if(DoButton_Menu(&s_VoiceNameVolumeRemoveButton, RCLocalize("Remove volume"), 0, &ButtonRight))
 				VoiceNameVolumesRemove(g_Config.m_RiVoiceNameVolumes, sizeof(g_Config.m_RiVoiceNameVolumes), s_aVoiceNameVolumeName);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
-			Column.HSplitTop(LineSize, &Label, &Column);
-			Ui()->DoLabel(&Label, RCLocalize("Example: Name=80,Other=120"), FontSize * 0.9f, TEXTALIGN_ML);
 			Column.HSplitTop(LineSize, &Button, &Column);
 			static CButtonContainer s_OpenVoiceMixButton;
 			if(DoButton_Menu(&s_OpenVoiceMixButton, RCLocalize("Open changed voice mix"), 0, &Button))
