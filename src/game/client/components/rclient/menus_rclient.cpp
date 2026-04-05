@@ -2585,6 +2585,17 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 
 	auto RenderProfileStats = [&](const CRushieSettingsProfile &Profile, CUIRect Rect) {
 		char aBuf[256];
+		auto GetConfigStat = [&](ConfigDomain Domain, int Source, char *pBuf, int Size) {
+			if(!Profile.HasSource(Source))
+				str_copy(pBuf, "-", Size);
+			else
+			{
+				int Modified = 0;
+				int Total = 0;
+				GameClient()->m_RushieSettingsProfiles.GetProfileConfigDomainStats(Profile, Domain, Modified, Total);
+				str_format(pBuf, Size, "%d/%d", Modified, Total);
+			}
+		};
 		auto GetStat = [&](int Source, char *pBuf, int Size) {
 			if(!Profile.HasSource(Source))
 				str_copy(pBuf, "-", Size);
@@ -2592,10 +2603,10 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 				str_format(pBuf, Size, "%d", Profile.CountForSource(Source));
 		};
 		char aDdnet[16], aBinds[16], aTclient[16], aRclient[16], aTWheel[16], aRWheel[16], aWarlist[16], aChatbinds[16], aSkinProfiles[16];
-		GetStat(RUSHIESETTINGSPROFILE_SOURCE_DDNET, aDdnet, sizeof(aDdnet));
+		GetConfigStat(ConfigDomain::DDNET, RUSHIESETTINGSPROFILE_SOURCE_DDNET, aDdnet, sizeof(aDdnet));
 		GetStat(RUSHIESETTINGSPROFILE_SOURCE_BINDS, aBinds, sizeof(aBinds));
-		GetStat(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT, aTclient, sizeof(aTclient));
-		GetStat(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT, aRclient, sizeof(aRclient));
+		GetConfigStat(ConfigDomain::TCLIENT, RUSHIESETTINGSPROFILE_SOURCE_TCLIENT, aTclient, sizeof(aTclient));
+		GetConfigStat(ConfigDomain::RCLIENT, RUSHIESETTINGSPROFILE_SOURCE_RCLIENT, aRclient, sizeof(aRclient));
 		GetStat(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT_BINDWHEEL, aTWheel, sizeof(aTWheel));
 		GetStat(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT_BINDWHEEL, aRWheel, sizeof(aRWheel));
 		GetStat(RUSHIESETTINGSPROFILE_SOURCE_WARLIST, aWarlist, sizeof(aWarlist));
@@ -2653,6 +2664,10 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 			InfoArea.HSplitTop(HeadlineHeight, &Label, &InfoArea);
 			Ui()->DoLabel(&Label, RCLocalize("No profile selected"), HeadlineFontSize, TEXTALIGN_ML);
 		}
+
+		InfoArea.HSplitBottom(MarginSmall, &InfoArea, nullptr);
+		InfoArea.HSplitBottom(LineSize, &InfoArea, &Label);
+		Ui()->DoLabel(&Label, "Config: Modified/Total", FontSize, TEXTALIGN_ML);
 	}
 
 	{
@@ -2765,6 +2780,17 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 		Ui()->DoLabel(&NameRect, vProfiles[i].m_Name.c_str(), FontSize, TEXTALIGN_ML);
 
 		char aBuf[256];
+		auto GetConfigStatCompact = [&](ConfigDomain Domain, int Source, char *pBuf, int Size) {
+			if(!vProfiles[i].HasSource(Source))
+				str_copy(pBuf, "-", Size);
+			else
+			{
+				int Modified = 0;
+				int Total = 0;
+				GameClient()->m_RushieSettingsProfiles.GetProfileConfigDomainStats(vProfiles[i], Domain, Modified, Total);
+				str_format(pBuf, Size, "%d/%d", Modified, Total);
+			}
+		};
 		auto GetStatCompact = [&](int Source, char *pBuf, int Size) {
 			if(!vProfiles[i].HasSource(Source))
 				str_copy(pBuf, "-", Size);
@@ -2772,10 +2798,10 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 				str_format(pBuf, Size, "%d", vProfiles[i].CountForSource(Source));
 		};
 		char aDdnet[16], aBinds[16], aTclient[16], aRclient[16], aTWheel[16], aRWheel[16];
-		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_DDNET, aDdnet, sizeof(aDdnet));
+		GetConfigStatCompact(ConfigDomain::DDNET, RUSHIESETTINGSPROFILE_SOURCE_DDNET, aDdnet, sizeof(aDdnet));
 		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_BINDS, aBinds, sizeof(aBinds));
-		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT, aTclient, sizeof(aTclient));
-		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT, aRclient, sizeof(aRclient));
+		GetConfigStatCompact(ConfigDomain::TCLIENT, RUSHIESETTINGSPROFILE_SOURCE_TCLIENT, aTclient, sizeof(aTclient));
+		GetConfigStatCompact(ConfigDomain::RCLIENT, RUSHIESETTINGSPROFILE_SOURCE_RCLIENT, aRclient, sizeof(aRclient));
 		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT_BINDWHEEL, aTWheel, sizeof(aTWheel));
 		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT_BINDWHEEL, aRWheel, sizeof(aRWheel));
 		const bool HasExtras = vProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_WARLIST) || vProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_CHATBINDS) || vProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_SKINPROFILES);

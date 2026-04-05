@@ -66,6 +66,8 @@ public:
 	void SaveProfile(const char *pName, bool IncludeDdnet, bool IncludeBinds, bool IncludeTClient, bool IncludeTClientBindWheel, bool IncludeRClient, bool IncludeRClientBindWheel, bool IncludeWarlist, bool IncludeChatBinds, bool IncludeSkinProfiles);
 	void OverrideProfile(int Index, const char *pName, bool IncludeDdnet, bool IncludeBinds, bool IncludeTClient, bool IncludeTClientBindWheel, bool IncludeRClient, bool IncludeRClientBindWheel, bool IncludeWarlist, bool IncludeChatBinds, bool IncludeSkinProfiles);
 	void ApplyProfile(const CRushieSettingsProfile &Profile);
+	void GetCurrentConfigDomainStats(ConfigDomain Domain, int &Modified, int &Total) const;
+	void GetProfileConfigDomainStats(const CRushieSettingsProfile &Profile, ConfigDomain Domain, int &Modified, int &Total) const;
 
 	int FindProfileByName(const char *pName) const;
 	std::string MakeUniqueProfileName(const char *pBaseName, int IgnoreIndex = -1) const;

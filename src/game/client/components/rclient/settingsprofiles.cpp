@@ -8,6 +8,7 @@
 #include <game/client/gameclient.h>
 
 #include <array>
+#include <unordered_map>
 #include <utility>
 
 // Full ai function. Pls don't use this in yours client maybe only for base
@@ -292,6 +293,91 @@ void CRushieSettingsProfiles::ApplyProfile(const CRushieSettingsProfile &Profile
 {
 	for(const CRushieSettingsProfileEntry &Entry : Profile.m_vEntries)
 		Console()->ExecuteLine(Entry.m_CommandLine.c_str(), IConsole::CLIENT_ID_UNSPECIFIED);
+}
+
+void CRushieSettingsProfiles::GetCurrentConfigDomainStats(ConfigDomain Domain, int &Modified, int &Total) const
+{
+	Modified = 0;
+	Total = 0;
+
+	struct SContext
+	{
+		ConfigDomain m_Domain;
+		int *m_pModified;
+		int *m_pTotal;
+	};
+
+	SContext Context{Domain, &Modified, &Total};
+	auto Collector = [](const SConfigVariable *pVariable, void *pUserData) {
+		SContext *pContext = static_cast<SContext *>(pUserData);
+		if(pVariable->m_ConfigDomain != pContext->m_Domain || CRushieSettingsProfiles::IsExcludedConfigVariable(pVariable))
+			return;
+
+		(*pContext->m_pTotal)++;
+		if(!pVariable->IsDefault())
+			(*pContext->m_pModified)++;
+	};
+
+	ConfigManager()->PossibleConfigVariables("", CFGFLAG_CLIENT | CFGFLAG_SAVE, Collector, &Context);
+}
+
+void CRushieSettingsProfiles::GetProfileConfigDomainStats(const CRushieSettingsProfile &Profile, ConfigDomain Domain, int &Modified, int &Total) const
+{
+	Modified = 0;
+	Total = 0;
+
+	std::unordered_map<std::string, std::string> aEntriesByScriptName;
+	for(const CRushieSettingsProfileEntry &Entry : Profile.m_vEntries)
+	{
+		if(Entry.m_Source != (int)Domain)
+			continue;
+
+		const size_t SpacePos = Entry.m_CommandLine.find(' ');
+		const std::string ScriptName = SpacePos == std::string::npos ? Entry.m_CommandLine : Entry.m_CommandLine.substr(0, SpacePos);
+		aEntriesByScriptName[ScriptName] = Entry.m_CommandLine;
+	}
+
+	struct SContext
+	{
+		ConfigDomain m_Domain;
+		int *m_pModified;
+		int *m_pTotal;
+		std::unordered_map<std::string, std::string> *m_pEntriesByScriptName;
+	};
+
+	SContext Context{Domain, &Modified, &Total, &aEntriesByScriptName};
+	auto Collector = [](const SConfigVariable *pVariable, void *pUserData) {
+		SContext *pContext = static_cast<SContext *>(pUserData);
+		if(pVariable->m_ConfigDomain != pContext->m_Domain || CRushieSettingsProfiles::IsExcludedConfigVariable(pVariable))
+			return;
+
+		(*pContext->m_pTotal)++;
+
+		const auto It = pContext->m_pEntriesByScriptName->find(pVariable->m_pScriptName);
+		if(It == pContext->m_pEntriesByScriptName->end())
+			return;
+
+		char aDefaultLine[2048];
+		switch(pVariable->m_Type)
+		{
+		case SConfigVariable::VAR_INT:
+			static_cast<const SIntConfigVariable *>(pVariable)->Serialize(aDefaultLine, sizeof(aDefaultLine), static_cast<const SIntConfigVariable *>(pVariable)->m_Default);
+			break;
+		case SConfigVariable::VAR_COLOR:
+			static_cast<const SColorConfigVariable *>(pVariable)->Serialize(aDefaultLine, sizeof(aDefaultLine), static_cast<const SColorConfigVariable *>(pVariable)->m_Default);
+			break;
+		case SConfigVariable::VAR_STRING:
+			static_cast<const SStringConfigVariable *>(pVariable)->Serialize(aDefaultLine, sizeof(aDefaultLine), static_cast<const SStringConfigVariable *>(pVariable)->m_pDefault);
+			break;
+		default:
+			return;
+		}
+
+		if(It->second != aDefaultLine)
+			(*pContext->m_pModified)++;
+	};
+
+	ConfigManager()->PossibleConfigVariables("", CFGFLAG_CLIENT | CFGFLAG_SAVE, Collector, &Context);
 }
 
 int CRushieSettingsProfiles::FindProfileByName(const char *pName) const
