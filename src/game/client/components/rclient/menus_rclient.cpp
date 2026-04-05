@@ -22,6 +22,7 @@
 #include <game/client/ui_listbox.h>
 #include <game/client/ui_scrollregion.h>
 #include <game/localization.h>
+#include <game/version.h>
 
 #include <SDL_audio.h>
 
@@ -625,6 +626,7 @@ void CMenus::SetRushieVoiceMixTab(int Tab)
 
 void CMenus::RenderSettingsRushieInfo(CUIRect MainView)
 {
+	CUIRect FullView = MainView;
 	CUIRect LeftView, RightView, Button, Label, LowerLeftView;
 	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
 
@@ -716,6 +718,14 @@ void CMenus::RenderSettingsRushieInfo(CUIRect MainView)
 	static int s_ShowProfiles = IsFlagSet(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_PROFILES);
 	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowProfiles, RCLocalize("Profiles"), &s_ShowProfiles, &LeftSettings, LineSize);
 	SetFlag(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_PROFILES, s_ShowProfiles);
+
+	char aVersion[64];
+	str_format(aVersion, sizeof(aVersion), "RClient %s", GAME_RELEASE_VERSION);
+
+	CUIRect VersionRect;
+	FullView.HSplitBottom(LineSize, nullptr, &VersionRect);
+	VersionRect.VSplitRight(TextRender()->TextWidth(LineSize * 0.8f, aVersion) + MarginSmall, nullptr, &VersionRect);
+	Ui()->DoLabel(&VersionRect, aVersion, LineSize * 0.8f, TEXTALIGN_MR);
 }
 
 void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection SectionId)
