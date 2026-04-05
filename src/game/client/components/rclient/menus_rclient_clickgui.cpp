@@ -36,6 +36,9 @@ static bool gs_EditProfilesOpen = false;
 
 struct SClickGuiProperties
 {
+	static constexpr float ms_DesignHeightPixels = 1080.0f;
+	static constexpr float ms_DesignPixelToUi = 600.0f / ms_DesignHeightPixels;
+
 	static constexpr float ms_Width = 1200.0f;
 	static constexpr float ms_Height = 680.0f;
 
@@ -296,7 +299,7 @@ void CMenusRClientClickGui::OnRender()
 	const float ScreenWidth = Screen.w;
 	const float ScreenHeight = Screen.h;
 
-	const float PixelSize = ScreenHeight / Graphics()->ScreenHeight();
+	const float PixelSize = SClickGuiProperties::ms_DesignPixelToUi;
 	const float WindowWidth = SClickGuiProperties::ms_Width * PixelSize;
 	const float WindowHeight = SClickGuiProperties::ms_Height * PixelSize;
 	const float SmallVMargin = SClickGuiProperties::ms_SmallVMargin * PixelSize;
