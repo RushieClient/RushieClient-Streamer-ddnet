@@ -6,10 +6,9 @@
 #include "game/client/animstate.h"
 #include "game/client/gameclient.h"
 #include "game/client/render.h"
+#include "game/client/ui_listbox.h"
 #include "generated/client_data.h"
 
-#include <algorithm>
-#include <chrono>
 #include <engine/graphics.h>
 
 #include <game/client/components/chat.h>
@@ -20,6 +19,9 @@
 #include <game/client/ui_scrollregion.h>
 #include <game/localization.h>
 
+#include <algorithm>
+#include <chrono>
+
 using namespace std::chrono_literals;
 
 enum
@@ -29,6 +31,8 @@ enum
 	CLICKGUI_TAB_INFO,
 	NUM_CLICKGUI_TABS
 };
+
+static bool gs_EditProfilesOpen = false;
 
 struct SClickGuiProperties
 {
@@ -247,6 +251,12 @@ bool CMenusRClientClickGui::HandleEscape()
 		return true;
 	}
 
+	if(gs_EditProfilesOpen)
+	{
+		gs_EditProfilesOpen = false;
+		return true;
+	}
+
 	SetActive(false);
 	return true;
 }
@@ -254,6 +264,7 @@ bool CMenusRClientClickGui::HandleEscape()
 void CMenusRClientClickGui::ResetTransientState()
 {
 	m_OpenSettingsSection = -1;
+	gs_EditProfilesOpen = false;
 	m_SearchInput.Clear();
 	m_SearchRect = std::nullopt;
 	m_SearchInput.Deactivate();
@@ -345,14 +356,63 @@ void CMenusRClientClickGui::OnRender()
 	SettingsProfiles.HSplitBottom(HudEditorHeightGapProfiles, &SettingsProfiles, &HudEditor);
 
 	//Settings Profiles start
-	CUIRect NewProfileBTN;
+	CUIRect ProfilesList, EditProfilesBTN;
+	static CButtonContainer s_EditProfilesButton;
+	static std::vector<CButtonContainer> s_vProfileApplyButtons;
+	static CScrollRegion s_ProfilesScroll;
+	static vec2 s_ProfilesOffset(0.0f, 0.0f);
+	const std::vector<CRushieSettingsProfile> &vProfiles = GameClient()->m_RushieSettingsProfiles.m_vProfiles;
+	if(s_vProfileApplyButtons.size() < vProfiles.size())
+		s_vProfileApplyButtons.resize(vProfiles.size());
+
 	SettingsProfiles.Draw(SClickGuiProperties::Hex1E1E1EColor(), IGraphics::CORNER_R, DefaultRounding);
-	SettingsProfiles.HSplitBottom(BarSizeHeight, &SettingsProfiles, &NewProfileBTN);
-	NewProfileBTN.Draw(SClickGuiProperties::Hex2A2A2AColor(), IGraphics::CORNER_BR, DefaultRounding);
-	NewProfileBTN.HMargin(SmallButtonSpace, &NewProfileBTN);
-	NewProfileBTN.VMargin(ButtonSpace, &NewProfileBTN);
-	NewProfileBTN.Draw(SClickGuiProperties::Hex4E4E4EColor(), IGraphics::CORNER_ALL, DefaultRounding);
-	Ui()->DoLabel(&NewProfileBTN, "NEW PROFILE", 16.0f * PixelSize, TEXTALIGN_MC);
+	SettingsProfiles.HSplitBottom(BarSizeHeight, &ProfilesList, &EditProfilesBTN);
+	EditProfilesBTN.Draw(SClickGuiProperties::Hex2A2A2AColor(), IGraphics::CORNER_BR, DefaultRounding);
+	EditProfilesBTN.HMargin(SmallButtonSpace, &EditProfilesBTN);
+	EditProfilesBTN.VMargin(ButtonSpace, &EditProfilesBTN);
+	EditProfilesBTN.Draw(SClickGuiProperties::Hex4E4E4EColor(), IGraphics::CORNER_ALL, DefaultRounding);
+	if(GameClient()->m_Menus.DoButton_Menu(&s_EditProfilesButton, "EDIT PROFILES", gs_EditProfilesOpen, &EditProfilesBTN))
+		gs_EditProfilesOpen = !gs_EditProfilesOpen;
+
+	ProfilesList.Margin(SmallButtonSpace, &ProfilesList);
+	if(Ui()->MouseHovered(&ProfilesList))
+		Ui()->SetHotScrollRegion(&s_ProfilesScroll);
+
+	CScrollRegionParams ProfileScrollParams;
+	ProfileScrollParams.m_ScrollbarWidth = 14.0f * PixelSize;
+	ProfileScrollParams.m_ScrollUnit = 120.0f;
+	ProfileScrollParams.m_Flags = CScrollRegionParams::FLAG_CONTENT_STATIC_WIDTH;
+	ProfileScrollParams.m_ScrollbarMargin = 2.0f * PixelSize;
+	s_ProfilesScroll.Begin(&ProfilesList, &s_ProfilesOffset, &ProfileScrollParams);
+
+	CUIRect ProfileContent = ProfilesList;
+	ProfileContent.y += s_ProfilesOffset.y;
+	const float ProfileRowHeight = 38.0f * PixelSize;
+	const float ProfileRowGap = 6.0f * PixelSize;
+	if(vProfiles.empty())
+	{
+		CUIRect EmptyState = ProfilesList;
+		EmptyState.Margin(8.0f * PixelSize, &EmptyState);
+		Ui()->DoLabel(&EmptyState, "NO PROFILES", 12.0f * PixelSize, TEXTALIGN_MC);
+	}
+	for(size_t i = 0; i < vProfiles.size(); ++i)
+	{
+		CUIRect Row = {ProfileContent.x, ProfileContent.y + i * (ProfileRowHeight + ProfileRowGap), ProfileContent.w, ProfileRowHeight};
+		CUIRect NameRect, ApplyRect;
+		Row.Draw(SClickGuiProperties::Hex2A2A2AColor(), IGraphics::CORNER_ALL, DefaultRounding * 0.6f);
+		Row.Margin(4.0f * PixelSize, &Row);
+		Row.VSplitRight(72.0f * PixelSize, &NameRect, &ApplyRect);
+		NameRect.VSplitRight(SmallVMargin, &NameRect, nullptr);
+		Ui()->DoLabel(&NameRect, vProfiles[i].m_Name.c_str(), 12.0f * PixelSize, TEXTALIGN_ML);
+		if(GameClient()->m_Menus.DoButton_Menu(&s_vProfileApplyButtons[i], "APPLY", 0, &ApplyRect, BUTTONFLAG_LEFT, nullptr, IGraphics::CORNER_ALL, DefaultRounding * 0.5f, 0.0f, SClickGuiProperties::Hex4E4E4EColor()))
+			GameClient()->m_RushieSettingsProfiles.ApplyProfile(vProfiles[i]);
+	}
+
+	CUIRect ProfileScrollRect = ProfilesList;
+	ProfileScrollRect.y = ProfileContent.y + vProfiles.size() * (ProfileRowHeight + ProfileRowGap);
+	ProfileScrollRect.h = 0.0f;
+	s_ProfilesScroll.AddRect(ProfileScrollRect);
+	s_ProfilesScroll.End();
 	//Settings Profiles end
 
 	//Hud editor start
@@ -392,14 +452,316 @@ void CMenusRClientClickGui::OnRender()
 
 	Body.HMargin(DefaultVMargin, &Body);
 
+	auto RenderProfilesEditor = [&](CUIRect MainView) {
+		static int s_SelectedProfile = -1;
+		static int s_LastSelectedProfile = -2;
+		static int s_IncludeDdnet = 1;
+		static int s_IncludeBinds = 1;
+		static int s_IncludeTClient = 1;
+		static int s_IncludeTClientBindWheel = 1;
+		static int s_IncludeRClient = 1;
+		static int s_IncludeRClientBindWheel = 1;
+		static int s_IncludeWarlist = 1;
+		static int s_IncludeChatbinds = 1;
+		static int s_IncludeSkinProfiles = 1;
+		static CLineInputBuffered<64> s_ProfileNameInput;
+		static CButtonContainer s_BackButton;
+		static CButtonContainer s_SaveButton;
+		static CButtonContainer s_ApplyButton;
+		static CButtonContainer s_OverrideButton;
+		static CButtonContainer s_FileButton;
+		static CButtonContainer s_DeleteButton;
+		static CListBox s_ListBox;
+		static bool s_aProfileRows[1024];
+		static std::vector<CButtonContainer> s_vApplyButtons;
+
+		const float HeadlineHeight = 26.0f * PixelSize;
+		const float HeadlineFontSize = 15.0f * PixelSize;
+		const float FontSize = 12.0f * PixelSize;
+		const float EditBoxFontSize = 12.0f * PixelSize;
+		const float LineSize = 22.0f * PixelSize;
+		const float MarginSmall = 6.0f * PixelSize;
+		const float MarginExtraSmall = 3.0f * PixelSize;
+		const float MarginBetweenViews = 12.0f * PixelSize;
+
+		s_ProfileNameInput.SetEmptyText(RCLocalize("Profile name"));
+
+		const std::vector<CRushieSettingsProfile> &vLocalProfiles = GameClient()->m_RushieSettingsProfiles.m_vProfiles;
+		if(vLocalProfiles.empty())
+			s_SelectedProfile = -1;
+		else if(s_SelectedProfile >= (int)vLocalProfiles.size())
+			s_SelectedProfile = (int)vLocalProfiles.size() - 1;
+
+		if(s_SelectedProfile != s_LastSelectedProfile && s_SelectedProfile >= 0 && s_SelectedProfile < (int)vLocalProfiles.size())
+			s_ProfileNameInput.Set(vLocalProfiles[s_SelectedProfile].m_Name.c_str());
+		s_LastSelectedProfile = s_SelectedProfile;
+
+		auto SetSelection = [&](int Index) {
+			s_SelectedProfile = Index;
+			if(Index >= 0 && Index < (int)vLocalProfiles.size())
+				s_ProfileNameInput.Set(vLocalProfiles[Index].m_Name.c_str());
+			else
+				s_ProfileNameInput.Clear();
+		};
+
+		auto GetNewProfileName = [&]() {
+			const char *pInputName = s_ProfileNameInput.GetString();
+			if(pInputName[0] != '\0')
+				return GameClient()->m_RushieSettingsProfiles.MakeUniqueProfileName(pInputName);
+			return GameClient()->m_RushieSettingsProfiles.MakeUniqueProfileName("Rushie Profile");
+		};
+
+		auto GetOverrideProfileName = [&]() {
+			const char *pInputName = s_ProfileNameInput.GetString();
+			if(pInputName[0] != '\0')
+				return GameClient()->m_RushieSettingsProfiles.MakeUniqueProfileName(pInputName, s_SelectedProfile);
+			return GameClient()->m_RushieSettingsProfiles.MakeUniqueProfileName("Rushie Profile", s_SelectedProfile);
+		};
+
+		const CRushieSettingsProfile CurrentProfile = GameClient()->m_RushieSettingsProfiles.CaptureProfile(
+			"",
+			true,
+			true,
+			true,
+			true,
+			true,
+			true,
+			true,
+			true,
+			true);
+
+		auto RenderProfileStats = [&](const CRushieSettingsProfile &Profile, CUIRect Rect) {
+			char aBuf[256];
+			auto GetStat = [&](int Source, char *pBuf, int Size) {
+				if(!Profile.HasSource(Source))
+					str_copy(pBuf, "-", Size);
+				else
+					str_format(pBuf, Size, "%d", Profile.CountForSource(Source));
+			};
+			char aDdnet[16], aBinds[16], aTclient[16], aRclient[16], aTWheel[16], aRWheel[16], aWarlist[16], aChatbinds[16], aSkinProfiles[16];
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_DDNET, aDdnet, sizeof(aDdnet));
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_BINDS, aBinds, sizeof(aBinds));
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT, aTclient, sizeof(aTclient));
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT, aRclient, sizeof(aRclient));
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT_BINDWHEEL, aTWheel, sizeof(aTWheel));
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT_BINDWHEEL, aRWheel, sizeof(aRWheel));
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_WARLIST, aWarlist, sizeof(aWarlist));
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_CHATBINDS, aChatbinds, sizeof(aChatbinds));
+			GetStat(RUSHIESETTINGSPROFILE_SOURCE_SKINPROFILES, aSkinProfiles, sizeof(aSkinProfiles));
+
+			CUIRect Row;
+			Rect.HSplitTop(LineSize, &Row, &Rect);
+			str_format(aBuf, sizeof(aBuf), "%s: %d", Localize("Saved settings"), (int)Profile.m_vEntries.size());
+			Ui()->DoLabel(&Row, aBuf, FontSize, TEXTALIGN_ML);
+
+			Rect.HSplitTop(LineSize, &Row, &Rect);
+			str_format(aBuf, sizeof(aBuf), "DDNet: %s   Binds: %s   TClient: %s   RClient: %s", aDdnet, aBinds, aTclient, aRclient);
+			Ui()->DoLabel(&Row, aBuf, FontSize, TEXTALIGN_ML);
+
+			Rect.HSplitTop(LineSize, &Row, &Rect);
+			str_format(aBuf, sizeof(aBuf), "TWheel: %s   RWheel: %s   Warlist: %s   Chat binds: %s   Skin profiles: %s", aTWheel, aRWheel, aWarlist, aChatbinds, aSkinProfiles);
+			Ui()->DoLabel(&Row, aBuf, FontSize, TEXTALIGN_ML);
+		};
+
+		CUIRect HeaderBar, HeaderLeft, HeaderRight, Content;
+		MainView.HSplitTop(40.0f * PixelSize, &HeaderBar, &Content);
+		HeaderBar.Draw(SClickGuiProperties::Hex2A2A2AColor(), IGraphics::CORNER_T, DefaultRounding);
+		HeaderBar.HMargin(SmallButtonSpace, &HeaderBar);
+		HeaderBar.VMargin(ButtonSpace, &HeaderBar);
+		HeaderBar.VSplitLeft(120.0f * PixelSize, &HeaderLeft, &HeaderRight);
+		if(GameClient()->m_Menus.DoButton_Menu(&s_BackButton, RCLocalize("Back"), 0, &HeaderLeft))
+		{
+			gs_EditProfilesOpen = false;
+			return;
+		}
+		Ui()->DoLabel(&HeaderRight, "EDIT PROFILES", 16.0f * PixelSize, TEXTALIGN_MC);
+
+		Content.Margin(DefaultVMargin * 0.5f, &Content);
+
+		CUIRect TopBar, BottomArea, Label, Button;
+		Content.HSplitTop(LineSize * 13.5f, &TopBar, &BottomArea);
+
+		CUIRect InfoArea, ActionArea;
+		TopBar.VSplitMid(&InfoArea, &ActionArea, MarginBetweenViews);
+
+		CUIRect CurrentRect;
+		InfoArea.HSplitTop(HeadlineHeight, &Label, &InfoArea);
+		Ui()->DoLabel(&Label, RCLocalize("Current settings"), HeadlineFontSize, TEXTALIGN_ML);
+		InfoArea.HSplitTop(MarginSmall, nullptr, &InfoArea);
+		InfoArea.HSplitTop(LineSize * 3.0f, &CurrentRect, &InfoArea);
+		RenderProfileStats(CurrentProfile, CurrentRect);
+		InfoArea.HSplitTop(MarginSmall, nullptr, &InfoArea);
+
+		if(s_SelectedProfile >= 0 && s_SelectedProfile < (int)vLocalProfiles.size())
+		{
+			CUIRect SelectedRect;
+			InfoArea.HSplitTop(LineSize, nullptr, &InfoArea);
+			InfoArea.HSplitTop(HeadlineHeight, &Label, &InfoArea);
+			Ui()->DoLabel(&Label, RCLocalize("Selected profile"), HeadlineFontSize, TEXTALIGN_ML);
+			InfoArea.HSplitTop(MarginSmall, nullptr, &InfoArea);
+			InfoArea.HSplitTop(LineSize, &Label, &InfoArea);
+			char aBuf[128];
+			str_format(aBuf, sizeof(aBuf), "%s: %s", Localize("Selected"), vLocalProfiles[s_SelectedProfile].m_Name.c_str());
+			Ui()->DoLabel(&Label, aBuf, FontSize, TEXTALIGN_ML);
+			InfoArea.HSplitTop(MarginExtraSmall, nullptr, &InfoArea);
+			InfoArea.HSplitTop(LineSize * 3.0f, &SelectedRect, &InfoArea);
+			RenderProfileStats(vLocalProfiles[s_SelectedProfile], SelectedRect);
+		}
+		else
+		{
+			InfoArea.HSplitTop(LineSize, nullptr, &InfoArea);
+			InfoArea.HSplitTop(HeadlineHeight, &Label, &InfoArea);
+			Ui()->DoLabel(&Label, RCLocalize("No profile selected"), HeadlineFontSize, TEXTALIGN_ML);
+		}
+
+		CUIRect Actions = ActionArea;
+		CUIRect ToggleArea, ToggleLeft, ToggleRight;
+		Actions.HSplitTop(HeadlineHeight, &Label, &Actions);
+		Ui()->DoLabel(&Label, RCLocalize("Create or update"), HeadlineFontSize, TEXTALIGN_ML);
+		Actions.HSplitTop(MarginSmall, nullptr, &Actions);
+
+		Actions.HSplitTop(LineSize, &Button, &Actions);
+		Ui()->DoEditBox(&s_ProfileNameInput, &Button, EditBoxFontSize);
+		Actions.HSplitTop(MarginSmall, nullptr, &Actions);
+
+		Actions.HSplitTop(LineSize * 5.5f, &ToggleArea, &Actions);
+		ToggleArea.VSplitMid(&ToggleLeft, &ToggleRight, MarginSmall);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeDdnet, Localize("Include DDNet settings"), &s_IncludeDdnet, &ToggleLeft, LineSize);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeBinds, Localize("Include key binds"), &s_IncludeBinds, &ToggleLeft, LineSize);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeTClient, Localize("Include TClient settings"), &s_IncludeTClient, &ToggleLeft, LineSize);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeTClientBindWheel, Localize("Include TClient bindwheel"), &s_IncludeTClientBindWheel, &ToggleLeft, LineSize);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeRClient, Localize("Include RClient settings"), &s_IncludeRClient, &ToggleLeft, LineSize);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeRClientBindWheel, Localize("Include Rushie bindwheel"), &s_IncludeRClientBindWheel, &ToggleRight, LineSize);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeWarlist, Localize("Include warlist"), &s_IncludeWarlist, &ToggleRight, LineSize);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeChatbinds, Localize("Include chat binds"), &s_IncludeChatbinds, &ToggleRight, LineSize);
+		GameClient()->m_Menus.DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeSkinProfiles, Localize("Include skin profiles"), &s_IncludeSkinProfiles, &ToggleRight, LineSize);
+		Actions.HSplitTop(MarginSmall, nullptr, &Actions);
+
+		CUIRect ButtonRowLeft, ButtonRowRight;
+		Actions.HSplitTop(LineSize * 1.5f, &Button, &Actions);
+		Button.VSplitMid(&ButtonRowLeft, &ButtonRowRight, MarginSmall);
+		if(GameClient()->m_Menus.DoButton_Menu(&s_SaveButton, RCLocalize("Save New"), 0, &ButtonRowLeft))
+		{
+			const std::string ProfileName = GetNewProfileName();
+			GameClient()->m_RushieSettingsProfiles.SaveProfile(ProfileName.c_str(), s_IncludeDdnet != 0, s_IncludeBinds != 0, s_IncludeTClient != 0, s_IncludeTClientBindWheel != 0, s_IncludeRClient != 0, s_IncludeRClientBindWheel != 0, s_IncludeWarlist != 0, s_IncludeChatbinds != 0, s_IncludeSkinProfiles != 0);
+			SetSelection((int)GameClient()->m_RushieSettingsProfiles.m_vProfiles.size() - 1);
+		}
+		if(GameClient()->m_Menus.DoButton_Menu(&s_ApplyButton, RCLocalize("Apply Selected"), 0, &ButtonRowRight) && s_SelectedProfile >= 0 && s_SelectedProfile < (int)vLocalProfiles.size())
+			GameClient()->m_RushieSettingsProfiles.ApplyProfile(vLocalProfiles[s_SelectedProfile]);
+		Actions.HSplitTop(MarginExtraSmall, nullptr, &Actions);
+
+		Actions.HSplitTop(LineSize * 1.5f, &Button, &Actions);
+		Button.VSplitMid(&ButtonRowLeft, &ButtonRowRight, MarginSmall);
+		if(GameClient()->m_Menus.DoButton_Menu(&s_OverrideButton, RCLocalize("Override Selected"), 0, &ButtonRowLeft) && s_SelectedProfile >= 0 && s_SelectedProfile < (int)vLocalProfiles.size())
+		{
+			const std::string ProfileName = GetOverrideProfileName();
+			GameClient()->m_RushieSettingsProfiles.OverrideProfile(s_SelectedProfile, ProfileName.c_str(), s_IncludeDdnet != 0, s_IncludeBinds != 0, s_IncludeTClient != 0, s_IncludeTClientBindWheel != 0, s_IncludeRClient != 0, s_IncludeRClientBindWheel != 0, s_IncludeWarlist != 0, s_IncludeChatbinds != 0, s_IncludeSkinProfiles != 0);
+			SetSelection(s_SelectedProfile);
+		}
+		if(GameClient()->m_Menus.DoButton_Menu(&s_FileButton, RCLocalize("Profiles file"), 0, &ButtonRowRight))
+		{
+			char aBuf[IO_MAX_PATH_LENGTH];
+			Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::RCLIENTSETTINGSPROFILES].m_aConfigPath, aBuf, sizeof(aBuf));
+			Client()->ViewFile(aBuf);
+		}
+		Actions.HSplitTop(MarginExtraSmall, nullptr, &Actions);
+
+		Actions.HSplitTop(LineSize * 1.5f, &Button, &Actions);
+		if(GameClient()->m_Menus.DoButton_Menu(&s_DeleteButton, RCLocalize("Delete Selected"), 0, &Button) && s_SelectedProfile >= 0 && s_SelectedProfile < (int)vLocalProfiles.size())
+		{
+			GameClient()->m_RushieSettingsProfiles.m_vProfiles.erase(GameClient()->m_RushieSettingsProfiles.m_vProfiles.begin() + s_SelectedProfile);
+			if(GameClient()->m_RushieSettingsProfiles.m_vProfiles.empty())
+				SetSelection(-1);
+			else if(s_SelectedProfile >= (int)GameClient()->m_RushieSettingsProfiles.m_vProfiles.size())
+				SetSelection((int)GameClient()->m_RushieSettingsProfiles.m_vProfiles.size() - 1);
+			else
+				SetSelection(s_SelectedProfile);
+		}
+
+		BottomArea.HSplitTop(MarginSmall, nullptr, &BottomArea);
+
+		if(s_vApplyButtons.size() < vLocalProfiles.size())
+			s_vApplyButtons.resize(vLocalProfiles.size());
+
+		s_ListBox.DoStart(52.0f * PixelSize, vLocalProfiles.size(), BottomArea.w / 240.0f, 1, s_SelectedProfile, &BottomArea, true, IGraphics::CORNER_ALL, true);
+		for(size_t i = 0; i < vLocalProfiles.size(); i++)
+		{
+			CListboxItem Item = s_ListBox.DoNextItem(&s_aProfileRows[i], s_SelectedProfile >= 0 && (size_t)s_SelectedProfile == i);
+			if(!Item.m_Visible)
+				continue;
+
+			CUIRect Row = Item.m_Rect;
+			Row.HMargin(MarginExtraSmall, &Row);
+			Row.VMargin(MarginSmall, &Row);
+			CUIRect InfoRect, ApplyRect;
+			Row.VSplitRight(110.0f * PixelSize, &InfoRect, &ApplyRect);
+			InfoRect.VSplitRight(MarginSmall * 2.0f, &InfoRect, nullptr);
+			ApplyRect.VSplitLeft(MarginSmall * 2.0f, nullptr, &ApplyRect);
+			ApplyRect.HMargin(8.0f * PixelSize, &ApplyRect);
+			if(GameClient()->m_Menus.DoButton_Menu(&s_vApplyButtons[i], RCLocalize("Apply"), 0, &ApplyRect))
+			{
+				GameClient()->m_RushieSettingsProfiles.ApplyProfile(vLocalProfiles[i]);
+				SetSelection((int)i);
+			}
+
+			InfoRect.HMargin(6.0f * PixelSize, &InfoRect);
+			InfoRect.VSplitLeft(MarginSmall, nullptr, &InfoRect);
+
+			CUIRect NameRect, StatsRect;
+			InfoRect.HSplitTop(LineSize, &NameRect, &StatsRect);
+			Ui()->DoLabel(&NameRect, vLocalProfiles[i].m_Name.c_str(), FontSize, TEXTALIGN_ML);
+
+			char aBuf[256];
+			auto GetStatCompact = [&](int Source, char *pBuf, int Size) {
+				if(!vLocalProfiles[i].HasSource(Source))
+					str_copy(pBuf, "-", Size);
+				else
+					str_format(pBuf, Size, "%d", vLocalProfiles[i].CountForSource(Source));
+			};
+			char aDdnet[16], aBinds[16], aTclient[16], aRclient[16], aTWheel[16], aRWheel[16];
+			GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_DDNET, aDdnet, sizeof(aDdnet));
+			GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_BINDS, aBinds, sizeof(aBinds));
+			GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT, aTclient, sizeof(aTclient));
+			GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT, aRclient, sizeof(aRclient));
+			GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT_BINDWHEEL, aTWheel, sizeof(aTWheel));
+			GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT_BINDWHEEL, aRWheel, sizeof(aRWheel));
+			const bool HasExtras = vLocalProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_WARLIST) || vLocalProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_CHATBINDS) || vLocalProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_SKINPROFILES);
+			char aExtras[16];
+			if(!HasExtras)
+				str_copy(aExtras, "-", sizeof(aExtras));
+			else
+				str_format(aExtras, sizeof(aExtras), "%d", vLocalProfiles[i].CountForSource(RUSHIESETTINGSPROFILE_SOURCE_WARLIST) + vLocalProfiles[i].CountForSource(RUSHIESETTINGSPROFILE_SOURCE_CHATBINDS) + vLocalProfiles[i].CountForSource(RUSHIESETTINGSPROFILE_SOURCE_SKINPROFILES));
+			str_format(aBuf, sizeof(aBuf), "D:%s B:%s T:%s R:%s TW:%s RW:%s X:%s", aDdnet, aBinds, aTclient, aRclient, aTWheel, aRWheel, aExtras);
+			Ui()->DoLabel(&StatsRect, aBuf, EditBoxFontSize, TEXTALIGN_ML);
+		}
+
+		const int ListSelection = s_ListBox.DoEnd();
+		if(vLocalProfiles.empty())
+		{
+			if(s_SelectedProfile != -1)
+				SetSelection(-1);
+		}
+		else if(ListSelection != s_SelectedProfile)
+		{
+			SetSelection(ListSelection);
+		}
+	};
+
 	//Main render
 	Body.Draw(SClickGuiProperties::Hex1E1E1EColor(), IGraphics::CORNER_ALL, DefaultRounding);
-	if(m_CurrentTab == CLICKGUI_TAB_SETTINGS)
-		RenderClickGuiRushieSettings(Body, PixelSize);
-	if(m_CurrentTab == CLICKGUI_TAB_VOICE)
-		RenderClickGuiRushieVoice(Body, PixelSize);
-	if(m_CurrentTab == CLICKGUI_TAB_INFO)
-		RenderClickGuiRushieInfo(Body, PixelSize);
+	if(gs_EditProfilesOpen)
+	{
+		RenderProfilesEditor(Body);
+	}
+	else
+	{
+		if(m_CurrentTab == CLICKGUI_TAB_SETTINGS)
+			RenderClickGuiRushieSettings(Body, PixelSize);
+		if(m_CurrentTab == CLICKGUI_TAB_VOICE)
+			RenderClickGuiRushieVoice(Body, PixelSize);
+		if(m_CurrentTab == CLICKGUI_TAB_INFO)
+			RenderClickGuiRushieInfo(Body, PixelSize);
+	}
 
 	if(m_MouseUnlocked && !UiBlocked)
 		RenderTools()->RenderCursor(Ui()->MousePos(), 24.0f);
