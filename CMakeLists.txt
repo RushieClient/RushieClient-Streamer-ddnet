@@ -2655,6 +2655,8 @@ if(CLIENT)
     components/rclient/rclient.h
     components/rclient/rclient_indicator.cpp
     components/rclient/rclient_indicator.h
+    components/rclient/settingsprofiles.cpp
+    components/rclient/settingsprofiles.h
     components/rclient/voice.cpp
     components/rclient/voice.h
     components/scoreboard.cpp

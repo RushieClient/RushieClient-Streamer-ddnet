@@ -941,6 +941,7 @@ private:
 	void RenderSettingsRushieInfo(CUIRect MainView);
 	void RenderSettingsRushieBindWheelSpec(CUIRect MainView);
 	void RenderSettingsRushieVoiceVolumes(CUIRect MainView);
+	void RenderSettingsRushieProfiles(CUIRect MainView);
 
 	const CWarType *m_pRemoveWarType = nullptr;
 	void PopupConfirmRemoveWarType();

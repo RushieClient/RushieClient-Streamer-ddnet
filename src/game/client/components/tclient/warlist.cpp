@@ -18,6 +18,7 @@ void CWarList::OnConsoleInit()
 	if(pConfigManager)
 		pConfigManager->RegisterCallback(ConfigSaveCallback, this, ConfigDomain::TCLIENTWARLIST);
 
+	Console()->Register("reset_warlist", "", CFGFLAG_CLIENT, ConResetWarlist, this, "Reset war list to default groups and remove all entries");
 	Console()->Register("update_war_group", "i[group_index] s[name] i[color]", CFGFLAG_CLIENT, ConUpsertWarType, this, "Update or add a specific war group");
 	Console()->Register("add_war_entry", "s[group] s[name] s[clan] r[reason]", CFGFLAG_CLIENT, ConAddWarEntry, this, "Adds a specific war entry");
 
@@ -122,6 +123,11 @@ void CWarList::ConUpsertWarType(IConsole::IResult *pResult, void *pUserData)
 	ColorRGBA Color = color_cast<ColorRGBA>(ColorHSLA(ColorInt));
 	CWarList *pThis = static_cast<CWarList *>(pUserData);
 	pThis->UpsertWarType(Index, pType, Color);
+}
+
+void CWarList::ConResetWarlist(IConsole::IResult *pResult, void *pUserData)
+{
+	static_cast<CWarList *>(pUserData)->ResetToDefaults();
 }
 
 void CWarList::AddWarEntryInGame(int WarType, const char *pName, const char *pReason, bool IsClan)
@@ -333,6 +339,34 @@ void CWarList::RemoveWarType(const char *pType)
 		}
 		m_WarTypes.erase(It);
 	}
+}
+
+void CWarList::ResetToDefaults()
+{
+	m_vWarEntries.clear();
+	for(int i = (int)m_WarTypes.size() - 1; i >= 3; --i)
+	{
+		delete m_WarTypes[i];
+		m_WarTypes.erase(m_WarTypes.begin() + i);
+	}
+
+	str_copy(m_WarTypes[0]->m_aWarName, "none");
+	m_WarTypes[0]->m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+	m_WarTypes[0]->m_Removable = false;
+	m_WarTypes[0]->m_Imported = false;
+
+	str_copy(m_WarTypes[1]->m_aWarName, "enemy");
+	m_WarTypes[1]->m_Color = ColorRGBA(1.0f, 0.2f, 0.2f, 1.0f);
+	m_WarTypes[1]->m_Removable = false;
+	m_WarTypes[1]->m_Imported = false;
+
+	str_copy(m_WarTypes[2]->m_aWarName, "team");
+	m_WarTypes[2]->m_Color = ColorRGBA(0.0f, 0.9f, 0.2f, 1.0f);
+	m_WarTypes[2]->m_Removable = false;
+	m_WarTypes[2]->m_Imported = false;
+
+	m_pWarTypeNone = m_WarTypes[0];
+	UpdateWarPlayers();
 }
 
 CWarType *CWarList::FindWarType(const char *pType)

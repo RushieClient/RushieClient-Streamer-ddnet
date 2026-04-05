@@ -19,6 +19,7 @@
 #include <game/client/components/tclient/bindchat.h>
 #include <game/client/gameclient.h>
 #include <game/client/ui.h>
+#include <game/client/ui_listbox.h>
 #include <game/client/ui_scrollregion.h>
 #include <game/localization.h>
 
@@ -34,6 +35,7 @@ enum
 	RCLIENT_TAB_NAMEPLATES_EDITOR,
 	RCLIENT_TAB_RCON,
 	RCLIENT_TAB_VOICE,
+	RCLIENT_TAB_PROFILES,
 	RCLIENT_TAB_INFO,
 	NUMBER_OF_RUSHIE_TABS
 };
@@ -380,6 +382,7 @@ void CMenus::RenderSettingsRushie(CUIRect MainView)
 		RCLocalize("Nameplate editor"),
 		RCLocalize("RCON"),
 		RCLocalize("Voice mix"),
+		RCLocalize("Profiles"),
 		RCLocalize("Info")};
 
 	for(int Tab = 0; Tab < NUMBER_OF_RUSHIE_TABS; ++Tab)
@@ -416,6 +419,10 @@ void CMenus::RenderSettingsRushie(CUIRect MainView)
 	if(s_CurRushieTab == RCLIENT_TAB_VOICE)
 	{
 		RenderSettingsRushieVoiceVolumes(MainView);
+	}
+	if(s_CurRushieTab == RCLIENT_TAB_PROFILES)
+	{
+		RenderSettingsRushieProfiles(MainView);
 	}
 	if(s_CurRushieTab == RCLIENT_TAB_INFO)
 	{
@@ -643,6 +650,12 @@ void CMenus::RenderSettingsRushieInfo(CUIRect MainView)
 		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::RCLIENT].m_aConfigPath, aBuf, sizeof(aBuf));
 		Client()->ViewFile(aBuf);
 	}
+	static CButtonContainer s_Profiles;
+	if(DoButtonLineSize_Menu(&s_Profiles, RCLocalize("Profiles file"), 0, &ProfilesFile, LineSize, false, 0, IGraphics::CORNER_ALL, 5.0f, 0.0f, ColorRGBA(0.0f, 0.0f, 0.0f, 0.25f)))
+	{
+		Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::RCLIENTSETTINGSPROFILES].m_aConfigPath, aBuf, sizeof(aBuf));
+		Client()->ViewFile(aBuf);
+	}
 
 	// =======RIGHT VIEW========
 
@@ -685,6 +698,9 @@ void CMenus::RenderSettingsRushieInfo(CUIRect MainView)
 	static int s_ShowVoice = IsFlagSet(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_VOICE);
 	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowVoice, RCLocalize("Voice mix"), &s_ShowVoice, &RightSettings, LineSize);
 	SetFlag(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_VOICE, s_ShowVoice);
+	static int s_ShowProfiles = IsFlagSet(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_PROFILES);
+	DoButton_CheckBoxAutoVMarginAndSet(&s_ShowProfiles, RCLocalize("Profiles"), &s_ShowProfiles, &LeftSettings, LineSize);
+	SetFlag(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_PROFILES, s_ShowProfiles);
 }
 
 void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection SectionId)
@@ -2505,6 +2521,284 @@ void CMenus::RenderSettingsRushieBindWheelSpec(CUIRect MainView)
 
 	LeftView.HSplitBottom(LineSize, &LeftView, &Label);
 	DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_TcResetBindWheelMouse, RCLocalize("Reset position of mouse when opening bindwheel"), &g_Config.m_TcResetBindWheelMouse, &Label, LineSize);
+}
+
+void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
+{
+	static int s_SelectedProfile = -1;
+	static int s_LastSelectedProfile = -2;
+	static int s_IncludeDdnet = 1;
+	static int s_IncludeBinds = 1;
+	static int s_IncludeTClient = 1;
+	static int s_IncludeTClientBindWheel = 1;
+	static int s_IncludeRClient = 1;
+	static int s_IncludeRClientBindWheel = 1;
+	static int s_IncludeWarlist = 1;
+	static int s_IncludeChatbinds = 1;
+	static int s_IncludeSkinProfiles = 1;
+	static CLineInputBuffered<64> s_ProfileNameInput;
+	s_ProfileNameInput.SetEmptyText(RCLocalize("Profile name"));
+
+	const std::vector<CRushieSettingsProfile> &vProfiles = GameClient()->m_RushieSettingsProfiles.m_vProfiles;
+	if(vProfiles.empty())
+		s_SelectedProfile = -1;
+	else if(s_SelectedProfile >= (int)vProfiles.size())
+		s_SelectedProfile = (int)vProfiles.size() - 1;
+
+	if(s_SelectedProfile != s_LastSelectedProfile && s_SelectedProfile >= 0 && s_SelectedProfile < (int)vProfiles.size())
+		s_ProfileNameInput.Set(vProfiles[s_SelectedProfile].m_Name.c_str());
+	s_LastSelectedProfile = s_SelectedProfile;
+
+	auto SetSelection = [&](int Index) {
+		s_SelectedProfile = Index;
+		if(Index >= 0 && Index < (int)vProfiles.size())
+			s_ProfileNameInput.Set(vProfiles[Index].m_Name.c_str());
+		else
+			s_ProfileNameInput.Clear();
+	};
+
+	auto GetNewProfileName = [&]() {
+		const char *pInputName = s_ProfileNameInput.GetString();
+		if(pInputName[0] != '\0')
+			return GameClient()->m_RushieSettingsProfiles.MakeUniqueProfileName(pInputName);
+		return GameClient()->m_RushieSettingsProfiles.MakeUniqueProfileName("Rushie Profile");
+	};
+
+	auto GetOverrideProfileName = [&]() {
+		const char *pInputName = s_ProfileNameInput.GetString();
+		if(pInputName[0] != '\0')
+			return GameClient()->m_RushieSettingsProfiles.MakeUniqueProfileName(pInputName, s_SelectedProfile);
+		return GameClient()->m_RushieSettingsProfiles.MakeUniqueProfileName("Rushie Profile", s_SelectedProfile);
+	};
+
+	const CRushieSettingsProfile CurrentProfile = GameClient()->m_RushieSettingsProfiles.CaptureProfile(
+		"",
+		true,
+		true,
+		true,
+		true,
+		true,
+		true,
+		true,
+		true,
+		true);
+
+	auto RenderProfileStats = [&](const CRushieSettingsProfile &Profile, CUIRect Rect) {
+		char aBuf[256];
+		auto GetStat = [&](int Source, char *pBuf, int Size) {
+			if(!Profile.HasSource(Source))
+				str_copy(pBuf, "-", Size);
+			else
+				str_format(pBuf, Size, "%d", Profile.CountForSource(Source));
+		};
+		char aDdnet[16], aBinds[16], aTclient[16], aRclient[16], aTWheel[16], aRWheel[16], aWarlist[16], aChatbinds[16], aSkinProfiles[16];
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_DDNET, aDdnet, sizeof(aDdnet));
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_BINDS, aBinds, sizeof(aBinds));
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT, aTclient, sizeof(aTclient));
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT, aRclient, sizeof(aRclient));
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT_BINDWHEEL, aTWheel, sizeof(aTWheel));
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT_BINDWHEEL, aRWheel, sizeof(aRWheel));
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_WARLIST, aWarlist, sizeof(aWarlist));
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_CHATBINDS, aChatbinds, sizeof(aChatbinds));
+		GetStat(RUSHIESETTINGSPROFILE_SOURCE_SKINPROFILES, aSkinProfiles, sizeof(aSkinProfiles));
+
+		Rect.HSplitTop(LineSize, &Rect, nullptr);
+		str_format(aBuf, sizeof(aBuf), "%s: %d", Localize("Saved settings"), (int)Profile.m_vEntries.size());
+		Ui()->DoLabel(&Rect, aBuf, FontSize, TEXTALIGN_ML);
+
+		Rect.y += LineSize + MarginExtraSmall;
+		str_format(aBuf, sizeof(aBuf), "DDNet: %s   Binds: %s   TClient: %s   RClient: %s",
+			aDdnet, aBinds, aTclient, aRclient);
+		Ui()->DoLabel(&Rect, aBuf, FontSize, TEXTALIGN_ML);
+
+		Rect.y += LineSize + MarginExtraSmall;
+		str_format(aBuf, sizeof(aBuf), "TWheel: %s   RWheel: %s   Warlist: %s   Chat binds: %s   Skin profiles: %s",
+			aTWheel, aRWheel, aWarlist, aChatbinds, aSkinProfiles);
+		Ui()->DoLabel(&Rect, aBuf, FontSize, TEXTALIGN_ML);
+	};
+
+	CUIRect TopBar, BottomArea, Label, Button;
+	MainView.HSplitTop(LineSize * 13.5f, &TopBar, &BottomArea);
+
+	CUIRect InfoArea, ActionArea;
+	TopBar.VSplitMid(&InfoArea, &ActionArea, MarginBetweenViews);
+
+	{
+		CUIRect CurrentRect;
+		InfoArea.HSplitTop(HeadlineHeight, &Label, &InfoArea);
+		Ui()->DoLabel(&Label, RCLocalize("Current settings"), HeadlineFontSize, TEXTALIGN_ML);
+		InfoArea.HSplitTop(MarginSmall, nullptr, &InfoArea);
+		InfoArea.HSplitTop(LineSize * 3.0f, &CurrentRect, &InfoArea);
+		RenderProfileStats(CurrentProfile, CurrentRect);
+		InfoArea.HSplitTop(MarginSmall, nullptr, &InfoArea);
+
+		if(s_SelectedProfile >= 0 && s_SelectedProfile < (int)vProfiles.size())
+		{
+			CUIRect Selected;
+			InfoArea.HSplitTop(LineSize, nullptr, &InfoArea);
+			InfoArea.HSplitTop(HeadlineHeight, &Label, &InfoArea);
+			Ui()->DoLabel(&Label, RCLocalize("Selected profile"), HeadlineFontSize, TEXTALIGN_ML);
+			InfoArea.HSplitTop(MarginSmall, nullptr, &InfoArea);
+			InfoArea.HSplitTop(LineSize, &Label, &InfoArea);
+			char aBuf[128];
+			str_format(aBuf, sizeof(aBuf), "%s: %s", Localize("Selected"), vProfiles[s_SelectedProfile].m_Name.c_str());
+			Ui()->DoLabel(&Label, aBuf, FontSize, TEXTALIGN_ML);
+			InfoArea.HSplitTop(MarginExtraSmall, nullptr, &InfoArea);
+			InfoArea.HSplitTop(LineSize * 3.0f, &Selected, &InfoArea);
+			RenderProfileStats(vProfiles[s_SelectedProfile], Selected);
+		}
+		else
+		{
+			InfoArea.HSplitTop(LineSize, nullptr, &InfoArea);
+			InfoArea.HSplitTop(HeadlineHeight, &Label, &InfoArea);
+			Ui()->DoLabel(&Label, RCLocalize("No profile selected"), HeadlineFontSize, TEXTALIGN_ML);
+		}
+	}
+
+	{
+		CUIRect Actions = ActionArea;
+		CUIRect ToggleArea, ButtonArea;
+		Actions.HSplitTop(HeadlineHeight, &Label, &Actions);
+		Ui()->DoLabel(&Label, RCLocalize("Create or update"), HeadlineFontSize, TEXTALIGN_ML);
+		Actions.HSplitTop(MarginSmall, nullptr, &Actions);
+
+		Actions.HSplitTop(LineSize, &Button, &Actions);
+		Ui()->DoEditBox(&s_ProfileNameInput, &Button, EditBoxFontSize);
+		Actions.HSplitTop(MarginSmall, nullptr, &Actions);
+
+		Actions.HSplitTop(LineSize * 5.5f, &ToggleArea, &Actions);
+		ToggleArea.VSplitMid(&InfoArea, &ButtonArea, MarginSmall);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeDdnet, Localize("Include DDNet settings"), &s_IncludeDdnet, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeBinds, Localize("Include key binds"), &s_IncludeBinds, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeTClient, Localize("Include TClient settings"), &s_IncludeTClient, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeTClientBindWheel, Localize("Include TClient bindwheel"), &s_IncludeTClientBindWheel, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeRClient, Localize("Include RClient settings"), &s_IncludeRClient, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeRClientBindWheel, Localize("Include Rushie bindwheel"), &s_IncludeRClientBindWheel, &ButtonArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeWarlist, Localize("Include warlist"), &s_IncludeWarlist, &ButtonArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeChatbinds, Localize("Include chat binds"), &s_IncludeChatbinds, &ButtonArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeSkinProfiles, Localize("Include skin profiles"), &s_IncludeSkinProfiles, &ButtonArea, LineSize);
+		Actions.HSplitTop(MarginSmall, nullptr, &Actions);
+
+		CUIRect ButtonRowLeft, ButtonRowRight;
+		Actions.HSplitTop(LineSize * 1.5f, &Button, &Actions);
+		Button.VSplitMid(&ButtonRowLeft, &ButtonRowRight, MarginSmall);
+		static CButtonContainer s_SaveButton;
+		if(DoButton_Menu(&s_SaveButton, RCLocalize("Save New"), 0, &ButtonRowLeft))
+		{
+			const std::string ProfileName = GetNewProfileName();
+			GameClient()->m_RushieSettingsProfiles.SaveProfile(ProfileName.c_str(), s_IncludeDdnet != 0, s_IncludeBinds != 0, s_IncludeTClient != 0, s_IncludeTClientBindWheel != 0, s_IncludeRClient != 0, s_IncludeRClientBindWheel != 0, s_IncludeWarlist != 0, s_IncludeChatbinds != 0, s_IncludeSkinProfiles != 0);
+			SetSelection((int)GameClient()->m_RushieSettingsProfiles.m_vProfiles.size() - 1);
+		}
+		static CButtonContainer s_ApplyButton;
+		if(DoButton_Menu(&s_ApplyButton, RCLocalize("Apply Selected"), 0, &ButtonRowRight) && s_SelectedProfile >= 0 && s_SelectedProfile < (int)vProfiles.size())
+			GameClient()->m_RushieSettingsProfiles.ApplyProfile(vProfiles[s_SelectedProfile]);
+		Actions.HSplitTop(MarginExtraSmall, nullptr, &Actions);
+
+		Actions.HSplitTop(LineSize * 1.5f, &Button, &Actions);
+		Button.VSplitMid(&ButtonRowLeft, &ButtonRowRight, MarginSmall);
+		static CButtonContainer s_OverrideButton;
+		if(DoButton_Menu(&s_OverrideButton, RCLocalize("Override Selected"), 0, &ButtonRowLeft) && s_SelectedProfile >= 0 && s_SelectedProfile < (int)vProfiles.size())
+		{
+			const std::string ProfileName = GetOverrideProfileName();
+			GameClient()->m_RushieSettingsProfiles.OverrideProfile(s_SelectedProfile, ProfileName.c_str(), s_IncludeDdnet != 0, s_IncludeBinds != 0, s_IncludeTClient != 0, s_IncludeTClientBindWheel != 0, s_IncludeRClient != 0, s_IncludeRClientBindWheel != 0, s_IncludeWarlist != 0, s_IncludeChatbinds != 0, s_IncludeSkinProfiles != 0);
+			SetSelection(s_SelectedProfile);
+		}
+		static CButtonContainer s_FileButton;
+		if(DoButton_Menu(&s_FileButton, RCLocalize("Profiles file"), 0, &ButtonRowRight))
+		{
+			char aBuf[IO_MAX_PATH_LENGTH];
+			Storage()->GetCompletePath(IStorage::TYPE_SAVE, s_aConfigDomains[ConfigDomain::RCLIENTSETTINGSPROFILES].m_aConfigPath, aBuf, sizeof(aBuf));
+			Client()->ViewFile(aBuf);
+		}
+		Actions.HSplitTop(MarginExtraSmall, nullptr, &Actions);
+
+		Actions.HSplitTop(LineSize * 1.5f, &Button, &Actions);
+		static CButtonContainer s_DeleteButton;
+		if(DoButton_Menu(&s_DeleteButton, RCLocalize("Delete Selected"), 0, &Button) && s_SelectedProfile >= 0 && s_SelectedProfile < (int)vProfiles.size())
+		{
+			GameClient()->m_RushieSettingsProfiles.m_vProfiles.erase(GameClient()->m_RushieSettingsProfiles.m_vProfiles.begin() + s_SelectedProfile);
+			if(GameClient()->m_RushieSettingsProfiles.m_vProfiles.empty())
+				SetSelection(-1);
+			else if(s_SelectedProfile >= (int)GameClient()->m_RushieSettingsProfiles.m_vProfiles.size())
+				SetSelection((int)GameClient()->m_RushieSettingsProfiles.m_vProfiles.size() - 1);
+			else
+				SetSelection(s_SelectedProfile);
+		}
+	}
+
+	MainView = BottomArea;
+	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+	MainView.VMargin(MarginSmall, &MainView);
+
+	static CListBox s_ListBox;
+	static bool s_aProfileRows[1024];
+	static std::vector<CButtonContainer> s_vApplyButtons;
+	if(s_vApplyButtons.size() < vProfiles.size())
+		s_vApplyButtons.resize(vProfiles.size());
+
+	s_ListBox.DoStart(52.0f, vProfiles.size(), MainView.w / 240.0f, 1, s_SelectedProfile, &MainView, true, IGraphics::CORNER_ALL, true);
+	for(size_t i = 0; i < vProfiles.size(); i++)
+	{
+		CListboxItem Item = s_ListBox.DoNextItem(&s_aProfileRows[i], s_SelectedProfile >= 0 && (size_t)s_SelectedProfile == i);
+		if(!Item.m_Visible)
+			continue;
+
+		CUIRect Row = Item.m_Rect;
+		Row.HMargin(MarginExtraSmall, &Row);
+		Row.VMargin(MarginSmall, &Row);
+		CUIRect InfoRect, ApplyRect;
+		Row.VSplitRight(110.0f, &InfoRect, &ApplyRect);
+		InfoRect.VSplitRight(MarginSmall * 2.0f, &InfoRect, nullptr);
+		ApplyRect.VSplitLeft(MarginSmall * 2.0f, nullptr, &ApplyRect);
+		ApplyRect.HMargin(8.0f, &ApplyRect);
+		if(DoButton_Menu(&s_vApplyButtons[i], RCLocalize("Apply"), 0, &ApplyRect))
+		{
+			GameClient()->m_RushieSettingsProfiles.ApplyProfile(vProfiles[i]);
+			SetSelection((int)i);
+		}
+
+		InfoRect.HMargin(6.0f, &InfoRect);
+		InfoRect.VSplitLeft(MarginSmall, nullptr, &InfoRect);
+
+		CUIRect NameRect, StatsRect;
+		InfoRect.HSplitTop(LineSize, &NameRect, &StatsRect);
+		Ui()->DoLabel(&NameRect, vProfiles[i].m_Name.c_str(), FontSize, TEXTALIGN_ML);
+
+		char aBuf[256];
+		auto GetStatCompact = [&](int Source, char *pBuf, int Size) {
+			if(!vProfiles[i].HasSource(Source))
+				str_copy(pBuf, "-", Size);
+			else
+				str_format(pBuf, Size, "%d", vProfiles[i].CountForSource(Source));
+		};
+		char aDdnet[16], aBinds[16], aTclient[16], aRclient[16], aTWheel[16], aRWheel[16];
+		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_DDNET, aDdnet, sizeof(aDdnet));
+		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_BINDS, aBinds, sizeof(aBinds));
+		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT, aTclient, sizeof(aTclient));
+		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT, aRclient, sizeof(aRclient));
+		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_TCLIENT_BINDWHEEL, aTWheel, sizeof(aTWheel));
+		GetStatCompact(RUSHIESETTINGSPROFILE_SOURCE_RCLIENT_BINDWHEEL, aRWheel, sizeof(aRWheel));
+		const bool HasExtras = vProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_WARLIST) || vProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_CHATBINDS) || vProfiles[i].HasSource(RUSHIESETTINGSPROFILE_SOURCE_SKINPROFILES);
+		char aExtras[16];
+		if(!HasExtras)
+			str_copy(aExtras, "-", sizeof(aExtras));
+		else
+			str_format(aExtras, sizeof(aExtras), "%d", vProfiles[i].CountForSource(RUSHIESETTINGSPROFILE_SOURCE_WARLIST) + vProfiles[i].CountForSource(RUSHIESETTINGSPROFILE_SOURCE_CHATBINDS) + vProfiles[i].CountForSource(RUSHIESETTINGSPROFILE_SOURCE_SKINPROFILES));
+		str_format(aBuf, sizeof(aBuf), "D:%s B:%s T:%s R:%s TW:%s RW:%s X:%s",
+			aDdnet, aBinds, aTclient, aRclient, aTWheel, aRWheel, aExtras);
+		Ui()->DoLabel(&StatsRect, aBuf, EditBoxFontSize, TEXTALIGN_ML);
+	}
+
+	const int ListSelection = s_ListBox.DoEnd();
+	if(vProfiles.empty())
+	{
+		if(s_SelectedProfile != -1)
+			SetSelection(-1);
+	}
+	else if(ListSelection != s_SelectedProfile)
+	{
+		SetSelection(ListSelection);
+	}
 }
 
 bool CMenus::DoFloatScrollBar(const void *pId, int *pOption, const CUIRect *pRect, const char *pStr, int Min, int Max, int DivideBy, const IScrollbarScale *pScale, unsigned Flags, const char *pSuffix)

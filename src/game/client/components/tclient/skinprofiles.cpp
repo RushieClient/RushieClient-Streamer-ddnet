@@ -28,7 +28,13 @@ void CSkinProfiles::OnConsoleInit()
 	if(pConfigManager)
 		pConfigManager->RegisterCallback(ConfigSaveCallback, this, ConfigDomain::TCLIENTPROFILES);
 
+	Console()->Register("clear_skin_profiles", "", CFGFLAG_CLIENT, ConClearProfiles, this, "Clear all skin profiles");
 	Console()->Register("add_profile", "i[body] i[feet] i[flag] i[emote] s[skin] s[name] s[clan]", CFGFLAG_CLIENT, ConAddProfile, this, "Add a profile");
+}
+
+void CSkinProfiles::ConClearProfiles(IConsole::IResult *pResult, void *pUserData)
+{
+	static_cast<CSkinProfiles *>(pUserData)->ClearProfiles();
 }
 
 void CSkinProfiles::ConAddProfile(IConsole::IResult *pResult, void *pUserData)
@@ -41,6 +47,11 @@ void CSkinProfiles::AddProfile(int BodyColor, int FeetColor, int CountryFlag, in
 {
 	CProfile Profile = CProfile(BodyColor, FeetColor, CountryFlag, Emote, pSkinName, pName, pClan);
 	m_Profiles.push_back(Profile);
+}
+
+void CSkinProfiles::ClearProfiles()
+{
+	m_Profiles.clear();
 }
 
 void CSkinProfiles::ApplyProfile(int Dummy, const CProfile &Profile)

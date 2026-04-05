@@ -122,6 +122,7 @@ void CGameClient::OnConsoleInit()
 					      &m_MapImages,
 					      &m_Effects, // doesn't render anything, just updates effects
 					      &m_SkinProfiles, // TClient
+					      &m_RushieSettingsProfiles, // Rushie
 					      &m_Binds,
 					      &m_Binds.m_SpecialBinds,
 					      &m_Controls,

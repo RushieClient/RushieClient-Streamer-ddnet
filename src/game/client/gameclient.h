@@ -76,6 +76,7 @@
 #include "components/rclient/rclient.h"
 #include "components/rclient/rclient_indicator.h"
 #include "components/rclient/playermenu.h"
+#include "components/rclient/settingsprofiles.h"
 
 //Tater
 #include "components/tclient/bg_draw.h"
@@ -230,6 +231,7 @@ public:
 
 	// TClient Components
 	CSkinProfiles m_SkinProfiles;
+	CRushieSettingsProfiles m_RushieSettingsProfiles;
 	CStatusBar m_StatusBar;
 	CBindChat m_BindChat;
 	CBindWheel m_BindWheel;

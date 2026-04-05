@@ -245,6 +245,22 @@ const char *CBinds::Get(const CBindSlot &BindSlot) const
 	return Get(BindSlot.m_Key, BindSlot.m_ModifierMask);
 }
 
+void CBinds::GetBindCommands(std::vector<std::string> &vCommands) const
+{
+	vCommands.clear();
+	for(int Modifier = KeyModifier::NONE; Modifier < KeyModifier::COMBINATION_COUNT; Modifier++)
+	{
+		for(int Key = KEY_FIRST; Key < KEY_LAST; Key++)
+		{
+			if(!m_aapKeyBindings[Modifier][Key])
+				continue;
+			char *pBuf = GetKeyBindCommand(Modifier, Key);
+			vCommands.emplace_back(pBuf);
+			free(pBuf);
+		}
+	}
+}
+
 void CBinds::GetKey(const char *pBindStr, char *pBuf, size_t BufSize) const
 {
 	pBuf[0] = '\0';
