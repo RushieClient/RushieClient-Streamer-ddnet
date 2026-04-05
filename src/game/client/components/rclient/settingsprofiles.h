@@ -48,6 +48,7 @@ class CRushieSettingsProfiles : public CComponent
 {
 	static void ConAddSettingsProfile(IConsole::IResult *pResult, void *pUserData);
 	static void ConAddSettingsProfileSetting(IConsole::IResult *pResult, void *pUserData);
+	static void ConApplySettingsProfile(IConsole::IResult *pResult, void *pUserData);
 	static void ConfigSaveCallback(IConfigManager *pConfigManager, void *pUserData);
 
 	static bool IsExcludedConfigVariable(const SConfigVariable *pVariable);

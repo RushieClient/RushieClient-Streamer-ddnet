@@ -69,8 +69,9 @@ void CRushieSettingsProfiles::OnConsoleInit()
 	if(pConfigManager)
 		pConfigManager->RegisterCallback(ConfigSaveCallback, this, ConfigDomain::RCLIENTSETTINGSPROFILES);
 
-	Console()->Register("add_settings_profile", "s[name]", CFGFLAG_CLIENT, ConAddSettingsProfile, this, "Add a settings profile");
-	Console()->Register("add_settings_profile_setting", "i[domain] s[commandline]", CFGFLAG_CLIENT, ConAddSettingsProfileSetting, this, "Add a settings command line to the most recently added settings profile");
+	Console()->Register("ri_add_settings_profile", "s[name]", CFGFLAG_CLIENT, ConAddSettingsProfile, this, "Add a settings profile");
+	Console()->Register("ri_add_settings_profile_setting", "i[domain] s[commandline]", CFGFLAG_CLIENT, ConAddSettingsProfileSetting, this, "Add a settings command line to the most recently added settings profile");
+	Console()->Register("ri_apply_settings_profile", "s[name]", CFGFLAG_CLIENT, ConApplySettingsProfile, this, "Apply a settings profile by name");
 }
 
 void CRushieSettingsProfiles::EscapeQuotedParam(char *pDst, const char *pSrc, int Size)
@@ -101,6 +102,22 @@ void CRushieSettingsProfiles::ConAddSettingsProfileSetting(IConsole::IResult *pR
 	CRushieSettingsProfiles *pSelf = static_cast<CRushieSettingsProfiles *>(pUserData);
 	const int Source = pResult->GetInteger(0);
 	pSelf->AddProfileSetting(Source, pResult->GetString(1));
+}
+
+void CRushieSettingsProfiles::ConApplySettingsProfile(IConsole::IResult *pResult, void *pUserData)
+{
+	CRushieSettingsProfiles *pSelf = static_cast<CRushieSettingsProfiles *>(pUserData);
+	const char *pName = pResult->GetString(0);
+	const int Index = pSelf->FindProfileByName(pName);
+	if(Index < 0)
+	{
+		char aBuf[256];
+		str_format(aBuf, sizeof(aBuf), "Settings profile not found: %s", pName);
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "settings_profiles", aBuf);
+		return;
+	}
+
+	pSelf->ApplyProfile(pSelf->m_vProfiles[Index]);
 }
 
 void CRushieSettingsProfiles::AddProfile(const char *pName)
@@ -426,13 +443,13 @@ void CRushieSettingsProfiles::ConfigSaveCallback(IConfigManager *pConfigManager,
 	for(const CRushieSettingsProfile &Profile : pThis->m_vProfiles)
 	{
 		EscapeQuotedParam(aEscaped, Profile.m_Name.c_str(), sizeof(aEscaped));
-		str_format(aLine, sizeof(aLine), "add_settings_profile \"%s\"", aEscaped);
+		str_format(aLine, sizeof(aLine), "ri_add_settings_profile \"%s\"", aEscaped);
 		pConfigManager->WriteLine(aLine, ConfigDomain::RCLIENTSETTINGSPROFILES);
 
 		for(const CRushieSettingsProfileEntry &Entry : Profile.m_vEntries)
 		{
 			EscapeQuotedParam(aEscaped, Entry.m_CommandLine.c_str(), sizeof(aEscaped));
-			str_format(aLine, sizeof(aLine), "add_settings_profile_setting %d \"%s\"", Entry.m_Source, aEscaped);
+			str_format(aLine, sizeof(aLine), "ri_add_settings_profile_setting %d \"%s\"", Entry.m_Source, aEscaped);
 			pConfigManager->WriteLine(aLine, ConfigDomain::RCLIENTSETTINGSPROFILES);
 		}
 	}
