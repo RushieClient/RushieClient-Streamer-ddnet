@@ -184,6 +184,13 @@ void CMenusRClientClickGui::SetActive(bool Active)
 	m_LastMousePos = OldMousePos;
 }
 
+void CMenusRClientClickGui::OpenVoiceMix(int Tab)
+{
+	m_CurrentTab = CLICKGUI_TAB_VOICE;
+	m_OpenSettingsSection = -1;
+	GameClient()->m_Menus.SetRushieVoiceMixTab(Tab);
+}
+
 void CMenusRClientClickGui::OnReset()
 {
 	m_Active = false;
@@ -435,7 +442,7 @@ void CMenusRClientClickGui::OnRender()
 	static CButtonContainer s_aTabButtons[NUM_CLICKGUI_TABS];
 	const char *apTabNames[NUM_CLICKGUI_TABS] = {
 		Localize("Settings"),
-		Localize("Voice"),
+		Localize("Voice mix"),
 		Localize("Info")};
 
 	for(int Tab = 0; Tab < NUM_CLICKGUI_TABS; ++Tab)
@@ -1030,10 +1037,16 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 
 void CMenusRClientClickGui::RenderClickGuiRushieVoice(CUIRect MainView, float ScreenPixelSize)
 {
-
+	const float DefaultVMargin = SClickGuiProperties::ms_DefaultVMargin * ScreenPixelSize;
+	MainView.HMargin(DefaultVMargin, &MainView);
+	MainView.VMargin(DefaultVMargin, &MainView);
+	GameClient()->m_Menus.RenderRushieVoiceMix(MainView);
 }
 
 void CMenusRClientClickGui::RenderClickGuiRushieInfo(CUIRect MainView, float ScreenPixelSize)
 {
-
+	const float DefaultVMargin = SClickGuiProperties::ms_DefaultVMargin * ScreenPixelSize;
+	MainView.HMargin(DefaultVMargin, &MainView);
+	MainView.VMargin(DefaultVMargin, &MainView);
+	GameClient()->m_Menus.RenderRushieInfoPanel(MainView);
 }

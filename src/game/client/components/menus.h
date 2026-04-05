@@ -132,6 +132,9 @@ public:
 	static int GetNumRushieSettingsSections();
 	static const SRushieSettingsSectionEntry &GetRushieSettingsSectionEntry(ERushieSettingsSection SectionId);
 	void RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection SectionId);
+	void RenderRushieVoiceMix(CUIRect MainView);
+	void RenderRushieInfoPanel(CUIRect MainView);
+	void SetRushieVoiceMixTab(int Tab);
 
 private:
 	CUi::SColorPickerPopupContext m_ColorPickerPopupContext;

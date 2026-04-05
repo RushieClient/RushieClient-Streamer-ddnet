@@ -608,6 +608,21 @@ void CMenus::RenderSettingsRushieVoiceVolumes(CUIRect MainView)
 	s_ScrollRegion.End();
 }
 
+void CMenus::RenderRushieVoiceMix(CUIRect MainView)
+{
+	RenderSettingsRushieVoiceVolumes(MainView);
+}
+
+void CMenus::RenderRushieInfoPanel(CUIRect MainView)
+{
+	RenderSettingsRushieInfo(MainView);
+}
+
+void CMenus::SetRushieVoiceMixTab(int Tab)
+{
+	s_CurRushieVoiceMixTab = std::clamp(Tab, 0, 1);
+}
+
 void CMenus::RenderSettingsRushieInfo(CUIRect MainView)
 {
 	CUIRect LeftView, RightView, Button, Label, LowerLeftView;
@@ -1856,8 +1871,13 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			static CButtonContainer s_OpenVoiceMixButton;
 			if(DoButton_Menu(&s_OpenVoiceMixButton, RCLocalize("Open changed voice mix"), 0, &Button))
 			{
-				s_CurRushieTab = RCLIENT_TAB_VOICE;
-				s_CurRushieVoiceMixTab = 1;
+				if(GameClient()->m_RClientClickGui.IsActive())
+					GameClient()->m_RClientClickGui.OpenVoiceMix(1);
+				else
+				{
+					s_CurRushieTab = RCLIENT_TAB_VOICE;
+					s_CurRushieVoiceMixTab = 1;
+				}
 			}
 			Column.HSplitTop(LineSize, nullptr, &Column);
 			DoVoiceSubHeader(RCLocalize("Chatbinds"));

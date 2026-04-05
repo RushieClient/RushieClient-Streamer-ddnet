@@ -44,6 +44,7 @@ public:
 	bool OnInput(const IInput::CEvent &Event) override;
 
 	void SetActive(bool Active);
+	void OpenVoiceMix(int Tab = 0);
 	bool IsActive() const { return m_Active; }
 	bool HasMouseCursor() const { return IsActive() && m_MouseUnlocked; }
 };
