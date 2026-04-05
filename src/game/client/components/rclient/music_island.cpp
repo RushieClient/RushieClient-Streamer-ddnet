@@ -798,7 +798,8 @@ bool CMusicIsland::OnInput(const IInput::CEvent &Event)
 bool CMusicIsland::CanUseMouseInteraction() const
 {
 	return GameClient()->m_Chat.HasMouseCursor() ||
-		GameClient()->m_Scoreboard.HasMouseCursor();
+		GameClient()->m_Scoreboard.HasMouseCursor() ||
+		GameClient()->m_RClientClickGui.HasMouseCursor();
 }
 
 vec2 CMusicIsland::MouseInteractionPos(vec2 ScreenTL, vec2 ScreenBR) const
@@ -807,6 +808,8 @@ vec2 CMusicIsland::MouseInteractionPos(vec2 ScreenTL, vec2 ScreenBR) const
 		return UiMouseToScreen(Ui()->Screen(), GameClient()->m_Chat.MouseCursorPos(), ScreenTL, ScreenBR);
 	if(GameClient()->m_Scoreboard.HasMouseCursor())
 		return UiMouseToScreen(Ui()->Screen(), GameClient()->m_Scoreboard.MouseCursorPos(), ScreenTL, ScreenBR);
+	if(GameClient()->m_RClientClickGui.HasMouseCursor())
+		return UiMouseToScreen(Ui()->Screen(), GameClient()->m_RClientClickGui.MouseCursorPos(), ScreenTL, ScreenBR);
 	return vec2(-1.0f, -1.0f);
 }
 

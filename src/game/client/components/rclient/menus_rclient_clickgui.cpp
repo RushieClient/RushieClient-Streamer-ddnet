@@ -236,8 +236,21 @@ bool CMenusRClientClickGui::OnInput(const IInput::CEvent &Event)
 		return false;
 
 	Ui()->OnInput(Event);
+	if(Event.m_Key == KEY_MOUSE_1 && (Event.m_Flags & (IInput::FLAG_PRESS | IInput::FLAG_RELEASE)) != 0 && GameClient()->m_MusicIsland.OnInput(Event))
+		return true;
 
 	return m_MouseUnlocked;
+}
+
+vec2 CMenusRClientClickGui::MouseCursorPos() const
+{
+	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
+	const CUIRect *pScreen = Ui()->Screen();
+	const vec2 UpdatedMousePos = Ui()->UpdatedMousePos();
+
+	return vec2(
+		pScreen->x + UpdatedMousePos.x * pScreen->w / WindowSize.x,
+		pScreen->y + UpdatedMousePos.y * pScreen->h / WindowSize.y);
 }
 
 bool CMenusRClientClickGui::HandleEscape()
@@ -426,9 +439,12 @@ void CMenusRClientClickGui::OnRender()
 	//Settings Profiles end
 
 	//Hud editor start
+	static CButtonContainer s_ExitButton;
+	const ColorRGBA ExitButtonColor = ColorRGBA(0.42f, 0.16f, 0.16f, 0.95f);
+	const ColorRGBA ExitButtonActiveColor = ColorRGBA(0.50f, 0.20f, 0.20f, 0.95f);
 	HudEditor.Margin(DefaultVMargin, &HudEditor);
-	HudEditor.Draw(SClickGuiProperties::Hex4E4E4EColor(), IGraphics::CORNER_ALL, DefaultRounding);
-	Ui()->DoLabel(&HudEditor, "EDIT HUD", 16.0f * PixelSize, TEXTALIGN_MC);
+	if(DoButton_MenuTab(Ui(), &s_ExitButton, "EXIT", 0, &HudEditor, IGraphics::CORNER_ALL, nullptr, &ExitButtonColor, &ExitButtonActiveColor, &ExitButtonActiveColor, DefaultRounding, 16.0f * PixelSize))
+		SetActive(false);
 	//Hud editor end
 	//LEFTSIDE end
 
