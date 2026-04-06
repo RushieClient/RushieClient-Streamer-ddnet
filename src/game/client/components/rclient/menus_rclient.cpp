@@ -890,6 +890,8 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 	{
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiChatShowCursor, RCLocalize("Show cursor when chat is open"), &g_Config.m_RiChatShowCursor, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiChatScrollbar, RCLocalize("Show chat scrollbar"), &g_Config.m_RiChatScrollbar, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
 	case SETTINGS_SECTION_SCOREBOARD_SORT:

@@ -151,6 +151,7 @@ MACRO_CONFIG_INT(RiChatAnimMs, ri_chat_anim_ms, 300, 100, 2000, CFGFLAG_CLIENT |
 
 // Chat Utils
 MACRO_CONFIG_INT(RiChatShowCursor, ri_chat_show_cursor, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show cursor while chat is open")
+MACRO_CONFIG_INT(RiChatScrollbar, ri_chat_scrollbar, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show a small scrollbar for chat while the chat cursor is active")
 
 // Chat Bubbles
 MACRO_CONFIG_INT(RiChatBubbles, ri_chat_bubbles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Chatbubbles above players")

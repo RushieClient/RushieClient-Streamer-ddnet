@@ -31,7 +31,7 @@ constexpr auto SAVES_FILE = "ddnet-saves.txt";
 
 enum
 {
-	MAX_LINES = 64,
+	MAX_LINES = 256,
 	MAX_LINE_LENGTH = 256
 };
 
@@ -40,6 +40,7 @@ class CChat : public CComponent
 	static constexpr float CHAT_HEIGHT_FULL = 200.0f;
 	static constexpr float CHAT_HEIGHT_MIN = 50.0f;
 	static constexpr float CHAT_FONTSIZE_WIDTH_RATIO = 2.5f;
+	static constexpr int CHAT_HISTORY_LINES_NO_SCROLLBAR = 64;
 
 	CLineInputBuffered<MAX_LINE_LENGTH> m_Input;
 	class CLine
@@ -85,6 +86,7 @@ class CChat : public CComponent
 
 	CLine m_aLines[MAX_LINES];
 	int m_CurrentLine;
+	int m_NumLines = 0;
 
 	//RClient chat utils
 	uint64_t m_NextLineSerial = 0;
@@ -170,6 +172,9 @@ class CChat : public CComponent
 
 	// RClient chat utls
 	bool m_LastCursorLeftPressed = false;
+	int m_MessageScrollOffset = 0;
+	bool m_ScrollbarDragging = false;
+	float m_ScrollbarDragOffset = 0.0f;
 	class CChatLinePopupContext : public SPopupMenuId
 	{
 	public:
@@ -247,6 +252,7 @@ public:
 
 	void EnsureCoherentFontSize() const;
 	void EnsureCoherentWidth() const;
+	int HistoryLineLimit() const { return g_Config.m_RiChatScrollbar ? MAX_LINES : CHAT_HISTORY_LINES_NO_SCROLLBAR; }
 	bool HasMouseCursor() const { return IsActive() && g_Config.m_RiChatShowCursor; }
 	vec2 MouseCursorPos() const;
 

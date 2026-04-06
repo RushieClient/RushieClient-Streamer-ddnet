@@ -135,6 +135,10 @@ void CChat::ClearLines()
 		Line.Reset(*this);
 	m_PrevScoreBoardShowed = false;
 	m_PrevShowChat = false;
+
+	//RClient chat utils
+	m_CurrentLine = 0;
+	m_NumLines = 0;
 }
 
 void CChat::OnWindowResize()
@@ -190,8 +194,12 @@ void CChat::Reset()
 		LastSoundPlayed = 0;
 
 	//Rclient Chat Utils
+	m_NumLines = 0;
 	m_NextLineSerial = 0;
 	m_LastCursorLeftPressed = false;
+	m_MessageScrollOffset = 0;
+	m_ScrollbarDragging = false;
+	m_ScrollbarDragOffset = 0.0f;
 }
 
 void CChat::OnRelease()
@@ -293,6 +301,23 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 {
 	if(m_Mode == MODE_NONE)
 		return false;
+
+	if((Event.m_Flags & IInput::FLAG_PRESS) != 0 &&
+		HasMouseCursor() &&
+		g_Config.m_RiChatScrollbar &&
+		!Ui()->IsPopupOpen(&m_LinePopupContext))
+	{
+		if(Event.m_Key == KEY_MOUSE_WHEEL_UP)
+		{
+			++m_MessageScrollOffset;
+			return true;
+		}
+		if(Event.m_Key == KEY_MOUSE_WHEEL_DOWN)
+		{
+			m_MessageScrollOffset = maximum(0, m_MessageScrollOffset - 1);
+			return true;
+		}
+	}
 
 	if(Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE)
 	{
@@ -586,6 +611,11 @@ void CChat::EnableMode(int Team)
 		m_CompletionChosen = -1;
 		m_CompletionUsed = false;
 		m_Input.Activate(EInputPriority::CHAT);
+
+		//RClient chat utils
+		m_MessageScrollOffset = 0;
+		m_ScrollbarDragging = false;
+		m_ScrollbarDragOffset = 0.0f;
 		if(g_Config.m_RiChatShowCursor)
 			SetUiMousePos(m_HasLastMousePos ? m_LastMousePos : Ui()->Screen()->Center());
 	}
@@ -603,6 +633,9 @@ void CChat::DisableMode()
 
 		//RClient utils
 		Ui()->ClosePopupMenu(&m_LinePopupContext);
+		m_ScrollbarDragging = false;
+		m_MessageScrollOffset = 0;
+		m_ScrollbarDragOffset = 0.0f;
 
 		m_Mode = MODE_NONE;
 		m_Input.Deactivate();
@@ -856,13 +889,15 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	if(ClientId == CLIENT_MSG)
 		CustomColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClMessageClientColor));
 
-	CLine &PreviousLine = m_aLines[m_CurrentLine];
+	m_NumLines = minimum(m_NumLines, HistoryLineLimit());
 
 	// Team Number:
 	// 0 = global; 1 = team; 2 = sending whisper; 3 = receiving whisper
 
 	// If it's a client message, m_aText will have ": " prepended so we have to work around it.
-	if(PreviousLine.m_Initialized &&
+	CLine &PreviousLine = m_aLines[m_CurrentLine];
+	if(m_NumLines > 0 &&
+		PreviousLine.m_Initialized &&
 		PreviousLine.m_TeamNumber == Team &&
 		PreviousLine.m_ClientId == ClientId &&
 		str_comp(PreviousLine.m_aText, pLine) == 0 &&
@@ -882,7 +917,12 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		return;
 	}
 
+	if(m_MessageScrollOffset > 0)
+		++m_MessageScrollOffset;
+
 	m_CurrentLine = (m_CurrentLine + 1) % MAX_LINES;
+	if(m_NumLines < HistoryLineLimit())
+		++m_NumLines;
 
 	CLine &CurrentLine = m_aLines[m_CurrentLine];
 	CurrentLine.Reset(*this);
@@ -1053,7 +1093,10 @@ void CChat::OnPrepareLines(float y)
 	float FontSize = this->FontSize();
 
 	const bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
-	const bool ShowLargeArea = m_Show || (m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) || g_Config.m_ClShowChat == 2;
+	const bool ShowLargeArea = m_Show ||
+		(m_Mode != MODE_NONE && g_Config.m_ClShowChat == 1) ||
+		g_Config.m_ClShowChat == 2 ||
+		(HasMouseCursor() && g_Config.m_RiChatScrollbar);
 	const bool ForceRecreate = IsScoreBoardOpen != m_PrevScoreBoardShowed || ShowLargeArea != m_PrevShowChat;
 	m_PrevScoreBoardShowed = IsScoreBoardOpen;
 	m_PrevShowChat = ShowLargeArea;
@@ -1077,8 +1120,13 @@ void CChat::OnPrepareLines(float y)
 	float Begin = x;
 	float TextBegin = Begin + RealMsgPaddingX / 2.0f;
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
+	m_NumLines = minimum(m_NumLines, HistoryLineLimit());
+	const int StoredLineCount = m_NumLines;
+	const int MaxLinesToPrepare = g_Config.m_RiChatScrollbar ?
+		minimum(StoredLineCount, maximum(CHAT_HISTORY_LINES_NO_SCROLLBAR, m_MessageScrollOffset + CHAT_HISTORY_LINES_NO_SCROLLBAR)) :
+		StoredLineCount;
 
-	for(int i = 0; i < MAX_LINES; i++)
+	for(int i = 0; i < MaxLinesToPrepare; i++)
 	{
 		CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
 		if(!Line.m_Initialized)
@@ -1511,14 +1559,18 @@ void CChat::OnRender()
 
 	//RClient chat utils
 	const bool InteractiveChat = HasMouseCursor();
+	const bool ScrollbarEnabled = InteractiveChat && g_Config.m_RiChatScrollbar;
 	const bool PopupOpen = Ui()->IsPopupOpen(&m_LinePopupContext);
 	const vec2 MousePos = InteractiveChat ? UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height) : vec2(-1.0f, -1.0f);
 	const bool MousePressed = InteractiveChat && Input()->KeyIsPressed(KEY_MOUSE_1);
+	const bool MousePressedStarted = MousePressed && !m_LastCursorLeftPressed;
 	const bool MouseReleased = !MousePressed && m_LastCursorLeftPressed;
 
 	int64_t Now = time();
 	float HeightLimit = IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f);
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
+	const float ChatBottom = y;
+	const float ChatWidth = IsScoreBoardOpen ? maximum(85.0f, (FontSize() * 85.0f / 6.0f)) : g_Config.m_ClChatWidth;
 
 	float RealMsgPaddingX = MessagePaddingX();
 	float RealMsgPaddingY = MessagePaddingY();
@@ -1529,13 +1581,140 @@ void CChat::OnRender()
 		RealMsgPaddingY = 0;
 	}
 
-	for(int i = 0; i < MAX_LINES; i++)
+	m_NumLines = minimum(m_NumLines, HistoryLineLimit());
+	const int StoredLineCount = m_NumLines;
+
+	if(!ScrollbarEnabled)
 	{
-		CLine &Line = m_aLines[((m_CurrentLine - i) + MAX_LINES) % MAX_LINES];
+		m_MessageScrollOffset = 0;
+		m_ScrollbarDragging = false;
+		m_ScrollbarDragOffset = 0.0f;
+	}
+
+	struct CRenderableLine
+	{
+		int m_LineIndex;
+		float m_Height;
+	};
+	CRenderableLine aRenderableLines[MAX_LINES];
+	int RenderableLineCount = 0;
+	for(int i = 0; i < StoredLineCount; i++)
+	{
+		const int LineIndex = ((m_CurrentLine - i) + MAX_LINES) % MAX_LINES;
+		CLine &Line = m_aLines[LineIndex];
 		if(!Line.m_Initialized)
 			break;
 		if(Now > Line.m_Time + 16 * time_freq() && !m_PrevShowChat)
 			break;
+
+		aRenderableLines[RenderableLineCount++] = {LineIndex, Line.m_aYOffset[OffsetType]};
+	}
+
+	int MaxScrollOffset = 0;
+	if(RenderableLineCount > 0)
+	{
+		const float ViewHeight = maximum(0.0f, ChatBottom - HeightLimit);
+		float RemainingHeight = 0.0f;
+		for(int i = 0; i < RenderableLineCount; ++i)
+			RemainingHeight += aRenderableLines[i].m_Height;
+
+		while(MaxScrollOffset < RenderableLineCount && RemainingHeight > ViewHeight)
+		{
+			RemainingHeight -= aRenderableLines[MaxScrollOffset].m_Height;
+			++MaxScrollOffset;
+		}
+
+		MaxScrollOffset = minimum(MaxScrollOffset, RenderableLineCount - 1);
+	}
+	m_MessageScrollOffset = std::clamp(m_MessageScrollOffset, 0, MaxScrollOffset);
+
+	auto VisibleLineCount = [&](int ScrollOffset) {
+		float TestY = ChatBottom;
+		int Count = 0;
+		for(int i = ScrollOffset; i < RenderableLineCount; ++i)
+		{
+			TestY -= aRenderableLines[i].m_Height;
+			if(TestY < HeightLimit)
+				break;
+			++Count;
+		}
+		return Count;
+	};
+
+	const bool CanScroll = MaxScrollOffset > 0;
+	const bool ShowScrollbar = ScrollbarEnabled && CanScroll;
+	CUIRect ScrollbarRail{};
+	CUIRect ScrollbarHandle{};
+	bool MouseInScrollbarHandle = false;
+	if(ShowScrollbar)
+	{
+		const float ScrollbarWidth = maximum(4.0f, FontSize() * 0.4f);
+		const float ScrollbarGap = maximum(2.0f, FontSize() * 0.25f);
+		const float ScrollbarHeight = maximum(0.0f, ChatBottom - HeightLimit);
+		if(ScrollbarHeight > 0.0f)
+		{
+			ScrollbarRail = {x + ChatWidth + ScrollbarGap, HeightLimit, ScrollbarWidth, ScrollbarHeight};
+
+			auto UpdateScrollbarHandle = [&]() {
+				const int CurrentVisibleLines = maximum(1, VisibleLineCount(m_MessageScrollOffset));
+				ScrollbarHandle = ScrollbarRail;
+				const float HandleHeight = CanScroll ?
+					std::clamp(ScrollbarRail.h * CurrentVisibleLines / (float)RenderableLineCount, ScrollbarRail.w, ScrollbarRail.h) :
+					ScrollbarRail.h;
+				ScrollbarHandle.h = HandleHeight;
+				const float ScrollCurrent = CanScroll ? (1.0f - m_MessageScrollOffset / (float)MaxScrollOffset) : 1.0f;
+				ScrollbarHandle.y = ScrollbarRail.y + (ScrollbarRail.h - ScrollbarHandle.h) * ScrollCurrent;
+			};
+
+			UpdateScrollbarHandle();
+			const bool MouseInScrollbarRail = ScrollbarRail.Inside(MousePos);
+			MouseInScrollbarHandle = ScrollbarHandle.Inside(MousePos);
+
+			if(CanScroll && MousePressedStarted)
+			{
+				if(MouseInScrollbarHandle)
+				{
+					m_ScrollbarDragging = true;
+					m_ScrollbarDragOffset = MousePos.y - ScrollbarHandle.y;
+				}
+				else if(MouseInScrollbarRail)
+				{
+					m_ScrollbarDragging = true;
+					m_ScrollbarDragOffset = ScrollbarHandle.h / 2.0f;
+				}
+
+				if(m_ScrollbarDragging)
+					Ui()->ClosePopupMenu(&m_LinePopupContext);
+			}
+
+			if(MouseReleased || !CanScroll)
+				m_ScrollbarDragging = false;
+
+			if(m_ScrollbarDragging)
+			{
+				const float ScrollRange = maximum(1.0f, ScrollbarRail.h - ScrollbarHandle.h);
+				const float ScrollPos = std::clamp((MousePos.y - m_ScrollbarDragOffset) - ScrollbarRail.y, 0.0f, ScrollRange);
+				const float ScrollRelative = ScrollPos / ScrollRange;
+				const int NewScrollOffset = round_to_int((1.0f - ScrollRelative) * MaxScrollOffset);
+				if(NewScrollOffset != m_MessageScrollOffset)
+				{
+					m_MessageScrollOffset = NewScrollOffset;
+					Ui()->ClosePopupMenu(&m_LinePopupContext);
+				}
+
+				UpdateScrollbarHandle();
+				MouseInScrollbarHandle = ScrollbarHandle.Inside(MousePos);
+			}
+		}
+	}
+	else
+	{
+		m_ScrollbarDragging = false;
+	}
+
+	for(int i = m_MessageScrollOffset; i < RenderableLineCount; i++)
+	{
+		CLine &Line = m_aLines[aRenderableLines[i].m_LineIndex];
 
 		y -= Line.m_aYOffset[OffsetType];
 
@@ -1578,7 +1757,7 @@ void CChat::OnRender()
 				const float PopupHeight = CChatLinePopupContext::POPUP_OUTER_MARGIN + CChatLinePopupContext::POPUP_INNER_MARGIN * 2.0f +
 					CChatLinePopupContext::FONT_SIZE + ButtonCount * (CChatLinePopupContext::BUTTON_SIZE + CChatLinePopupContext::ITEM_SPACING * 2.0f);
 				m_LinePopupContext.m_pChat = this;
-				m_LinePopupContext.m_LineIndex = ((m_CurrentLine - i) + MAX_LINES) % MAX_LINES;
+				m_LinePopupContext.m_LineIndex = aRenderableLines[i].m_LineIndex;
 				m_LinePopupContext.m_LineSerial = Line.m_Serial;
 				Ui()->ClosePopupMenu(&m_LinePopupContext);
 				Ui()->DoPopupMenu(&m_LinePopupContext, PopupPos.x, PopupPos.y, CChatLinePopupContext::POPUP_WIDTH, PopupHeight, &m_LinePopupContext, CChatLinePopupContext::Render);
@@ -1631,6 +1810,15 @@ void CChat::OnRender()
 	}
 
 	//RClient chat utils
+	if(ShowScrollbar && ScrollbarRail.h > 0.0f)
+	{
+		ScrollbarRail.Draw(ColorRGBA(1.0f, 1.0f, 1.0f, 0.18f), IGraphics::CORNER_ALL, ScrollbarRail.w / 2.0f);
+		const bool HighlightHandle = m_ScrollbarDragging || MouseInScrollbarHandle;
+		const ColorRGBA HandleColor = HighlightHandle ? ColorRGBA(0.95f, 0.95f, 0.95f, 0.82f) : ColorRGBA(0.86f, 0.86f, 0.86f, 0.58f);
+		ScrollbarHandle.Draw(HandleColor, IGraphics::CORNER_ALL, ScrollbarHandle.w / 2.0f);
+	}
+
+	//RClient chat utils
 	if(InteractiveChat)
 	{
 		Ui()->MapScreen();
@@ -1664,10 +1852,8 @@ void CChat::EnsureCoherentWidth() const
 	g_Config.m_ClChatWidth = CHAT_FONTSIZE_WIDTH_RATIO * g_Config.m_ClChatFontSize;
 }
 
-// Функция для транслитерации русских команд в английские по раскладке клавиатуры
 const char *TransliterateCommand(const char *pCommand)
 {
-	// Таблица соответствия русских букв английским по раскладке клавиатуры
 	static const struct
 	{
 		const char *pRu;
