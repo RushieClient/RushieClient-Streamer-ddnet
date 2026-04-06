@@ -570,7 +570,8 @@ void CChat::EnableMode(int Team)
 		m_CompletionChosen = -1;
 		m_CompletionUsed = false;
 		m_Input.Activate(EInputPriority::CHAT);
-		SetUiMousePos(m_HasLastMousePos ? m_LastMousePos : Ui()->Screen()->Center());
+		if(g_Config.m_RiChatShowCursor)
+			SetUiMousePos(m_HasLastMousePos ? m_LastMousePos : Ui()->Screen()->Center());
 	}
 }
 
@@ -578,8 +579,12 @@ void CChat::DisableMode()
 {
 	if(m_Mode != MODE_NONE)
 	{
-		m_LastMousePos = MouseCursorPos();
-		m_HasLastMousePos = true;
+		if(g_Config.m_RiChatShowCursor)
+		{
+			m_LastMousePos = MouseCursorPos();
+			m_HasLastMousePos = true;
+		}
+
 		m_Mode = MODE_NONE;
 		m_Input.Deactivate();
 	}
@@ -587,7 +592,7 @@ void CChat::DisableMode()
 
 bool CChat::OnCursorMove(float x, float y, IInput::ECursorType CursorType)
 {
-	if(!IsActive())
+	if(!IsActive() || !g_Config.m_RiChatShowCursor)
 		return false;
 
 	Ui()->ConvertMouseMove(&x, &y, CursorType);

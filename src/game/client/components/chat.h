@@ -216,7 +216,7 @@ public:
 
 	void EnsureCoherentFontSize() const;
 	void EnsureCoherentWidth() const;
-	bool HasMouseCursor() const { return IsActive(); }
+	bool HasMouseCursor() const { return IsActive() && g_Config.m_RiChatShowCursor; }
 	vec2 MouseCursorPos() const;
 
 	float FontSize() const { return g_Config.m_ClChatFontSize / 10.0f; }
