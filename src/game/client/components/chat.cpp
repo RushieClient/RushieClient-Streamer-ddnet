@@ -1452,7 +1452,7 @@ void CChat::OnRender()
 	if(!g_Config.m_ClShowChat)
 	#endif
 	{
-		if(m_Mode != MODE_NONE)
+		if(m_Mode != MODE_NONE && g_Config.m_RiChatShowCursor)
 			RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
 		return;
 	}
@@ -1547,7 +1547,7 @@ void CChat::OnRender()
 		}
 	}
 
-	if(m_Mode != MODE_NONE)
+	if(m_Mode != MODE_NONE && g_Config.m_RiChatShowCursor)
 		RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
 }
 

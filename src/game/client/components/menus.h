@@ -69,6 +69,7 @@ public:
 	X(CHAT_FUNCTIONS, "Chat Functions", "", FontIcon::COMMENT, nullptr, 0, 0, 0) \
 	X(CHAT_FILTER, "Chat Filter", "", FontIcon::BAN, &g_Config.m_RiEnableCensorList, 0, 1, 0) \
 	X(CHAT_ANIMATE, "Chat Animate", "", FontIcon::COMMENT, &g_Config.m_RiChatAnim, 0, 1, 0) \
+	X(CHAT_UTILS, "Chat Utils", "", FontIcon::COMMENT, &g_Config.m_RiChatShowCursor, 0, 1, 0) \
 	X(SCOREBOARD_SORT, "Scoreboard Sort", "", FontIcon::LIST_UL, nullptr, 0, 0, 0) \
 	X(SCOREBOARD_HEART, "Scoreboard Heart", "", FontIcon::HEART, &g_Config.m_RiScoreboardFriendMark, 0, 1, 0) \
 	X(SCOREBOARD_ACTIONS, "Scoreboard Actions", "", FontIcon::LIST_UL, &g_Config.m_RiScoreboardAlwaysShowQuickActions, 0, 1, 0) \

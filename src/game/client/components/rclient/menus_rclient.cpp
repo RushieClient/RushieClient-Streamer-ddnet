@@ -886,6 +886,12 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
+	case SETTINGS_SECTION_CHAT_UTILS:
+	{
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiChatShowCursor, RCLocalize("Show cursor when chat is open"), &g_Config.m_RiChatShowCursor, &Column, LineSize);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		break;
+	}
 	case SETTINGS_SECTION_SCOREBOARD_SORT:
 	{
 		static std::vector<CButtonContainer> s_vScoreboardSortButtonContainers = {{}, {}, {}};

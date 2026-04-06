@@ -149,6 +149,9 @@ MACRO_CONFIG_INT(RiFastInputVersion, ri_fast_input_version, 1, 0, 1, CFGFLAG_CLI
 MACRO_CONFIG_INT(RiChatAnim, ri_chat_anim, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Toggle for chat animation")
 MACRO_CONFIG_INT(RiChatAnimMs, ri_chat_anim_ms, 300, 100, 2000, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Chat animation long")
 
+// Chat Utils
+MACRO_CONFIG_INT(RiChatShowCursor, ri_chat_show_cursor, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show cursor while chat is open")
+
 // Chat Bubbles
 MACRO_CONFIG_INT(RiChatBubbles, ri_chat_bubbles, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Chatbubbles above players")
 MACRO_CONFIG_INT(RiChatBubblesSelf, ri_chat_bubbles_self, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Chatbubbles above you")
