@@ -32,6 +32,31 @@ enum
 	NUM_CLICKGUI_TABS
 };
 
+enum
+{
+	RCLIENT_SETTINGS_TAB_SETTINGS = 0,
+	RCLIENT_SETTINGS_TAB_VOICE = 4
+};
+
+static int ClickGuiTabToSettingsMaskBit(int Tab)
+{
+	switch(Tab)
+	{
+	case CLICKGUI_TAB_SETTINGS:
+		return RCLIENT_SETTINGS_TAB_SETTINGS;
+	case CLICKGUI_TAB_VOICE:
+		return RCLIENT_SETTINGS_TAB_VOICE;
+	default:
+		return -1;
+	}
+}
+
+static bool IsClickGuiTabHidden(int Tab)
+{
+	const int SettingsMaskBit = ClickGuiTabToSettingsMaskBit(Tab);
+	return SettingsMaskBit >= 0 && (g_Config.m_RiRClientSettingsTabs & (1 << SettingsMaskBit)) != 0;
+}
+
 static bool gs_EditProfilesOpen = false;
 
 struct SClickGuiProperties
@@ -328,8 +353,6 @@ void CMenusRClientClickGui::OnRender()
 	const float HudEditorHeightGapProfiles = SClickGuiProperties::ms_HudEditorHeightGapProfiles * PixelSize;
 	const float ButtonSpace = SClickGuiProperties::ms_ButtonSpace * PixelSize;
 	const float SmallButtonSpace = SClickGuiProperties::ms_SmallButtonSpace * PixelSize;
-	const float SettingsTabsWidth = SClickGuiProperties::ms_SettingsTabsWidth * PixelSize;
-
 	CUIRect Window = {
 		Screen.x + (ScreenWidth - WindowWidth) * 0.5f,
 		Screen.y + (ScreenHeight - WindowHeight) * 0.5f,
@@ -453,7 +476,6 @@ void CMenusRClientClickGui::OnRender()
 	CUIRect SettingsTabs;
 	Body.VMargin(DefaultVMargin, &Body);
 	Body.HSplitTop(TeeSkinSize, &SettingsTabs, &Body);
-	const float SettingsTabsAutoGaps = (SettingsTabs.w - SettingsTabsWidth * NUM_CLICKGUI_TABS) / (NUM_CLICKGUI_TABS - 1);
 	const ColorRGBA SettingsTabActiveColor = SClickGuiProperties::Hex2A2A2AColor();
 	const ColorRGBA SettingsTabColor = ColorRGBA(SettingsTabActiveColor.r, SettingsTabActiveColor.g, SettingsTabActiveColor.b, 0.75f);
 	const float SettingsTabsFontScale = 14.0f * PixelSize;
@@ -464,15 +486,45 @@ void CMenusRClientClickGui::OnRender()
 		Localize("Voice mix"),
 		Localize("Info")};
 
+	if(IsClickGuiTabHidden(m_CurrentTab))
+	{
+		for(int Tab = 0; Tab < NUM_CLICKGUI_TABS; ++Tab)
+		{
+			if(!IsClickGuiTabHidden(Tab))
+			{
+				m_CurrentTab = Tab;
+				break;
+			}
+		}
+	}
+
+	int VisibleTabCount = 0;
 	for(int Tab = 0; Tab < NUM_CLICKGUI_TABS; ++Tab)
 	{
-		CUIRect Button;
-		SettingsTabs.VSplitLeft(SettingsTabsWidth, &Button, &SettingsTabs);
-		if(DoButton_MenuTab(Ui(), &s_aTabButtons[Tab], apTabNames[Tab], m_CurrentTab == Tab, &Button, IGraphics::CORNER_ALL, nullptr, &SettingsTabColor, &SettingsTabActiveColor, &SettingsTabActiveColor, DefaultRounding, SettingsTabsFontScale))
-			m_CurrentTab = Tab;
+		if(!IsClickGuiTabHidden(Tab))
+			VisibleTabCount++;
+	}
 
-		if(Tab != NUM_CLICKGUI_TABS - 1)
-			SettingsTabs.VSplitLeft(SettingsTabsAutoGaps, nullptr, &SettingsTabs);
+	if(VisibleTabCount > 0)
+	{
+		const float TabGap = VisibleTabCount > 1 ? ButtonSpace : 0.0f;
+		const float TotalTabGaps = TabGap * (VisibleTabCount - 1);
+		const float TabWidth = (SettingsTabs.w - TotalTabGaps) / VisibleTabCount;
+		int VisibleTabIndex = 0;
+		for(int Tab = 0; Tab < NUM_CLICKGUI_TABS; ++Tab)
+		{
+			if(IsClickGuiTabHidden(Tab))
+				continue;
+
+			CUIRect Button;
+			SettingsTabs.VSplitLeft(TabWidth, &Button, &SettingsTabs);
+			if(DoButton_MenuTab(Ui(), &s_aTabButtons[Tab], apTabNames[Tab], m_CurrentTab == Tab, &Button, IGraphics::CORNER_ALL, nullptr, &SettingsTabColor, &SettingsTabActiveColor, &SettingsTabActiveColor, DefaultRounding, SettingsTabsFontScale))
+				m_CurrentTab = Tab;
+
+			VisibleTabIndex++;
+			if(VisibleTabIndex < VisibleTabCount)
+				SettingsTabs.VSplitLeft(TabGap, nullptr, &SettingsTabs);
+		}
 	}
 	//Tabs end
 
