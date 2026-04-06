@@ -1953,6 +1953,22 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 
 void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 {
+	CUIRect SearchRect;
+	MainView.HSplitTop(25.0f, &SearchRect, &MainView);
+	SearchRect.HSplitTop(MarginSmall, nullptr, &SearchRect);
+	static CLineInputBuffered<64> s_SettingsSearchInput;
+	s_SettingsSearchInput.SetEmptyText(RCLocalize("Search"));
+	if(!Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive() && Input()->ModifierIsPressed() && Input()->KeyPress(KEY_F))
+	{
+		Ui()->SetActiveItem(&s_SettingsSearchInput);
+		s_SettingsSearchInput.SelectAll();
+	}
+	Ui()->DoEditBox_Search(&s_SettingsSearchInput, &SearchRect, 14.0f, !Ui()->IsPopupOpen() && !GameClient()->m_GameConsole.IsActive());
+	MainView.HSplitTop(MarginSmall, nullptr, &MainView);
+
+	const char *pSearch = s_SettingsSearchInput.GetString();
+	const bool HasSearch = pSearch[0] != '\0';
+
 	static CScrollRegion s_ScrollRegion;
 	vec2 ScrollOffset(0.0f, 0.0f);
 	CScrollRegionParams ScrollParams;
@@ -2019,23 +2035,28 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 		Props.m_EnableWidthCheck = false;
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
 		TextRender()->SetRenderFlags(ETextRenderFlags::TEXT_RENDER_FLAG_ONLY_ADVANCE_WIDTH | ETextRenderFlags::TEXT_RENDER_FLAG_NO_X_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_Y_BEARING | ETextRenderFlags::TEXT_RENDER_FLAG_NO_OVERSIZE);
-		Ui()->DoLabel(&ExpandButton, s_aSectionExpanded[Entry.m_Section] ? FontIcon::CHEVRON_UP : FontIcon::CHEVRON_DOWN, HeadlineFontSize, TEXTALIGN_MR, Props);
+		const bool SectionExpanded = HasSearch || s_aSectionExpanded[Entry.m_Section];
+		Ui()->DoLabel(&ExpandButton, SectionExpanded ? FontIcon::CHEVRON_UP : FontIcon::CHEVRON_DOWN, HeadlineFontSize, TEXTALIGN_MR, Props);
 		TextRender()->SetRenderFlags(0);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 
 		Ui()->DoLabel(&Header, RCLocalize(Entry.m_pTitle, Entry.m_pTitleContext), HeadlineFontSize, TEXTALIGN_ML);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		return s_aSectionExpanded[Entry.m_Section];
+		return SectionExpanded;
 	};
 
 	CUIRect aColumns[2] = {LeftView, RightView};
 	bool aColumnHasSections[2] = {false, false};
 	const SRushieSettingsSectionEntry *pEntries = GetRushieSettingsSectionEntries();
 	const int NumEntries = GetNumRushieSettingsSections();
+	int VisibleSections = 0;
 	for(int i = 0; i < NumEntries; ++i)
 	{
 		const SRushieSettingsSectionEntry &Entry = pEntries[i];
 		dbg_assert(Entry.m_Column >= 0 && Entry.m_Column < 2, "invalid rushie settings column");
+		const char *pLocalizedTitle = RCLocalize(Entry.m_pTitle, Entry.m_pTitleContext);
+		if(HasSearch && !str_utf8_find_nocase(pLocalizedTitle, pSearch) && !str_utf8_find_nocase(Entry.m_pTitle, pSearch))
+			continue;
 
 		CUIRect &Column = aColumns[Entry.m_Column];
 		const float TopMargin = aColumnHasSections[Entry.m_Column] ? MarginBetweenSections : Margin;
@@ -2043,10 +2064,18 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 			RenderRushieSettingsSection(Column, Entry.m_Section);
 		EndSection(Column);
 		aColumnHasSections[Entry.m_Column] = true;
+		VisibleSections++;
 	}
 
 	LeftView = aColumns[0];
 	RightView = aColumns[1];
+
+	if(VisibleSections == 0)
+	{
+		CUIRect EmptyLabel;
+		MainView.HSplitTop(LineSize, &EmptyLabel, &MainView);
+		Ui()->DoLabel(&EmptyLabel, RCLocalize("No matching settings"), FontSize, TEXTALIGN_ML);
+	}
 
 	CUIRect ScrollRegion;
 	ScrollRegion.x = MainView.x;
