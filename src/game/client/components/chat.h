@@ -15,6 +15,7 @@
 #include <game/client/component.h>
 #include <game/client/lineinput.h>
 #include <game/client/render.h>
+#include <game/client/ui.h>
 
 #include <vector>
 
@@ -72,7 +73,10 @@ class CChat : public CComponent
 
 		std::shared_ptr<CTranslateResponse> m_pTranslateResponse;
 
-		// Animation: время появления строки для анимации выезда
+		//RClient chat utils
+		float m_BackgroundWidth;
+		time_t m_UnixTimestamp;
+		uint64_t m_Serial;
 		int64_t m_AppearTime;
 	};
 
@@ -81,6 +85,9 @@ class CChat : public CComponent
 
 	CLine m_aLines[MAX_LINES];
 	int m_CurrentLine;
+
+	//RClient chat utils
+	uint64_t m_NextLineSerial = 0;
 
 	enum
 	{
@@ -160,6 +167,30 @@ class CChat : public CComponent
 	bool m_HasLastMousePos = false;
 
 	bool m_ServerSupportsCommandInfo;
+
+	// RClient chat utls
+	bool m_LastCursorLeftPressed = false;
+	class CChatLinePopupContext : public SPopupMenuId
+	{
+	public:
+		static constexpr float POPUP_WIDTH = 110.0f;
+		static constexpr float POPUP_OUTER_MARGIN = 10.0f;
+		static constexpr float POPUP_INNER_MARGIN = 5.0f;
+		static constexpr float ITEM_SPACING = 2.0f;
+		static constexpr float BUTTON_SIZE = 17.5f;
+		static constexpr float FONT_SIZE = 12.0f;
+
+		CChat *m_pChat = nullptr;
+		CButtonContainer m_CopyButton;
+		CButtonContainer m_CopyMsgButton;
+		CButtonContainer m_ReplyButton;
+		CButtonContainer m_WhisperButton;
+		CButtonContainer m_CopyFullButton;
+		int m_LineIndex = -1;
+		uint64_t m_LineSerial = 0;
+
+		static CUi::EPopupMenuFunctionResult Render(void *pContext, CUIRect View, bool Active);
+	} m_LinePopupContext;
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);

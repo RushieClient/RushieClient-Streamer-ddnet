@@ -55,6 +55,11 @@ void CChat::CLine::Reset(CChat &This)
 	m_TimesRepeated = 0;
 	m_pManagedTeeRenderInfo = nullptr;
 	m_pTranslateResponse = nullptr;
+
+	//RClient chat utils
+	m_BackgroundWidth = 0.0f;
+	m_UnixTimestamp = 0;
+	m_Serial = 0;
 }
 
 CChat::CChat()
@@ -183,6 +188,10 @@ void CChat::Reset()
 
 	for(int64_t &LastSoundPlayed : m_aLastSoundPlayed)
 		LastSoundPlayed = 0;
+
+	//Rclient Chat Utils
+	m_NextLineSerial = 0;
+	m_LastCursorLeftPressed = false;
 }
 
 void CChat::OnRelease()
@@ -287,6 +296,13 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 
 	if(Event.m_Flags & IInput::FLAG_PRESS && Event.m_Key == KEY_ESCAPE)
 	{
+		//RClient chat utils
+		if(Ui()->IsPopupOpen(&m_LinePopupContext))
+		{
+			Ui()->ClosePopupMenu(&m_LinePopupContext);
+			return true;
+		}
+
 		DisableMode();
 		GameClient()->OnRelease();
 		if(g_Config.m_ClChatReset)
@@ -585,6 +601,9 @@ void CChat::DisableMode()
 			m_HasLastMousePos = true;
 		}
 
+		//RClient utils
+		Ui()->ClosePopupMenu(&m_LinePopupContext);
+
 		m_Mode = MODE_NONE;
 		m_Input.Deactivate();
 	}
@@ -856,6 +875,9 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 		PreviousLine.m_aYOffset[0] = -1.0f;
 		PreviousLine.m_aYOffset[1] = -1.0f;
 
+		//RClient chat utils
+		PreviousLine.m_UnixTimestamp = time_timestamp();
+
 		FChatMsgCheckAndPrint(PreviousLine);
 		return;
 	}
@@ -874,8 +896,11 @@ void CChat::AddLine(int ClientId, int Team, const char *pLine)
 	CurrentLine.m_Whisper = Team >= 2;
 	CurrentLine.m_NameColor = -2;
 	CurrentLine.m_CustomColor = CustomColor;
-	// Анимация: сохраняем время появления
+
+	//RClient chat utils
 	CurrentLine.m_AppearTime = time();
+	CurrentLine.m_UnixTimestamp = time_timestamp();
+	CurrentLine.m_Serial = ++m_NextLineSerial;
 
 	// check for highlighted name
 	if(Client()->State() != IClient::STATE_DEMOPLAYBACK)
@@ -1339,8 +1364,17 @@ void CChat::OnPrepareLines(float y)
 			{
 				FullWidth += maximum(LineCursor.m_LongestLineWidth, AppendCursor.m_LongestLineWidth);
 			}
+
+			//RClient chat utils
+			Line.m_BackgroundWidth = FullWidth;
+
 			Graphics()->SetColor(1, 1, 1, 1);
 			Line.m_QuadContainerIndex = Graphics()->CreateRectQuadContainer(Begin, y, FullWidth, Line.m_aYOffset[OffsetType], MessageRounding(), IGraphics::CORNER_ALL);
+		}
+		else
+		{
+			//RClient chat utils
+			Line.m_BackgroundWidth = 0.0f;
 		}
 
 		TextRender()->SetRenderFlags(CurRenderFlags);
@@ -1355,6 +1389,13 @@ void CChat::OnRender()
 {
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
+
+	//RClient chat utils
+	if(HasMouseCursor())
+	{
+		Ui()->StartCheck();
+		Ui()->Update();
+	}
 
 	// send pending chat messages
 	if(m_PendingChatCounter > 0 && m_LastChatSend + time_freq() < time())
@@ -1468,6 +1509,13 @@ void CChat::OnRender()
 
 	bool IsScoreBoardOpen = GameClient()->m_Scoreboard.IsActive() && (Graphics()->ScreenAspect() > 1.7f); // only assume scoreboard when screen ratio is widescreen(something around 16:9)
 
+	//RClient chat utils
+	const bool InteractiveChat = HasMouseCursor();
+	const bool PopupOpen = Ui()->IsPopupOpen(&m_LinePopupContext);
+	const vec2 MousePos = InteractiveChat ? UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height) : vec2(-1.0f, -1.0f);
+	const bool MousePressed = InteractiveChat && Input()->KeyIsPressed(KEY_MOUSE_1);
+	const bool MouseReleased = !MousePressed && m_LastCursorLeftPressed;
+
 	int64_t Now = time();
 	float HeightLimit = IsScoreBoardOpen ? 180.0f : (m_PrevShowChat ? 50.0f : 200.0f);
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
@@ -1516,13 +1564,43 @@ void CChat::OnRender()
 
 		Blend *= AppearAlpha;
 
+		//RClient chat utils
+		CUIRect LineRect{5.0f, y, Line.m_BackgroundWidth, Line.m_aYOffset[OffsetType]};
+		bool Hovered = false;
+		if(InteractiveChat && !PopupOpen && Line.m_BackgroundWidth > 0.0f)
+		{
+			Hovered = LineRect.Inside(MousePos);
+			if(Hovered && MouseReleased)
+			{
+				const bool HasPlayer = Line.m_ClientId >= 0 && GameClient()->m_aClients[Line.m_ClientId].m_Active;
+				const vec2 PopupPos = MouseCursorPos();
+				const int ButtonCount = HasPlayer ? 5 : 3;
+				const float PopupHeight = CChatLinePopupContext::POPUP_OUTER_MARGIN + CChatLinePopupContext::POPUP_INNER_MARGIN * 2.0f +
+					CChatLinePopupContext::FONT_SIZE + ButtonCount * (CChatLinePopupContext::BUTTON_SIZE + CChatLinePopupContext::ITEM_SPACING * 2.0f);
+				m_LinePopupContext.m_pChat = this;
+				m_LinePopupContext.m_LineIndex = ((m_CurrentLine - i) + MAX_LINES) % MAX_LINES;
+				m_LinePopupContext.m_LineSerial = Line.m_Serial;
+				Ui()->ClosePopupMenu(&m_LinePopupContext);
+				Ui()->DoPopupMenu(&m_LinePopupContext, PopupPos.x, PopupPos.y, CChatLinePopupContext::POPUP_WIDTH, PopupHeight, &m_LinePopupContext, CChatLinePopupContext::Render);
+			}
+		}
+
 		// Draw backgrounds for messages in one batch
 		if(!g_Config.m_ClChatOld)
 		{
 			Graphics()->TextureClear();
 			if(Line.m_QuadContainerIndex != -1)
 			{
-				Graphics()->SetColor(color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend));
+				//RClient chat utils
+				ColorRGBA BackgroundColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClChatBackgroundColor, true)).WithMultipliedAlpha(Blend);
+				if(Hovered || (PopupOpen && m_LinePopupContext.m_LineSerial == Line.m_Serial))
+				{
+					BackgroundColor.r = minimum(1.0f, BackgroundColor.r + 0.12f);
+					BackgroundColor.g = minimum(1.0f, BackgroundColor.g + 0.12f);
+					BackgroundColor.b = minimum(1.0f, BackgroundColor.b + 0.12f);
+					BackgroundColor.a = minimum(1.0f, BackgroundColor.a + 0.18f);
+				}
+				Graphics()->SetColor(BackgroundColor);
 				Graphics()->RenderQuadContainerEx(Line.m_QuadContainerIndex, 0, -1, 0, ((y + RealMsgPaddingY / 2.0f + SlideOffset) - Line.m_TextYOffset));
 			}
 		}
@@ -1551,6 +1629,16 @@ void CChat::OnRender()
 			TextRender()->RenderTextContainer(Line.m_TextContainerIndex, TextColor, TextOutlineColor, 0, (y + RealMsgPaddingY / 2.0f + SlideOffset) - Line.m_TextYOffset);
 		}
 	}
+
+	//RClient chat utils
+	if(InteractiveChat)
+	{
+		Ui()->MapScreen();
+		Ui()->RenderPopupMenus();
+		Ui()->FinishCheck();
+		Graphics()->MapScreen(0.0f, 0.0f, Width, Height);
+	}
+	m_LastCursorLeftPressed = MousePressed;
 
 	if(m_Mode != MODE_NONE && g_Config.m_RiChatShowCursor)
 		RenderTools()->RenderCursor(UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height), 12.0f);
@@ -1889,4 +1977,120 @@ const char *CChat::FilterText(const char *pMessage, int ClientId, bool IsChat)
 	}
 
 	return s_aFilteredMessage;
+}
+
+CUi::EPopupMenuFunctionResult CChat::CChatLinePopupContext::Render(void *pContext, CUIRect View, bool Active)
+{
+	CChatLinePopupContext *pPopupContext = static_cast<CChatLinePopupContext *>(pContext);
+	CChat *pChat = pPopupContext->m_pChat;
+	if(pPopupContext->m_LineIndex < 0 || pPopupContext->m_LineIndex >= MAX_LINES)
+		return CUi::POPUP_CLOSE_CURRENT;
+
+	const CLine &Line = pChat->m_aLines[pPopupContext->m_LineIndex];
+	if(!Line.m_Initialized || Line.m_Serial != pPopupContext->m_LineSerial)
+		return CUi::POPUP_CLOSE_CURRENT;
+
+	const bool HasPlayer = Line.m_ClientId >= 0 && pChat->GameClient()->m_aClients[Line.m_ClientId].m_Active;
+	View.Margin(POPUP_INNER_MARGIN, &View);
+
+	CUIRect Label, Button;
+	View.HSplitTop(FONT_SIZE, &Label, &View);
+	pChat->Ui()->DoLabel(&Label, HasPlayer ? pChat->GameClient()->m_aClients[Line.m_ClientId].m_aName : Localize("Chat message"), FONT_SIZE, TEXTALIGN_ML);
+
+	auto OpenChatWithText = [&](int Team, const char *pText) {
+		if(!pChat->IsActive())
+			pChat->EnableMode(Team);
+		else
+		{
+			pChat->m_Mode = Team ? MODE_TEAM : MODE_ALL;
+			pChat->m_Input.Activate(EInputPriority::CHAT);
+		}
+
+		pChat->m_CompletionChosen = -1;
+		pChat->m_CompletionUsed = false;
+		pChat->m_pHistoryEntry = nullptr;
+		pChat->m_EditingNewLine = true;
+		pChat->m_Input.Set(pText);
+	};
+
+	auto DoButton = [&](CButtonContainer *pButton, const char *pLabel, auto &&OnClick) {
+		View.HSplitTop(ITEM_SPACING * 2, nullptr, &View);
+		View.HSplitTop(BUTTON_SIZE, &Button, &View);
+		if(pChat->Ui()->DoButton_PopupMenu(pButton, pLabel, &Button, FONT_SIZE, TEXTALIGN_MC))
+		{
+			OnClick();
+			return true;
+		}
+		return false;
+	};
+
+	if(DoButton(&pPopupContext->m_CopyButton, Localize("Copy"), [&]() {
+		   char aBuf[1024];
+		   str_format(aBuf, sizeof(aBuf), "%s%s%s", Line.m_aName, Line.m_ClientId >= 0 ? ": " : "", Line.m_aText);
+		   pChat->Input()->SetClipboardText(aBuf);
+	   }))
+	{
+		return CUi::POPUP_CLOSE_CURRENT;
+	}
+
+	if(DoButton(&pPopupContext->m_CopyMsgButton, Localize("Copy Msg"), [&]() {
+		   pChat->Input()->SetClipboardText(Line.m_aText);
+	   }))
+	{
+		return CUi::POPUP_CLOSE_CURRENT;
+	}
+
+	if(HasPlayer)
+	{
+		if(DoButton(&pPopupContext->m_ReplyButton, Localize("Reply"), [&]() {
+			   char aBuf[MAX_LINE_LENGTH];
+			   str_format(aBuf, sizeof(aBuf), "%s: ", pChat->GameClient()->m_aClients[Line.m_ClientId].m_aName);
+			   OpenChatWithText(0, aBuf);
+		   }))
+		{
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+
+		if(DoButton(&pPopupContext->m_WhisperButton, Localize("Whisper"), [&]() {
+			   char aBuf[MAX_LINE_LENGTH];
+			   const char *pName = pChat->GameClient()->m_aClients[Line.m_ClientId].m_aName;
+			   if(str_find(pName, " ") || str_find(pName, "\""))
+			   {
+				   char aQuoted[128];
+				   str_copy(aQuoted, "\"");
+				   char *pDst = aQuoted + str_length(aQuoted);
+				   str_escape(&pDst, pName, aQuoted + sizeof(aQuoted));
+				   str_append(aQuoted, "\"");
+				   str_format(aBuf, sizeof(aBuf), "/whisper %s ", aQuoted);
+			   }
+			   else
+			   {
+				   str_format(aBuf, sizeof(aBuf), "/whisper %s ", pName);
+			   }
+			   OpenChatWithText(0, aBuf);
+		   }))
+		{
+			return CUi::POPUP_CLOSE_CURRENT;
+		}
+	}
+
+	if(DoButton(&pPopupContext->m_CopyFullButton, Localize("Copy Full Msg"), [&]() {
+		   char aBuf[1200];
+		   char aTimestamp[64];
+		   str_timestamp_ex(Line.m_UnixTimestamp, aTimestamp, sizeof(aTimestamp), TimestampFormat::SPACE);
+		   const char *pSystem = Line.m_Whisper ? "chat/whisper" :
+			   Line.m_Team ? "chat/team" :
+			   Line.m_ClientId == SERVER_MSG ? "chat/server" :
+			   Line.m_ClientId == CLIENT_MSG ? "chat/client" :
+						"chat/all";
+		   char aMessage[1024];
+		   str_format(aMessage, sizeof(aMessage), "%s%s%s", Line.m_aName, Line.m_ClientId >= 0 ? ": " : "", Line.m_aText);
+		   str_format(aBuf, sizeof(aBuf), "%s I %s: %s", aTimestamp, pSystem, aMessage);
+		   pChat->Input()->SetClipboardText(aBuf);
+	   }))
+	{
+		return CUi::POPUP_CLOSE_CURRENT;
+	}
+
+	return Active ? CUi::POPUP_KEEP_OPEN : CUi::POPUP_CLOSE_CURRENT;
 }
