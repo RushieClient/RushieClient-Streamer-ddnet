@@ -156,6 +156,7 @@ static constexpr int VOICE_FRAME_BYTES = VOICE_FRAME_SAMPLES * sizeof(int16_t);
 static constexpr int VOICE_MAX_PACKET = 1200;
 static constexpr int VOICE_HEADER_SIZE = sizeof(VOICE_MAGIC) + 1 + 1 + 2 + 4 + 4 + 1 + 2 + 2 + 4 + 4;
 static constexpr int VOICE_MAX_PAYLOAD = VOICE_MAX_PACKET - VOICE_HEADER_SIZE;
+static constexpr int VOICE_MAX_PLC_FRAMES = 1;
 static constexpr uint32_t VOICE_GROUP_MASK = 0x3fffffff;
 static constexpr uint32_t VOICE_MODE_SHIFT = 30;
 static constexpr uint32_t VOICE_MODE_MASK = 0x3u;
@@ -997,6 +998,7 @@ void CRClientVoice::ClearPeerFrames()
 		Peer.m_LastGainLeft = 1.0f;
 		Peer.m_LastGainRight = 1.0f;
 		Peer.m_LossEwma = 0.0f;
+		Peer.m_PlcFrames = 0;
 		if(Peer.m_pDecoder)
 			opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
 		Peer.m_FrameHead = 0;
@@ -1037,6 +1039,7 @@ void CRClientVoice::ResetPeer(SVoicePeer &Peer)
 	Peer.m_LastGainLeft = 1.0f;
 	Peer.m_LastGainRight = 1.0f;
 	Peer.m_LossEwma = 0.0f;
+	Peer.m_PlcFrames = 0;
 	if(Peer.m_pDecoder)
 		opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
 	if(m_OutputDevice)
@@ -2022,10 +2025,12 @@ void CRClientVoice::DecodeJitter()
 			}
 			m_aDecoderErrorLog[0] = '\0';
 			Peer.m_HasSeq = false;
+			Peer.m_PlcFrames = 0;
 		}
 
 		int16_t aPcm[VOICE_FRAME_SAMPLES];
 		int Samples = 0;
+		bool UsedPlc = false;
 		float LeftGain = Peer.m_LastGainLeft;
 		float RightGain = Peer.m_LastGainRight;
 		if(pPkt)
@@ -2039,13 +2044,27 @@ void CRClientVoice::DecodeJitter()
 			pPkt->m_Valid = false;
 			Peer.m_QueuedPackets = std::max(0, Peer.m_QueuedPackets - 1);
 		}
-		else if(pNextPkt && Peer.m_LossEwma > 0.02f)
+		else if(pNextPkt && Peer.m_HasSeq && Peer.m_LossEwma > 0.02f)
 		{
 			Samples = opus_decode(Peer.m_pDecoder, pNextPkt->m_aData, pNextPkt->m_Size, aPcm, VOICE_FRAME_SAMPLES, 1);
 		}
+		else if(Peer.m_HasSeq && Peer.m_PlcFrames < VOICE_MAX_PLC_FRAMES)
+		{
+			Samples = opus_decode(Peer.m_pDecoder, nullptr, 0, aPcm, VOICE_FRAME_SAMPLES, 0);
+			UsedPlc = Samples > 0;
+		}
 		else if(Peer.m_HasSeq)
 		{
-			Samples = opus_decode(Peer.m_pDecoder, nullptr, 0, aPcm, VOICE_FRAME_SAMPLES, 1);
+			opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
+			Peer.m_HasSeq = false;
+			Peer.m_PlcFrames = 0;
+		}
+		if(Samples < 0)
+		{
+			opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
+			Peer.m_HasSeq = false;
+			Peer.m_PlcFrames = 0;
+			Samples = 0;
 		}
 
 		if(Samples > 0)
@@ -2053,10 +2072,14 @@ void CRClientVoice::DecodeJitter()
 			SDL_LockAudioDevice(m_OutputDevice);
 			PushPeerFrame(PeerId, aPcm, Samples, LeftGain, RightGain);
 			SDL_UnlockAudioDevice(m_OutputDevice);
+			Peer.m_HasSeq = true;
+			if(UsedPlc)
+				Peer.m_PlcFrames++;
+			else
+				Peer.m_PlcFrames = 0;
 		}
 
 		Peer.m_LastSeq = Peer.m_NextSeq;
-		Peer.m_HasSeq = true;
 		Peer.m_NextSeq = (uint16_t)(Peer.m_NextSeq + 1);
 	}
 }

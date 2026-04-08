@@ -102,6 +102,7 @@ class CRClientVoice
 		float m_JitterMs = 0.0f;
 		int m_TargetFrames = 3;
 		int m_QueuedPackets = 0;
+		int m_PlcFrames = 0;
 		SJitterPacket m_aPackets[MAX_JITTER_PACKETS] = {};
 		SVoiceFrame m_aFrames[MAX_FRAMES] = {};
 		int m_FrameHead = 0;
