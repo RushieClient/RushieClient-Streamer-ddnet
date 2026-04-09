@@ -145,7 +145,6 @@ bool CMusicIsland::GetGameTimerRenderInfo(const CNetObj_GameInfo *pGameInfo, ICl
 
 	str_time((int64_t)(TimeSeconds * 100), g_Config.m_RiShowMilliSecondsTimer ? ETimeFormat::DAYS_CENTISECS : ETimeFormat::DAYS, RenderInfo.m_aText, sizeof(RenderInfo.m_aText));
 	RenderInfo.m_TextWidth = GetStableGameTimerWidth(pTextRender, FontSize, TimeSeconds, g_Config.m_RiShowMilliSecondsTimer != 0);
-	RenderInfo.m_ActualTextWidth = pTextRender->TextWidth(FontSize, RenderInfo.m_aText, -1, -1.0f);
 	RenderInfo.m_TextColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 
 	if(pGameInfo->m_TimeLimit && TimeSeconds <= 60.0f && pGameInfo->m_WarmupTimer <= 0)
@@ -1426,14 +1425,12 @@ void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
 			return;
 	}
 
-	const bool ShouldScroll = !g_Config.m_RiShowMusicIslandTimerFull && RenderInfo.m_ActualTextWidth > TimerRect.w;
-	const float LayoutWidth = g_Config.m_RiShowMusicIslandTimerFull ? RenderInfo.m_ActualTextWidth :
-		(RenderInfo.m_TextWidth <= TimerRect.w ? RenderInfo.m_TextWidth : RenderInfo.m_ActualTextWidth);
+	const bool ShouldScroll = !g_Config.m_RiShowMusicIslandTimerFull && RenderInfo.m_TextWidth > TimerRect.w;
+	const float LayoutWidth = minimum(RenderInfo.m_TextWidth, TimerRect.w);
 	float TextX = TimerRect.x + (TimerRect.w - LayoutWidth) / 2.0f;
 	if(ShouldScroll)
 	{
-		const float ScrollWidth = maximum(RenderInfo.m_TextWidth, RenderInfo.m_ActualTextWidth);
-		const float Overflow = ScrollWidth - TimerRect.w;
+		const float Overflow = RenderInfo.m_TextWidth - TimerRect.w;
 		TextX = TimerRect.x - GetScrollingTextOffset(Overflow, LocalTime());
 	}
 

@@ -42,7 +42,6 @@ class CMusicIsland : public CComponent
 	{
 		char m_aText[32]{};
 		float m_TextWidth = 0.0f;
-		float m_ActualTextWidth = 0.0f;
 		ColorRGBA m_TextColor = ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 	};
 
