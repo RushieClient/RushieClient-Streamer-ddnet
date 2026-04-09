@@ -529,6 +529,19 @@ static bool ParseHostPort(const char *pAddrStr, char *pHost, size_t HostSize, in
 	return Port > 0 && Port <= 65535;
 }
 
+static bool VoiceIsLoopbackAddr(const NETADDR &Addr)
+{
+	if(Addr.ip[0] == 127)
+		return true;
+
+	for(int i = 0; i < 15; i++)
+	{
+		if(Addr.ip[i] != 0)
+			return false;
+	}
+	return Addr.ip[15] == 1;
+}
+
 void CRClientVoice::Init(CGameClient *pGameClient, IClient *pClient, IConsole *pConsole)
 {
 	m_pGameClient = pGameClient;
@@ -1361,6 +1374,12 @@ void CRClientVoice::ProcessCapture()
 	const bool MicMuted = Config.m_RiVoiceMicMute != 0;
 	const float TestGain = std::clamp(Config.m_RiVoiceVolume / 100.0f, 0.0f, 4.0f);
 
+	if(m_pClient && m_pClient->State() == IClient::STATE_ONLINE && VoiceIsLoopbackAddr(m_pClient->ServerAddress()))
+	{
+		m_PingMs.store(-1);
+		return;
+	}
+
 	int LocalClientId = -1;
 	vec2 LocalPos = vec2(0.0f, 0.0f);
 	bool Online = false;
@@ -1620,6 +1639,12 @@ void CRClientVoice::ProcessIncoming()
 {
 	if(!m_OutputDevice || !m_Socket)
 		return;
+
+	if(m_pClient && m_pClient->State() == IClient::STATE_ONLINE && VoiceIsLoopbackAddr(m_pClient->ServerAddress()))
+	{
+		m_PingMs.store(-1);
+		return;
+	}
 
 	SRClientVoiceConfigSnapshot Config;
 	GetConfigSnapshot(Config);
