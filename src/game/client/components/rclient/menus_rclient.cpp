@@ -1756,7 +1756,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			Column.HSplitTop(LineSize, &Button, &Column);
 			Ui()->DoScrollbarOption(&g_Config.m_RiVoiceStereoWidth, &g_Config.m_RiVoiceStereoWidth, &Button, RCLocalize("Stereo width (%)"), 0, 200);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceFilterEnable, RCLocalize("Voice filter (HPF+compressor+limiter)"), &g_Config.m_RiVoiceFilterEnable, &Column, LineSize);
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceFilterEnable, RCLocalize("Voice filter (HPF+compressor+soft limiter)"), &g_Config.m_RiVoiceFilterEnable, &Column, LineSize);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 	#if defined(CONF_RNNOISE)
 			const char *pNoiseSuppressLabel = RCLocalize("Noise suppressor (RNNoise)");
@@ -1790,7 +1790,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 				g_Config.m_RiVoiceCompAttackMs = 15;
 				g_Config.m_RiVoiceCompReleaseMs = 150;
 				g_Config.m_RiVoiceCompMakeup = 120;
-				g_Config.m_RiVoiceLimiter = 70;
+				g_Config.m_RiVoiceLimiter = 90;
 			}
 			if(DoButton_Menu(&s_VoiceFilterBalanced, RCLocalize("Balanced"), 0, &ButtonBalanced))
 			{
@@ -1798,8 +1798,8 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 				g_Config.m_RiVoiceCompRatio = 25;
 				g_Config.m_RiVoiceCompAttackMs = 20;
 				g_Config.m_RiVoiceCompReleaseMs = 200;
-				g_Config.m_RiVoiceCompMakeup = 160;
-				g_Config.m_RiVoiceLimiter = 50;
+				g_Config.m_RiVoiceCompMakeup = 130;
+				g_Config.m_RiVoiceLimiter = 85;
 			}
 			if(DoButton_Menu(&s_VoiceFilterStrong, RCLocalize("Strong"), 0, &ButtonStrong))
 			{
@@ -1807,8 +1807,8 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 				g_Config.m_RiVoiceCompRatio = 40;
 				g_Config.m_RiVoiceCompAttackMs = 10;
 				g_Config.m_RiVoiceCompReleaseMs = 250;
-				g_Config.m_RiVoiceCompMakeup = 200;
-				g_Config.m_RiVoiceLimiter = 40;
+				g_Config.m_RiVoiceCompMakeup = 160;
+				g_Config.m_RiVoiceLimiter = 80;
 			}
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			static int s_ShowVoiceFilterAdvanced = 0;
@@ -1829,7 +1829,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 				Ui()->DoScrollbarOption(&g_Config.m_RiVoiceCompReleaseMs, &g_Config.m_RiVoiceCompReleaseMs, &Button, RCLocalize("Comp release (ms)"), 10, 500);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
 				Column.HSplitTop(LineSize, &Button, &Column);
-				Ui()->DoScrollbarOption(&g_Config.m_RiVoiceCompMakeup, &g_Config.m_RiVoiceCompMakeup, &Button, RCLocalize("Comp makeup (%)"), 0, 300);
+				Ui()->DoScrollbarOption(&g_Config.m_RiVoiceCompMakeup, &g_Config.m_RiVoiceCompMakeup, &Button, RCLocalize("Comp makeup (%)"), 0, 200);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
 				Column.HSplitTop(LineSize, &Button, &Column);
 				Ui()->DoScrollbarOption(&g_Config.m_RiVoiceLimiter, &g_Config.m_RiVoiceLimiter, &Button, RCLocalize("Limiter (%)"), 10, 100);

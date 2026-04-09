@@ -605,8 +605,8 @@ Ignore distance
 Stereo output (pan left/right)
 == Стерео вывод (панорама влево/вправо)
 
-Voice filter (HPF+compressor+limiter)
-== Фильтр голоса (HPF+компрессор+лимитер)
+Voice filter (HPF+compressor+soft limiter)
+== Фильтр голоса (HPF+компрессор+мягкий лимитер)
 
 Filter presets
 == Пресеты фильтра

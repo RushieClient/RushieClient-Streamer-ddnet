@@ -268,6 +268,30 @@ static float VoiceFramePeak(const int16_t *pSamples, int Count)
 	return Peak / 32768.0f;
 }
 
+static float VoiceSmoothStep(float Edge0, float Edge1, float Value)
+{
+	if(Edge0 >= Edge1)
+		return Value >= Edge1 ? 1.0f : 0.0f;
+	const float T = std::clamp((Value - Edge0) / (Edge1 - Edge0), 0.0f, 1.0f);
+	return T * T * (3.0f - 2.0f * T);
+}
+
+static float VoiceSoftLimit(float Value, float Limit)
+{
+	Limit = std::clamp(Limit, 0.05f, 1.0f);
+	const float Abs = std::fabs(Value);
+	if(Abs <= 0.0f)
+		return 0.0f;
+
+	const float Knee = std::max(0.001f, Limit * 0.75f);
+	if(Abs <= Knee)
+		return Value;
+
+	const float Range = std::max(0.001f, Limit - Knee);
+	const float LimitedAbs = Knee + Range * std::tanh((Abs - Knee) / Range);
+	return std::copysign(std::min(LimitedAbs, Limit), Value);
+}
+
 static void ApplyMicGain(const SRClientVoiceConfigSnapshot &Config, int16_t *pSamples, int Count)
 {
 	const float Gain = std::clamp(Config.m_RiVoiceMicVolume / 100.0f, 0.0f, 3.0f);
@@ -276,16 +300,24 @@ static void ApplyMicGain(const SRClientVoiceConfigSnapshot &Config, int16_t *pSa
 
 	for(int i = 0; i < Count; i++)
 	{
-		const float Out = pSamples[i] * Gain;
-		const int Sample = (int)std::clamp(Out, -32768.0f, 32767.0f);
+		float Out = (pSamples[i] / 32768.0f) * Gain;
+		if(Config.m_RiVoiceFilterEnable)
+			Out = VoiceSoftLimit(Out, 0.98f);
+		else
+			Out = std::clamp(Out, -1.0f, 1.0f);
+
+		const int Sample = (int)std::clamp(Out * 32767.0f, -32768.0f, 32767.0f);
 		pSamples[i] = (int16_t)Sample;
 	}
 }
 
-static void ApplyHpfCompressor(const SRClientVoiceConfigSnapshot &Config, int16_t *pSamples, int Count, float &PrevIn, float &PrevOut, float &Env)
+static void ApplyHpfCompressor(const SRClientVoiceConfigSnapshot &Config, int16_t *pSamples, int Count, float &PrevIn, float &PrevOut, float &Env, float &GainState)
 {
 	if(!Config.m_RiVoiceFilterEnable)
+	{
+		GainState = 1.0f;
 		return;
+	}
 
 	const float CutoffHz = 120.0f;
 	const float Rc = 1.0f / (2.0f * 3.14159265f * CutoffHz);
@@ -296,11 +328,15 @@ static void ApplyHpfCompressor(const SRClientVoiceConfigSnapshot &Config, int16_
 	const float Ratio = std::max(1.0f, Config.m_RiVoiceCompRatio / 10.0f);
 	const float AttackSec = std::max(0.001f, Config.m_RiVoiceCompAttackMs / 1000.0f);
 	const float ReleaseSec = std::max(0.001f, Config.m_RiVoiceCompReleaseMs / 1000.0f);
-	const float MakeupGain = std::max(0.0f, Config.m_RiVoiceCompMakeup / 100.0f);
-	const float NoiseFloor = 0.02f;
+	const float MakeupGain = std::clamp(Config.m_RiVoiceCompMakeup / 100.0f, 0.0f, 2.0f);
 	const float Limiter = std::clamp(Config.m_RiVoiceLimiter / 100.0f, 0.05f, 1.0f);
 	const float AttackCoeff = 1.0f - std::exp(-1.0f / (AttackSec * VOICE_SAMPLE_RATE));
 	const float ReleaseCoeff = 1.0f - std::exp(-1.0f / (ReleaseSec * VOICE_SAMPLE_RATE));
+	const float GainAttackCoeff = 1.0f - std::exp(-1.0f / (0.005f * VOICE_SAMPLE_RATE));
+	const float GainReleaseCoeff = 1.0f - std::exp(-1.0f / (0.080f * VOICE_SAMPLE_RATE));
+
+	if(!std::isfinite(GainState) || GainState <= 0.0f)
+		GainState = 1.0f;
 
 	for(int i = 0; i < Count; i++)
 	{
@@ -315,13 +351,18 @@ static void ApplyHpfCompressor(const SRClientVoiceConfigSnapshot &Config, int16_
 		else
 			Env += (AbsY - Env) * ReleaseCoeff;
 
-		float Gain = 1.0f;
+		float TargetGain = 1.0f;
 		if(Env > Threshold)
-			Gain = (Threshold + (Env - Threshold) / Ratio) / Env;
-		if(Env > NoiseFloor)
-			Gain *= MakeupGain;
+			TargetGain = (Threshold + (Env - Threshold) / Ratio) / Env;
 
-		const float Out = std::clamp(PrevOut * Gain, -Limiter, Limiter);
+		const float MakeupAmount = VoiceSmoothStep(0.005f, 0.035f, Env);
+		TargetGain *= 1.0f + (MakeupGain - 1.0f) * MakeupAmount;
+		TargetGain = std::clamp(TargetGain, 0.0f, 2.0f);
+
+		const float GainCoeff = TargetGain < GainState ? GainAttackCoeff : GainReleaseCoeff;
+		GainState = SanitizeFloat(GainState + (TargetGain - GainState) * GainCoeff);
+
+		const float Out = VoiceSoftLimit(PrevOut * GainState, Limiter);
 		const int Sample = (int)std::clamp(Out * 32767.0f, -32768.0f, 32767.0f);
 		pSamples[i] = (int16_t)Sample;
 	}
@@ -1152,6 +1193,7 @@ void CRClientVoice::Shutdown()
 	m_HpfPrevIn = 0.0f;
 	m_HpfPrevOut = 0.0f;
 	m_CompEnv = 0.0f;
+	m_CompGain = 1.0f;
 	m_NsNoiseFloor = 0.0f;
 	m_NsGain = 1.0f;
 #if defined(CONF_RNNOISE)
@@ -1416,7 +1458,7 @@ void CRClientVoice::ProcessCapture()
 				SDL_DequeueAudio(m_CaptureDevice, aPcm, VOICE_FRAME_BYTES);
 				ApplyMicGain(Config, aPcm, VOICE_FRAME_SAMPLES);
 				ApplyNoiseSuppressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_NsNoiseFloor, m_NsGain, m_pNoiseSuppress);
-				ApplyHpfCompressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_HpfPrevIn, m_HpfPrevOut, m_CompEnv);
+				ApplyHpfCompressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_HpfPrevIn, m_HpfPrevOut, m_CompEnv, m_CompGain);
 				const float Peak = VoiceFramePeak(aPcm, VOICE_FRAME_SAMPLES);
 				UpdateMicLevel(Peak);
 				UpdatedMicLevel = true;
@@ -1455,7 +1497,7 @@ void CRClientVoice::ProcessCapture()
 		SDL_DequeueAudio(m_CaptureDevice, aPcm, VOICE_FRAME_BYTES);
 		ApplyMicGain(Config, aPcm, VOICE_FRAME_SAMPLES);
 		ApplyNoiseSuppressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_NsNoiseFloor, m_NsGain, m_pNoiseSuppress);
-		ApplyHpfCompressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_HpfPrevIn, m_HpfPrevOut, m_CompEnv);
+		ApplyHpfCompressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_HpfPrevIn, m_HpfPrevOut, m_CompEnv, m_CompGain);
 
 		const float Peak = VoiceFramePeak(aPcm, VOICE_FRAME_SAMPLES);
 		if(ShowMicLevel)
@@ -1499,6 +1541,7 @@ void CRClientVoice::ProcessCapture()
 			m_HpfPrevIn = 0.0f;
 			m_HpfPrevOut = 0.0f;
 			m_CompEnv = 0.0f;
+			m_CompGain = 1.0f;
 			m_Sequence += 1000;
 			m_TxWasActive = true;
 		}

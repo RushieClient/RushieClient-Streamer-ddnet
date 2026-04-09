@@ -154,6 +154,7 @@ class CRClientVoice
 	float m_HpfPrevIn = 0.0f;
 	float m_HpfPrevOut = 0.0f;
 	float m_CompEnv = 0.0f;
+	float m_CompGain = 1.0f;
 	float m_NsNoiseFloor = 0.0f;
 	float m_NsGain = 1.0f;
 	DenoiseState *m_pNoiseSuppress = nullptr;
