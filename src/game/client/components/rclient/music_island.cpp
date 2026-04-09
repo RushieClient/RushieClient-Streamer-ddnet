@@ -844,7 +844,39 @@ void CMusicIsland::RenderMusicIsland()
 	Graphics()->GetScreen(&ScreenTL.x, &ScreenTL.y, &ScreenBR.x, &ScreenBR.y);
 
 	WindowRect.h = SMusicIslandProperties::ms_BaseHeight;
-	WindowRect.w = 75.0f;
+	constexpr float BaseFontSize = 8.0f;
+	const float TimerFontSize = minimum(BaseFontSize, SMusicIslandProperties::ms_BaseHeight - SMusicIslandProperties::ms_Padding * 2.0f);
+	const auto AdjustProblematicWidth = [](int Width) {
+		return Width == 75 ? 76.0f : (float)Width;
+	};
+	float DesiredWidth = 0.0f;
+	SGameTimerRenderInfo RenderInfo;
+	if(GetGameTimerRenderInfo(GameClient()->m_Snap.m_pGameInfoObj, Client(), TextRender(), TimerFontSize, RenderInfo))
+	{
+		DesiredWidth = RenderInfo.m_TextWidth + 10.0f;
+		if(g_Config.m_RiShowMusicIslandImage)
+			DesiredWidth += 8.0f;
+		if(g_Config.m_RiShowMusicIslandVisualizer)
+			DesiredWidth += 8.0f;
+	}
+
+	if(g_Config.m_RiShowMusicIslandTimerFull)
+	{
+		const float MinWidth = AdjustProblematicWidth(g_Config.m_RiShowMusicIslandFullMinWidth);
+		WindowRect.w = g_Config.m_RiShowMusicIslandFullDynamicWidth && DesiredWidth > 0.0f ?
+			maximum(MinWidth, DesiredWidth) :
+			MinWidth;
+	}
+	else
+	{
+		const float MinWidth = AdjustProblematicWidth(g_Config.m_RiShowMusicIslandMinWidth);
+		const float MaxWidth = maximum(AdjustProblematicWidth(g_Config.m_RiShowMusicIslandMinWidth), AdjustProblematicWidth(g_Config.m_RiShowMusicIslandMaxWidth));
+		WindowRect.w = g_Config.m_RiShowMusicIslandDynamicWidth && DesiredWidth > 0.0f ?
+			maximum(MinWidth, minimum(MaxWidth, DesiredWidth)) :
+			MaxWidth;
+	}
+
+	WindowRect.w = minimum(WindowRect.w, ScreenBR.x - ScreenTL.x);
 	WindowRect.x = ScreenTL.x + (ScreenBR.x - ScreenTL.x - WindowRect.w) / 2.0f;
 	WindowRect.y = ScreenTL.y + 2.5f;
 
