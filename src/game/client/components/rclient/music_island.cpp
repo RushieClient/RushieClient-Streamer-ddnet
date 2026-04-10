@@ -8,6 +8,7 @@
 #include <game/client/gameclient.h>
 
 #include <cmath>
+#include <chrono>
 #include <cstring>
 #include <utility>
 #include <vector>
@@ -44,6 +45,8 @@ static ColorRGBA MusicIslandGapsColor()
 {
 	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandSectionsColor, true));
 }
+
+static constexpr int64_t gs_MusicIslandArtworkDebounceMs = 350;
 
 static bool MusicIslandDebugEnabled()
 {
@@ -560,6 +563,13 @@ static std::string MakeArtworkKey(const std::string &Title, const std::string &A
 	return Key;
 }
 
+static winrt::Windows::Media::Control::GlobalSystemMediaTransportControlsSessionManager &CachedMusicIslandSessionManager()
+{
+	using namespace winrt::Windows::Media::Control;
+	static thread_local GlobalSystemMediaTransportControlsSessionManager s_SessionManager = nullptr;
+	return s_SessionManager;
+}
+
 static void ApplyRoundedCornersToImage(CImageInfo &Image, float RadiusFraction)
 {
 	if(Image.m_pData == nullptr || Image.m_Format != CImageInfo::FORMAT_RGBA || Image.m_Width == 0 || Image.m_Height == 0)
@@ -620,7 +630,7 @@ static bool DecodeThumbnailToImage(const winrt::Windows::Storage::Streams::IRand
 	if(!Decoder)
 		return false;
 
-	constexpr uint32_t MaxArtworkSize = 128;
+	constexpr uint32_t MaxArtworkSize = 64;
 	const uint32_t Width = Decoder.PixelWidth();
 	const uint32_t Height = Decoder.PixelHeight();
 	if(Width == 0 || Height == 0)
@@ -729,6 +739,8 @@ void CMusicIsland::ResetMusicImage()
 {
 	std::lock_guard<std::mutex> Guard(m_MusicInfoMutex);
 	m_CurrentArtworkKey.clear();
+	m_LastDetectedArtworkKey.clear();
+	m_LastDetectedArtworkChangeTime = 0;
 	m_MusicImageDirty = false;
 	m_PendingMusicImage.Free();
 
@@ -821,9 +833,8 @@ void CMusicIsland::RenderHud()
 	if(!IsActive())
 		return;
 
-	const int64_t Now = time_get();
-	if(HasMusicIslandPlatformBackend() && !m_InfoWorkerRunning.load() && (m_NextInfoUpdateTime == 0 || Now >= m_NextInfoUpdateTime))
-		StartInfoWorker(Now);
+	if(HasMusicIslandPlatformBackend())
+		StartInfoWorker();
 
 	if(g_Config.m_RiShowMusicIslandImage)
 		UpdateMusicImageTexture();
@@ -1040,7 +1051,7 @@ void CMusicIsland::RenderMusicIslandControls(CUIRect *pBase, const SMusicInfo &M
 		TriggerControlAction(CONTROL_BUTTON_NEXT);
 }
 
-void CMusicIsland::StartInfoWorker(int64_t Now)
+void CMusicIsland::StartInfoWorker()
 {
 	if(m_InfoWorkerRunning.load())
 		return;
@@ -1048,15 +1059,23 @@ void CMusicIsland::StartInfoWorker(int64_t Now)
 	if(m_InfoWorker.joinable())
 		m_InfoWorker.join();
 
-	m_InfoWorkerStopRequested.store(false);
+	{
+		std::lock_guard<std::mutex> Guard(m_InfoWorkerMutex);
+		m_InfoWorkerStopRequested.store(false);
+		m_NextInfoUpdateTime = 0;
+	}
 	m_InfoWorkerRunning.store(true);
-	m_NextInfoUpdateTime = Now + time_freq();
 	m_InfoWorker = std::thread(&CMusicIsland::InfoWorkerLoop, this);
 }
 
 void CMusicIsland::StopInfoWorker()
 {
 	m_InfoWorkerStopRequested.store(true);
+	{
+		std::lock_guard<std::mutex> Guard(m_InfoWorkerMutex);
+		m_NextInfoUpdateTime = 0;
+	}
+	m_InfoWorkerCv.notify_all();
 	if(m_InfoWorker.joinable())
 		m_InfoWorker.join();
 
@@ -1079,7 +1098,31 @@ void CMusicIsland::InfoWorkerLoop()
 #if defined(CONF_FAMILY_WINDOWS)
 	winrt::init_apartment(winrt::apartment_type::multi_threaded);
 #endif
-	UpdateMusicInfo();
+
+	while(!m_InfoWorkerStopRequested.load())
+	{
+		int64_t NextUpdateTime = 0;
+		const int64_t Now = time_get();
+		{
+			std::unique_lock<std::mutex> Lock(m_InfoWorkerMutex);
+			if(m_NextInfoUpdateTime == 0)
+				m_NextInfoUpdateTime = Now;
+			NextUpdateTime = m_NextInfoUpdateTime;
+			if(NextUpdateTime > Now)
+			{
+				const int64_t WaitMs = maximum<int64_t>(1, (NextUpdateTime - Now) * 1000 / time_freq());
+				m_InfoWorkerCv.wait_for(Lock, std::chrono::milliseconds(WaitMs), [this]() {
+					return m_InfoWorkerStopRequested.load();
+				});
+				continue;
+			}
+
+			m_NextInfoUpdateTime = Now + time_freq();
+		}
+
+		UpdateMusicInfo();
+	}
+
 #if defined(CONF_FAMILY_WINDOWS)
 	winrt::uninit_apartment();
 #endif
@@ -1090,17 +1133,24 @@ void CMusicIsland::UpdateMusicInfo()
 {
 #if defined(CONF_FAMILY_WINDOWS)
 	SMusicInfo NewInfo;
+	const int64_t Now = time_get();
+	const int64_t ArtworkDebounceTicks = time_freq() * gs_MusicIslandArtworkDebounceMs / 1000;
 	const bool WantArtwork = g_Config.m_RiShowMusicIslandImage != 0;
 	std::string NewArtworkKey;
 	bool UpdateArtwork = false;
 	bool HasThumbnail = false;
+	int64_t ArtworkRetryTime = 0;
 	winrt::Windows::Storage::Streams::IRandomAccessStreamReference Thumbnail = nullptr;
 
 	try
 	{
 		using namespace winrt::Windows::Media::Control;
 
-		const auto SessionManager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
+		auto &SessionManagerCache = CachedMusicIslandSessionManager();
+		if(!SessionManagerCache)
+			SessionManagerCache = GlobalSystemMediaTransportControlsSessionManager::RequestAsync().get();
+
+		const auto SessionManager = SessionManagerCache;
 		const auto Session = SessionManager.GetCurrentSession();
 		if(Session)
 		{
@@ -1124,7 +1174,16 @@ void CMusicIsland::UpdateMusicInfo()
 
 				{
 					std::lock_guard<std::mutex> Guard(m_MusicInfoMutex);
-					UpdateArtwork = NewArtworkKey != m_CurrentArtworkKey;
+					if(NewArtworkKey != m_LastDetectedArtworkKey)
+					{
+						m_LastDetectedArtworkKey = NewArtworkKey;
+						m_LastDetectedArtworkChangeTime = Now;
+					}
+
+					UpdateArtwork = NewArtworkKey != m_CurrentArtworkKey &&
+						(Now - m_LastDetectedArtworkChangeTime >= ArtworkDebounceTicks);
+					if(!UpdateArtwork && NewArtworkKey != m_CurrentArtworkKey)
+						ArtworkRetryTime = m_LastDetectedArtworkChangeTime + ArtworkDebounceTicks;
 				}
 
 				if(UpdateArtwork)
@@ -1148,6 +1207,7 @@ void CMusicIsland::UpdateMusicInfo()
 	}
 	catch(const winrt::hresult_error &Error)
 	{
+		CachedMusicIslandSessionManager() = nullptr;
 		if(MusicIslandDebugEnabled())
 			dbg_msg("music-island-win", "Failed to query media session: 0x%08x", (unsigned int)Error.code().value);
 		NewInfo = {};
@@ -1159,6 +1219,7 @@ void CMusicIsland::UpdateMusicInfo()
 	}
 	catch(...)
 	{
+		CachedMusicIslandSessionManager() = nullptr;
 		LogMusicIslandDebug("music-island-win", "Failed to query media session: unknown exception");
 		NewInfo = {};
 		if(WantArtwork)
@@ -1183,7 +1244,16 @@ void CMusicIsland::UpdateMusicInfo()
 	}
 
 	if(!UpdateArtwork)
+	{
+		if(ArtworkRetryTime != 0)
+		{
+			std::lock_guard<std::mutex> Guard(m_InfoWorkerMutex);
+			if(m_NextInfoUpdateTime == 0 || ArtworkRetryTime < m_NextInfoUpdateTime)
+				m_NextInfoUpdateTime = ArtworkRetryTime;
+		}
+		m_InfoWorkerCv.notify_one();
 		return;
+	}
 
 	StopImageWorker();
 
@@ -1269,7 +1339,6 @@ void CMusicIsland::UpdateMusicInfo()
 void CMusicIsland::TriggerControlAction(EControlButton Button)
 {
 #if defined(CONF_FAMILY_WINDOWS)
-	m_NextInfoUpdateTime = 0;
 	std::thread([Button]() {
 		try
 		{
@@ -1314,7 +1383,6 @@ void CMusicIsland::TriggerControlAction(EControlButton Button)
 		}
 	}).detach();
 #elif defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
-	m_NextInfoUpdateTime = 0;
 	const char *pMethod = nullptr;
 	switch(Button)
 	{

@@ -8,6 +8,7 @@
 #include "generated/protocol.h"
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -53,6 +54,8 @@ class CMusicIsland : public CComponent
 	std::thread m_InfoWorker;
 	std::atomic<bool> m_InfoWorkerRunning = false;
 	std::atomic<bool> m_InfoWorkerStopRequested = false;
+	std::mutex m_InfoWorkerMutex;
+	std::condition_variable m_InfoWorkerCv;
 	std::thread m_ImageWorker;
 	std::atomic<bool> m_ImageWorkerRunning = false;
 	std::atomic<bool> m_ImageWorkerStopRequested = false;
@@ -61,6 +64,8 @@ class CMusicIsland : public CComponent
 	SMusicInfo m_MusicInfo;
 	CImageInfo m_PendingMusicImage;
 	std::string m_CurrentArtworkKey;
+	std::string m_LastDetectedArtworkKey;
+	int64_t m_LastDetectedArtworkChangeTime = 0;
 	bool m_MusicImageDirty = false;
 	IGraphics::CTextureHandle m_MusicImageTexture;
 	int m_MusicImageWidth = 0;
@@ -77,7 +82,7 @@ class CMusicIsland : public CComponent
 	void RenderMusicIslandVisualizer(CUIRect *pBase);
 	void RenderMusicIslandMain(CUIRect *pBase);
 	void UpdateMusicImageTexture();
-	void StartInfoWorker(int64_t Now);
+	void StartInfoWorker();
 	void StopInfoWorker();
 	void StopImageWorker();
 	void InfoWorkerLoop();
