@@ -1007,8 +1007,6 @@ void CMenus::DemolistPopulate()
 
 		if(g_Config.m_BrDemoFetchInfo)
 			FetchAllHeaders();
-
-		std::stable_sort(m_vDemos.begin(), m_vDemos.end());
 	}
 	RefreshFilteredDemos();
 }
@@ -1016,6 +1014,7 @@ void CMenus::DemolistPopulate()
 void CMenus::RefreshFilteredDemos()
 {
 	m_vpFilteredDemos.clear();
+	m_vpFilteredDemos.reserve(m_vDemos.size());
 	for(auto &Demo : m_vDemos)
 	{
 		if(str_find_nocase(Demo.m_aFilename, m_DemoSearchInput.GetString()))
@@ -1023,6 +1022,10 @@ void CMenus::RefreshFilteredDemos()
 			m_vpFilteredDemos.push_back(&Demo);
 		}
 	}
+
+	std::stable_sort(m_vpFilteredDemos.begin(), m_vpFilteredDemos.end(), [](const CDemoItem *pLeft, const CDemoItem *pRight) {
+		return *pLeft < *pRight;
+	});
 }
 
 void CMenus::DemolistOnUpdate(bool Reset)
@@ -1087,7 +1090,7 @@ void CMenus::FetchAllHeaders()
 	{
 		FetchHeader(Item);
 	}
-	std::stable_sort(m_vDemos.begin(), m_vDemos.end());
+	RefreshFilteredDemos();
 }
 
 void CMenus::RenderDemoBrowser(CUIRect MainView)
@@ -1221,7 +1224,7 @@ void CMenus::RenderDemoBrowserList(CUIRect ListView, bool &WasListboxItemActivat
 					g_Config.m_BrDemoSortOrder = 0;
 				g_Config.m_BrDemoSort = Col.m_Sort;
 				// Don't rescan in order to keep fetched headers, just resort
-				std::stable_sort(m_vDemos.begin(), m_vDemos.end());
+				
 				DemolistOnUpdate(false);
 			}
 		}
