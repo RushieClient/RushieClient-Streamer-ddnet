@@ -188,6 +188,22 @@ float CMusicIsland::GetScrollingTextOffset(float Overflow, float Seconds)
 	return maximum(0.0f, Overflow - PhaseSeconds * ScrollSpeed);
 }
 
+static float SnapToScreenPixel(float Value, float ScreenStart, float PixelSize)
+{
+	if(PixelSize <= 0.0f)
+		return Value;
+
+	return ScreenStart + round_to_int((Value - ScreenStart) / PixelSize) * PixelSize;
+}
+
+static float SnapToScreenSpan(float Value, float PixelSize)
+{
+	if(PixelSize <= 0.0f)
+		return Value;
+
+	return maximum(PixelSize, round_to_int(Value / PixelSize) * PixelSize);
+}
+
 void CMusicIsland::RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *pTextRender, const CUIRect &Rect, const char *pText, float FontSize, const ColorRGBA &Color, float ScrollSeconds)
 {
 	if(Rect.w <= 0.0f || Rect.h <= 0.0f || pText == nullptr || pText[0] == '\0')
@@ -208,13 +224,21 @@ void CMusicIsland::RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *
 	const float PixelSizeY = ScreenHeight / pGraphics->ScreenHeight();
 
 	if(!ShouldScroll)
-		TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
-	TextY = round_to_int(TextY / PixelSizeY) * PixelSizeY;
+	{
+		TextX = SnapToScreenPixel(TextX, ScreenX0, PixelSizeX);
+		const float MaxTextX = maximum(Rect.x, Rect.x + Rect.w - TextWidth);
+		TextX = std::clamp(TextX, Rect.x, MaxTextX);
+	}
+	TextY = SnapToScreenPixel(TextY, ScreenY0, PixelSizeY);
 
-	const int ClipX = (int)std::round((Rect.x - ScreenX0) * pGraphics->ScreenWidth() / ScreenWidth);
-	const int ClipY = (int)std::round((Rect.y - ScreenY0) * pGraphics->ScreenHeight() / ScreenHeight);
-	const int ClipW = (int)std::round(Rect.w * pGraphics->ScreenWidth() / ScreenWidth);
-	const int ClipH = (int)std::round(Rect.h * pGraphics->ScreenHeight() / ScreenHeight);
+	const float ScaleX = pGraphics->ScreenWidth() / ScreenWidth;
+	const float ScaleY = pGraphics->ScreenHeight() / ScreenHeight;
+	const int ClipX = (int)std::floor((Rect.x - ScreenX0) * ScaleX);
+	const int ClipY = (int)std::floor((Rect.y - ScreenY0) * ScaleY);
+	const int ClipX2 = (int)std::ceil((Rect.x + Rect.w - ScreenX0) * ScaleX);
+	const int ClipY2 = (int)std::ceil((Rect.y + Rect.h - ScreenY0) * ScaleY);
+	const int ClipW = maximum(0, ClipX2 - ClipX);
+	const int ClipH = maximum(0, ClipY2 - ClipY);
 
 	pGraphics->ClipEnable(ClipX, ClipY, ClipW, ClipH);
 	pTextRender->TextColor(Color);
@@ -853,13 +877,12 @@ void CMusicIsland::RenderMusicIsland()
 
 	vec2 ScreenTL, ScreenBR;
 	Graphics()->GetScreen(&ScreenTL.x, &ScreenTL.y, &ScreenBR.x, &ScreenBR.y);
+	const float PixelSizeX = (ScreenBR.x - ScreenTL.x) / Graphics()->ScreenWidth();
+	const float PixelSizeY = (ScreenBR.y - ScreenTL.y) / Graphics()->ScreenHeight();
 
 	WindowRect.h = SMusicIslandProperties::ms_BaseHeight;
 	constexpr float BaseFontSize = 8.0f;
 	const float TimerFontSize = minimum(BaseFontSize, SMusicIslandProperties::ms_BaseHeight - SMusicIslandProperties::ms_Padding * 2.0f);
-	const auto AdjustProblematicWidth = [](int Width) {
-		return Width == 75 ? 76.0f : (float)Width;
-	};
 	float DesiredWidth = 0.0f;
 	SGameTimerRenderInfo RenderInfo;
 	if(GetGameTimerRenderInfo(GameClient()->m_Snap.m_pGameInfoObj, Client(), TextRender(), TimerFontSize, RenderInfo))
@@ -873,32 +896,27 @@ void CMusicIsland::RenderMusicIsland()
 
 	if(g_Config.m_RiShowMusicIslandTimerFull)
 	{
-		const float MinWidth = AdjustProblematicWidth(g_Config.m_RiShowMusicIslandFullMinWidth);
+		const float MinWidth = (float)g_Config.m_RiShowMusicIslandFullMinWidth;
 		WindowRect.w = g_Config.m_RiShowMusicIslandFullDynamicWidth && DesiredWidth > 0.0f ?
 			maximum(MinWidth, DesiredWidth) :
 			MinWidth;
 	}
 	else
 	{
-		const float MinWidth = AdjustProblematicWidth(g_Config.m_RiShowMusicIslandMinWidth);
-		const float MaxWidth = maximum(AdjustProblematicWidth(g_Config.m_RiShowMusicIslandMinWidth), AdjustProblematicWidth(g_Config.m_RiShowMusicIslandMaxWidth));
+		const float MinWidth = (float)g_Config.m_RiShowMusicIslandMinWidth;
+		const float MaxWidth = maximum((float)g_Config.m_RiShowMusicIslandMinWidth, (float)g_Config.m_RiShowMusicIslandMaxWidth);
 		WindowRect.w = g_Config.m_RiShowMusicIslandDynamicWidth && DesiredWidth > 0.0f ?
 			maximum(MinWidth, minimum(MaxWidth, DesiredWidth)) :
 			MaxWidth;
 	}
 
+	WindowRect.w = SnapToScreenSpan(WindowRect.w, PixelSizeX);
+	WindowRect.h = SnapToScreenSpan(WindowRect.h, PixelSizeY);
 	WindowRect.w = minimum(WindowRect.w, ScreenBR.x - ScreenTL.x);
-	WindowRect.x = ScreenTL.x + (ScreenBR.x - ScreenTL.x - WindowRect.w) / 2.0f;
-	WindowRect.y = ScreenTL.y + 2.5f;
-
-	if(WindowRect.y + WindowRect.h > ScreenBR.y)
-	{
-		WindowRect.y -= WindowRect.y + WindowRect.h - ScreenBR.y;
-	}
-	if(WindowRect.x + WindowRect.w > ScreenBR.x)
-	{
-		WindowRect.x -= WindowRect.x + WindowRect.w - ScreenBR.x;
-	}
+	WindowRect.x = SnapToScreenPixel(ScreenTL.x + (ScreenBR.x - ScreenTL.x - WindowRect.w) / 2.0f, ScreenTL.x, PixelSizeX);
+	WindowRect.y = SnapToScreenPixel(ScreenTL.y + 2.5f, ScreenTL.y, PixelSizeY);
+	WindowRect.x = std::clamp(WindowRect.x, ScreenTL.x, maximum(ScreenTL.x, ScreenBR.x - WindowRect.w));
+	WindowRect.y = std::clamp(WindowRect.y, ScreenTL.y, maximum(ScreenTL.y, ScreenBR.y - WindowRect.h));
 
 	const float MainExtraHeight = SMusicIslandProperties::ms_ExpandedInfoHeight;
 	const float ControlsExtraHeight = SMusicIslandProperties::ms_ControlGap + SMusicIslandProperties::ms_ControlHeight;
@@ -1542,12 +1560,20 @@ void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
 	const float PixelSizeX = ScreenWidth / Graphics()->ScreenWidth();
 	const float PixelSizeY = ScreenHeight / Graphics()->ScreenHeight();
 	if(!ShouldScroll)
-		TextX = round_to_int(TextX / PixelSizeX) * PixelSizeX;
-	TextY = round_to_int(TextY / PixelSizeY) * PixelSizeY;
-	const int ClipX = (int)std::round((TimerRect.x - ScreenX0) * Graphics()->ScreenWidth() / ScreenWidth);
-	const int ClipY = (int)std::round((TimerRect.y - ScreenY0) * Graphics()->ScreenHeight() / ScreenHeight);
-	const int ClipW = (int)std::round(TimerRect.w * Graphics()->ScreenWidth() / ScreenWidth);
-	const int ClipH = (int)std::round(TimerRect.h * Graphics()->ScreenHeight() / ScreenHeight);
+	{
+		TextX = SnapToScreenPixel(TextX, ScreenX0, PixelSizeX);
+		const float MaxTextX = maximum(TimerRect.x, TimerRect.x + TimerRect.w - RenderInfo.m_TextWidth);
+		TextX = std::clamp(TextX, TimerRect.x, MaxTextX);
+	}
+	TextY = SnapToScreenPixel(TextY, ScreenY0, PixelSizeY);
+	const float ScaleX = Graphics()->ScreenWidth() / ScreenWidth;
+	const float ScaleY = Graphics()->ScreenHeight() / ScreenHeight;
+	const int ClipX = (int)std::floor((TimerRect.x - ScreenX0) * ScaleX);
+	const int ClipY = (int)std::floor((TimerRect.y - ScreenY0) * ScaleY);
+	const int ClipX2 = (int)std::ceil((TimerRect.x + TimerRect.w - ScreenX0) * ScaleX);
+	const int ClipY2 = (int)std::ceil((TimerRect.y + TimerRect.h - ScreenY0) * ScaleY);
+	const int ClipW = maximum(0, ClipX2 - ClipX);
+	const int ClipH = maximum(0, ClipY2 - ClipY);
 
 	Graphics()->ClipEnable(ClipX, ClipY, ClipW, ClipH);
 	TextRender()->TextColor(RenderInfo.m_TextColor);
