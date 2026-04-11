@@ -1464,50 +1464,47 @@ void CMusicIsland::RenderMusicIslandVisualizer(CUIRect *pBase)
 
 	constexpr int BarCount = 5;
 	const int CenterBar = BarCount / 2;
-	float aBarWidths[BarCount];
-	float TotalWidth = 0.0f;
-	for(int BarIndex = 0; BarIndex < BarCount; ++BarIndex)
-	{
-		const int DistIndex = std::abs(BarIndex - CenterBar);
-		const float ShapeStrength = 1.0f - DistIndex / 2.0f;
-		aBarWidths[BarIndex] = 0.74f + ShapeStrength * 0.46f;
-		TotalWidth += aBarWidths[BarIndex];
-	}
+	float BarSpacing = maximum(PixelSizeX, 0.42f);
+	float BarWidth = (VisualizerRect.w - BarSpacing * (BarCount - 1)) / BarCount;
+	if(BarWidth <= 0.0f)
+		return;
 
-	const float BarSpacing = 0.52f;
-	TotalWidth += BarSpacing * (BarCount - 1);
+	BarWidth = maximum(PixelSizeX, SnapToScreenSpan(BarWidth, PixelSizeX));
+	BarSpacing = maximum(0.0f, (VisualizerRect.w - BarWidth * BarCount) / (BarCount - 1));
+	if(PixelSizeX > 0.0f)
+		BarSpacing = maximum(0.0f, std::floor(BarSpacing / PixelSizeX) * PixelSizeX);
+	const float TotalWidth = BarWidth * BarCount + BarSpacing * (BarCount - 1);
 	float CursorX = VisualizerRect.x + (VisualizerRect.w - TotalWidth) / 2.0f;
 	const float CenterY = VisualizerRect.y + VisualizerRect.h / 2.0f;
 
 	for(int BarIndex = 0; BarIndex < BarCount; ++BarIndex)
 	{
-		const float ShapeStrength = Animated ? (1.0f - std::abs(BarIndex - CenterBar) / 2.0f) : 0.0f;
-		const float Width = aBarWidths[BarIndex];
+		const float DistFactor = 1.0f - std::abs(BarIndex - CenterBar) / (float)CenterBar;
+		const float ShapeStrength = Animated ? maximum(0.0f, DistFactor) : 0.0f;
 		const float Pulse = Animated ? GetVisualizerBarPulse(Time, BarIndex) : 0.0f;
-		const float BaseHeight = Animated ? (1.85f + ShapeStrength * 1.35f) : 1.65f;
-		const float JumpHeight = (1.2f + ShapeStrength * 1.95f) * MotionScale;
-		const float Height = minimum(VisualizerRect.h, BaseHeight + Pulse * JumpHeight);
+		const float BaseHeight = Animated ? 2.35f : 1.95f;
+		const float JumpHeight = (2.2f + ShapeStrength * 1.45f) * MotionScale;
+		float Height = minimum(VisualizerRect.h, BaseHeight + Pulse * JumpHeight);
+		Height = maximum(PixelSizeY, SnapToScreenSpan(Height, PixelSizeY));
 
-		float Left = round_to_int(CursorX / PixelSizeX) * PixelSizeX;
-		float Right = round_to_int((CursorX + Width) / PixelSizeX) * PixelSizeX;
-		float Top = CenterY - Height / 2.0f;
-		float Bottom = CenterY + Height / 2.0f;
-		if(Right <= Left)
-			Right = Left + PixelSizeX;
-		if(Bottom <= Top)
-			Bottom = Top + maximum(PixelSizeY, 0.001f);
+		const float Left = SnapToScreenPixel(CursorX, ScreenX0, PixelSizeX);
+		const float Top = std::clamp(
+			SnapToScreenPixel(CenterY - Height / 2.0f, ScreenY0, PixelSizeY),
+			VisualizerRect.y,
+			VisualizerRect.y + VisualizerRect.h - Height);
 
-		CUIRect BarRect = {Left, Top, Right - Left, Bottom - Top};
-		const float BarAlpha = (0.62f + ShapeStrength * 0.33f) * AlphaScale;
+		CUIRect BarRect = {Left, Top, BarWidth, Height};
+		const float BarAlpha = (0.74f + ShapeStrength * 0.2f) * AlphaScale;
+		const float BarRounding = minimum(BarRect.w, BarRect.h) / 2.0f;
 		BarRect.Draw4(
-			ColorRGBA(0.47f, 0.9f, 1.0f, BarAlpha),
-			ColorRGBA(0.47f, 0.9f, 1.0f, BarAlpha),
-			ColorRGBA(0.0f, 0.66f, 1.0f, BarAlpha * 0.92f),
-			ColorRGBA(0.0f, 0.66f, 1.0f, BarAlpha * 0.92f),
+			ColorRGBA(0.6f, 0.96f, 1.0f, BarAlpha),
+			ColorRGBA(0.6f, 0.96f, 1.0f, BarAlpha),
+			ColorRGBA(0.12f, 0.72f, 1.0f, BarAlpha),
+			ColorRGBA(0.12f, 0.72f, 1.0f, BarAlpha),
 			IGraphics::CORNER_ALL,
-			BarRect.w / 2.0f);
+			BarRounding);
 
-		CursorX += Width + BarSpacing;
+		CursorX += BarWidth + BarSpacing;
 	}
 }
 
