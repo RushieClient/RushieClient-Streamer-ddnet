@@ -926,6 +926,8 @@ void CMusicIsland::RenderMusicIsland()
 	const bool MousePressed = UseMouse && Input()->KeyIsPressed(KEY_MOUSE_1);
 	const bool MouseClicked = UseMouse && MousePressed && !m_LastNativeMousePressed;
 	const bool ShowGaps = g_Config.m_RiShowMusicIslandSections;
+	const bool ShowImage = g_Config.m_RiShowMusicIslandImage != 0;
+	const bool ShowVisualizer = g_Config.m_RiShowMusicIslandVisualizer != 0;
 
 	CUIRect BaseHoverRect = WindowRect;
 	CUIRect ExpandedHoverRect = WindowRect;
@@ -971,33 +973,36 @@ void CMusicIsland::RenderMusicIsland()
 
 	Base.VMargin(3.0f, &Base);
 	Base.HMargin(SMusicIslandProperties::ms_Padding, &Base);
-	if(g_Config.m_RiShowMusicIslandImage)
+	if(ShowImage)
 	{
 		Base.VSplitLeft(8.0f, &MusicImage, &Base);
 		MusicImage.HMargin(SMusicIslandProperties::ms_Padding, &MusicImage);
 	}
-	if(g_Config.m_RiShowMusicIslandVisualizer)
+	if(ShowVisualizer)
 	{
 		Base.VSplitRight(8.0f, &Base, &Visualizer);
 	}
-	if(ShowGaps)
+	CUIRect LeftSpacing, RightSpacing;
+	Base.VSplitLeft(1.5f, &LeftSpacing, &Base);
+	Base.VSplitRight(1.5f, &Base, &RightSpacing);
+	if(ShowGaps && ShowImage)
 	{
-		Base.VSplitLeft(1.25f, &GapsRect, &Base);
+		GapsRect = LeftSpacing;
 		GapsRect.VSplitLeft(0.75f, nullptr, &GapsRect);
+		GapsRect.VSplitLeft(0.5f, &GapsRect, nullptr);
 		GapsRect.Draw(MusicIslandGapsColor(), IGraphics::CORNER_NONE, 0.0f);
-
-		Base.VSplitRight(1.25f, &Base, &GapsRect);
-		GapsRect.VSplitRight(0.75f, &GapsRect, nullptr);
-		GapsRect.Draw(MusicIslandGapsColor(), IGraphics::CORNER_NONE, 0.0f);
-
-		Base.VMargin(0.25f, &Base);
 	}
-	else
-		Base.VMargin(1.5f, &Base);
+	if(ShowGaps && ShowVisualizer)
+	{
+		GapsRect = RightSpacing;
+		GapsRect.VSplitLeft(0.25f, nullptr, &GapsRect);
+		GapsRect.VSplitLeft(0.5f, &GapsRect, nullptr);
+		GapsRect.Draw(MusicIslandGapsColor(), IGraphics::CORNER_NONE, 0.0f);
+	}
 	const SMusicInfo MusicInfo = GetMusicInfo();
-	if(g_Config.m_RiShowMusicIslandImage)
+	if(ShowImage)
 		RenderMusicIslandImage(&MusicImage);
-	if(g_Config.m_RiShowMusicIslandVisualizer)
+	if(ShowVisualizer)
 		RenderMusicIslandVisualizer(&Visualizer);
 	RenderMusicIslandMain(&Base);
 
