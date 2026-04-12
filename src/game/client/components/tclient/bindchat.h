@@ -98,7 +98,7 @@ static CBindChat::CBindRclient s_aDefaultBindChatRclientChat[] = {
 	{"Add a word to the censor list", ".addcensor", "add_censor_list"},
 	{"Find time on other map", ".findtime", "ri_find_time_on_map"},
 	{"Search map info", ".mapinfo", "ri_search_map_info"},
-	{"Add player to the white list", ".addwhitelist", "add_white_list"},
+	{"Add player to the filter white list", ".addwhitelist", "add_white_list"},
 };
 static CBindChat::CBindRclient s_aDefaultBindChatRclientTracker[] = {
 	{"Tracker player", ".track", "tracker"},

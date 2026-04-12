@@ -106,8 +106,8 @@ Right jump
 Deepfly toggle
 == Вкл/выкл Дипфлай
 
-Auto Change Player Info
-== Авто смена информации о игроке
+Player Inspector
+== Инспектор игроков
 
 [Chatbinds]
 Find skin
@@ -911,3 +911,63 @@ VAD release delay (ms)
 
 Checkpoint:
 == Чекпоинт
+
+Dummy Change Clan
+== Дамми Смена Клана
+
+Add player to the filter white list
+== Добавить игрока в вайтлист фильтра
+
+Chat Animate
+== Анимация Чата
+
+Chat Filter
+== Фильтр Чата
+
+Chat Utils
+== Чат Утилиты
+
+Show cursor when chat is open
+== Показывать курсор когда чат открыт
+
+Show chat scrollbar
+== Показывать скроллбар чата
+
+Scoreboard Sort
+== Сортировка табло
+
+Scoreboard Heart
+== Сердце в табло
+
+Scoreboard Actions
+== Действия в табло
+
+Freeze inputs when unlock mouse
+== Замораживать действия когда включено
+
+Nameplates Scheme
+== Схема Неймплейтов
+
+Nameplates Show Fire
+== Удар В Неймплейтах
+
+Nameplates Show Hook
+== Хук В Неймплейтах
+
+Dummy Tracker
+== Дамми Трекер
+
+Advanced Dummy Hud
+== Улучшенный Дамми Худ
+
+Trails
+== Трейлы
+
+AFK Emote/Texture In Menu
+== АФК Эмоция/Текстура В Меню
+
+AFK Emote/Texture In Spec
+== АФК Эмоция/Текстура В Спеке
+
+Disable Frozen Flakes
+== Выключить Снежки
