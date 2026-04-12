@@ -431,7 +431,7 @@ void CVoting::RenderBars(CUIRect Bars) const
 		}
 	}
 
-	if(g_Config.m_RiShowProcentInVoteBar)
+	if(g_Config.m_RiShowPercentInVoteBar)
 	{
 		const int YesPercent = m_Total > 0 ? (100 * m_Yes + m_Total / 2) / m_Total : 0;
 		const int NoPercent = m_Total > 0 ? (100 * m_No + m_Total / 2) / m_Total : 0;

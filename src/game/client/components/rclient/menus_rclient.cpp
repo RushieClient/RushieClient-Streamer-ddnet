@@ -1980,6 +1980,11 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		DoLine_KeyReader(Label, s_ReaderButtonMenuOpen, s_ClearButtonMenuOpen, RCLocalize("Open new menu"), "toggle_rclient_clickgui");
 		break;
 	}
+	case SETTINGS_SECTION_PERCENT_VOTE_BAR:
+	{
+		MACRO_CONFIG_CHECKBOX(RiShowPercentInVoteBar, "Show procent in vote bar");
+		break;
+	}
 	default:
 	{
 		Column.HSplitTop(LineSize, &Label, &Column);

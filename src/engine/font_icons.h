@@ -92,18 +92,37 @@ namespace FontIcon
 	inline const char *const XMARK = "\uF00D";
 
 	// RClient
-	inline const char *const RC_LIST_TRACK = "\xEF\x80\xBA";
-	inline const char *const RC_PEOPLE_GROUP = "\xEE\x94\xB3";
-	inline const char *const RC_PERSON_RIFLE = "\xEE\x95\x8E";
-	inline const char *const RC_GAVEL = "\xEF\x83\xA3";
-	inline const char *const RC_DOOR_OPEN = "\xEF\x94\xAB";
-	inline const char *const RC_SCULL = "\xEF\x95\x8C";
-	inline const char *const RC_ANGLE_UP = "\xEF\x84\x86";
-	inline const char *const RC_ANGLES_UP = "\xEF\x84\x82";
-	inline const char *const RC_MICROPHONE = "\xEF\x84\xB0";
+	inline const char *const RC_LIST_TRACK = "\uF03A";
+	inline const char *const RC_PERSON_RIFLE = "\uE54E";
+	inline const char *const RC_GAVEL = "\uF0E3";
+	inline const char *const RC_DOOR_OPEN = "\uF52B";
+	inline const char *const RC_SCULL = "\uF54C";
+	inline const char *const RC_ANGLE_UP = "\uF106";
+	inline const char *const RC_ANGLES_UP = "\uF102";
+	inline const char *const RC_MICROPHONE = "\uF130";
+	inline const char *const RC_BARS_PROGRESS = "\uF828";
+	inline const char *const RC_BORDER_TOP_LEFT = "\uF853";
+	inline const char *const RC_ADDRESS_CARD = "\uF2BB";
+	inline const char *const RC_LOCATION_CROSSHAIRS = "\uF601";
+	inline const char *const RC_ARROW_DOWN_WIDE_SHORT = "\uF160";
+	inline const char *const RC_STOPWATCH = "\uF2F2";
+	inline const char *const RC_BELL = "\uF0F3";
+	inline const char *const RC_SNOWFLAKE = "\uF2DC";
+	inline const char *const RC_MOON = "\uF186";
+	inline const char *const RC_WIND = "\uF72E";
+	inline const char *const RC_FIRE = "\uF06D";
+	inline const char *const RC_LINK = "\uF0C1";
+	inline const char *const RC_TABLE_CELLS = "\uF00A";
+	inline const char *const RC_USER_GEAR = "\uF4FE";
+	inline const char *const RC_COMMENT_DOTS = "\uF4AD";
+	inline const char *const RC_BARS_STAGGERED = "\uF550";
+	inline const char *const RC_FILTER = "\uF0B0";
+	inline const char *const RC_COMMENT_MEDICAL = "\uF7F5";
+	inline const char *const RC_USER_TAG = "\uF507";
+	inline const char *const RC_MAGNIFYING_GLASS = "\uF002";
 
 	// TClient
-	inline const char *const ICON_USERS = "\xEF\x83\x80";
+	inline const char *const ICON_USERS = "\uF0C0";
 }
 
 #endif

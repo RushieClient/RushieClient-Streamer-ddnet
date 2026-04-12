@@ -226,7 +226,7 @@ MACRO_CONFIG_INT(RiShowMusicIslandSections, ri_show_music_island_sections, 0, 0,
 MACRO_CONFIG_COL(RiShowMusicIslandSectionsColor, ri_show_music_island_sections_color, 4278190080, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of rclient's music island sections gaps")
 
 // show procent in vote
-MACRO_CONFIG_INT(RiShowProcentInVoteBar, ri_show_procent_in_vote_bar, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shows procent in vote bar")
+MACRO_CONFIG_INT(RiShowPercentInVoteBar, ri_show_percent_in_vote_bar, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shows procent in vote bar")
 
 // Show checkpoint in hud
 MACRO_CONFIG_INT(RiShowCheckpointInHud, ri_show_checkpoint_in_hud, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Shows checkpoint in hud")
@@ -235,5 +235,5 @@ MACRO_CONFIG_INT(RiShowCheckpointInHud, ri_show_checkpoint_in_hud, 0, 0, 1, CFGF
 MACRO_CONFIG_INT(RiHudOneLine, ri_hud_one_line, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Make angle and checkpoint in hud in one line")
 
 // Sound on join
-MACRO_CONFIG_INT(RiJoinSoundEnable, ri_join_sound_names, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play highlight chat sound when listed names join the game")
+MACRO_CONFIG_INT(RiJoinSoundEnable, ri_join_sound_enable, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play highlight chat sound when listed names join the game")
 MACRO_CONFIG_STR(RiJoinSoundNames, ri_join_sound_names, 512, "", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Play highlight chat sound when listed names join the game")
