@@ -92,7 +92,7 @@ public:
 	X(HEART_SIZE_IN_NAMEPLATE, "Heart Size In Nameplate", "RClient", FontIcon::HEART, nullptr, 0, 0, 1) \
 	X(BINDS, "Binds", "", FontIcon::KEYBOARD, nullptr, 0, 0, 1) \
 	X(BETTER_LASERS, "Better Lasers (Pulse)", "", FontIcon::RC_PERSON_RIFLE, &g_Config.m_RiBetterLasers, 0, 1, 1) \
-	X(SPECTATOR, "Spectator Move", "", FontIcon::EYE, &g_Config.m_RiSpectatorMoveEnable, 0, 1, 1) \
+	X(SPECTATOR_MOVE, "Spectator Move", "", FontIcon::EYE, &g_Config.m_RiSpectatorMoveEnable, 0, 1, 1) \
 	X(SPECTATOR_SORT, "Spectator Sort", "", FontIcon::RC_ARROW_DOWN_WIDE_SHORT, &g_Config.m_RiSpectatorSortById, 0, 2, 1) \
 	X(FIND_TELEPORT, "Find teleport", "", FontIcon::RC_LOCATION_CROSSHAIRS, nullptr, 0, 0, 1) \
 	X(FIND_FINISH, "Find finish", "", FontIcon::RC_LOCATION_CROSSHAIRS, nullptr, 0, 0, 1) \
@@ -103,6 +103,9 @@ public:
 	X(VOICE, "Voice", "", FontIcon::RC_MICROPHONE, &g_Config.m_RiVoiceEnable, 0, 1, 1) \
 	X(RCON, "Admin Panel", "", FontIcon::RC_GAVEL, nullptr, 0, 1, 1) \
 	X(PERCENT_VOTE_BAR, "Percent In Vote Bar", "", FontIcon::RC_BARS_PROGRESS, &g_Config.m_RiShowPercentInVoteBar, 0, 1, 1) \
+	X(SHOW_FIND_CHECKPOINT, "Show/Find Checkpoint", "", FontIcon::RC_LOCATION_DOT, &g_Config.m_RiShowCheckpointInHud, 0, 1, 1) \
+	X(COMPACT_ANGLE_CHECKPOINT, "Compact Angle/Checkpoint", "", FontIcon::RC_COMPASS, &g_Config.m_RiHudOneLine, 0, 1, 1) \
+	X(PLAYER_JOIN_SOUND, "Player Join Sound", "", FontIcon::RC_BELL, &g_Config.m_RiJoinSoundEnable, 0, 1, 1) \
 
 	enum ERushieSettingsSection
 	{

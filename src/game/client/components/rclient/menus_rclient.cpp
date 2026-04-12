@@ -1121,6 +1121,10 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			}
 		}
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		static CButtonContainer s_ReaderButtonSpecPlr, s_ClearButtonSpecPlr;
+		Column.HSplitTop(LineSize, &Label, &Column);
+		DoLine_KeyReader(Label, s_ReaderButtonSpecPlr, s_ClearButtonSpecPlr, RCLocalize("Tracker for spectating player"), "ri_tracker_spectator");
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowLastPosHud, RCLocalize("Show last known pos instead no info"), &g_Config.m_RiShowLastPosHud, &Column, LineSize);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiChangeTargetColorWhenXTargetEqualXPlayer, RCLocalize("Change target pos x color when x target = x player"), &g_Config.m_RiChangeTargetColorWhenXTargetEqualXPlayer, &Column, LineSize);
@@ -1277,12 +1281,8 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		}
 		break;
 	}
-	case SETTINGS_SECTION_SPECTATOR:
+	case SETTINGS_SECTION_SPECTATOR_MOVE:
 	{
-		static CButtonContainer s_ReaderButtonSpecPlr, s_ClearButtonSpecPlr;
-		Column.HSplitTop(LineSize, &Label, &Column);
-		DoLine_KeyReader(Label, s_ReaderButtonSpecPlr, s_ClearButtonSpecPlr, RCLocalize("Tracker for spectating player"), "ri_tracker_spectator");
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiSpectatorMoveEnable, RCLocalize("Enable spectator camera move"), &g_Config.m_RiSpectatorMoveEnable, &Column, LineSize);
 		if(g_Config.m_RiSpectatorMoveEnable)
 		{
@@ -1306,10 +1306,6 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			Column.HSplitTop(LineSize, &Label, &Column);
 			DoLine_KeyReader(Label, s_ReaderButtonSpectatorDown, s_ClearButtonSpectatorDown, RCLocalize("Move down"), "+ri_spec_down");
 		}
-		Column.HSplitTop(MarginSmall, nullptr, &Column);
-		Column.HSplitTop(LineSize, &Label, &Column);
-		static CButtonContainer s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId;
-		DoLine_KeyReader(Label, s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId, RCLocalize("Find checkpoint"), "ri_get_checkpoint_id");
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
@@ -1983,6 +1979,29 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 	case SETTINGS_SECTION_PERCENT_VOTE_BAR:
 	{
 		MACRO_CONFIG_CHECKBOX(RiShowPercentInVoteBar, "Show procent in vote bar");
+		break;
+	}
+	case SETTINGS_SECTION_SHOW_FIND_CHECKPOINT:
+	{
+		MACRO_CONFIG_CHECKBOX(RiShowCheckpointInHud, "Show current checkpoint in hud");
+		MACRO_CONFIG_CHECKBOX(RiHudOneLine, "Show angle and checkpoint oneline");
+		Column.HSplitTop(LineSize, &Label, &Column);
+		static CButtonContainer s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId;
+		DoLine_KeyReader(Label, s_ReaderButtonFindCheckpointId, s_ClearButtonFindCheckpointId, RCLocalize("Find checkpoint"), "ri_get_checkpoint_id");
+		break;
+	}
+	case SETTINGS_SECTION_COMPACT_ANGLE_CHECKPOINT:
+	{
+		MACRO_CONFIG_CHECKBOX(RiHudOneLine, "Show angle and checkpoint oneline");
+		break;
+	}
+	case SETTINGS_SECTION_PLAYER_JOIN_SOUND:
+	{
+		MACRO_CONFIG_CHECKBOX(RiJoinSoundEnable, "Play sound when player join");
+		static CLineInput s_JoinSoundNames;
+		Column.HSplitTop(LineSize, &Label, &Column);
+		DoEditBoxWithLabel(&s_JoinSoundNames, &Label, RCLocalize("Player names"), RCLocalize("Name1,Name2"), g_Config.m_RiJoinSoundNames, sizeof(g_Config.m_RiJoinSoundNames));
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
 	default:

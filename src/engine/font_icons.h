@@ -120,6 +120,8 @@ namespace FontIcon
 	inline const char *const RC_COMMENT_MEDICAL = "\uF7F5";
 	inline const char *const RC_USER_TAG = "\uF507";
 	inline const char *const RC_MAGNIFYING_GLASS = "\uF002";
+	inline const char *const RC_LOCATION_DOT = "\uF3C5";
+	inline const char *const RC_COMPASS = "\uF14E";
 
 	// TClient
 	inline const char *const ICON_USERS = "\uF0C0";
