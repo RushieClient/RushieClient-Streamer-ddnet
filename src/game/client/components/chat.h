@@ -210,6 +210,8 @@ class CChat : public CComponent
 
 	void StoreSave(const char *pText);
 	void SetUiMousePos(vec2 Pos);
+	const CCommand *FindCommand(const char *pName) const;
+	bool TryTranslateCommand(const char *pLine, char *pLineBuf, size_t LineBufSize) const;
 
 	friend class CBindChat;
 	friend class CTranslate;

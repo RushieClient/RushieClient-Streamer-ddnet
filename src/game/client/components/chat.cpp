@@ -37,6 +37,80 @@ static vec2 UiMouseToScreen(const CUIRect *pUiScreen, vec2 UiMousePos, float Wid
 		(UiMousePos.y - pUiScreen->y) * Height / pUiScreen->h);
 }
 
+static bool IsChatCommandPrefix(char Prefix)
+{
+	return Prefix == '/' || Prefix == '.';
+}
+
+static int TransliterateCommandCodepoint(int Codepoint)
+{
+	switch(str_utf8_tolower_codepoint(Codepoint))
+	{
+	case 0x0451: return '`';  // ё
+	case 0x0439: return 'q';  // й
+	case 0x0446: return 'w';  // ц
+	case 0x0443: return 'e';  // у
+	case 0x043a: return 'r';  // к
+	case 0x0435: return 't';  // е
+	case 0x043d: return 'y';  // н
+	case 0x0433: return 'u';  // г
+	case 0x0448: return 'i';  // ш
+	case 0x0449: return 'o';  // щ
+	case 0x0437: return 'p';  // з
+	case 0x0445: return '[';  // х
+	case 0x044a: return ']';  // ъ
+	case 0x0444: return 'a';  // ф
+	case 0x044b: return 's';  // ы
+	case 0x0432: return 'd';  // в
+	case 0x0430: return 'f';  // а
+	case 0x043f: return 'g';  // п
+	case 0x0440: return 'h';  // р
+	case 0x043e: return 'j';  // о
+	case 0x043b: return 'k';  // л
+	case 0x0434: return 'l';  // д
+	case 0x0436: return ';';  // ж
+	case 0x044d: return '\''; // э
+	case 0x044f: return 'z';  // я
+	case 0x0447: return 'x';  // ч
+	case 0x0441: return 'c';  // с
+	case 0x043c: return 'v';  // м
+	case 0x0438: return 'b';  // и
+	case 0x0442: return 'n';  // т
+	case 0x044c: return 'm';  // ь
+	case 0x0431: return ',';  // б
+	case 0x044e: return '.';  // ю
+	default: return 0;
+	}
+}
+
+static void TransliterateCommand(const char *pCommand, char *pBuf, size_t BufSize)
+{
+	if(BufSize == 0)
+		return;
+
+	char *pDst = pBuf;
+	char *pDstEnd = pBuf + BufSize - 1;
+	const char *pSrc = pCommand;
+
+	while(*pSrc != '\0' && pDst < pDstEnd)
+	{
+		const char *pCodepointStart = pSrc;
+		const int Codepoint = str_utf8_decode(&pSrc);
+		const int Transliterated = TransliterateCommandCodepoint(Codepoint);
+
+		if(Transliterated != 0)
+		{
+			*pDst++ = (char)Transliterated;
+			continue;
+		}
+
+		while(pCodepointStart != pSrc && pDst < pDstEnd)
+			*pDst++ = *pCodepointStart++;
+	}
+
+	*pDst = '\0';
+}
+
 CChat::CLine::CLine()
 {
 	m_TextContainerIndex.Reset();
@@ -373,7 +447,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 			str_truncate(m_aCompletionBuffer, sizeof(m_aCompletionBuffer), m_Input.GetString() + m_PlaceholderOffset, m_PlaceholderLength);
 		}
 
-		if(!m_CompletionUsed && m_aCompletionBuffer[0] != '/')
+		if(!m_CompletionUsed && !IsChatCommandPrefix(m_aCompletionBuffer[0]))
 		{
 			// Create the completion list of player names through which the player can iterate
 			const char *PlayerName, *FoundInput;
@@ -402,9 +476,11 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 		if(GameClient()->m_BindChat.ChatDoAutocomplete(ShiftPressed))
 		{
 		}
-		else if(m_aCompletionBuffer[0] == '/' && !m_vServerCommands.empty())
+		else if(IsChatCommandPrefix(m_aCompletionBuffer[0]) && !m_vServerCommands.empty())
 		{
 			CCommand *pCompletionCommand = nullptr;
+			char aCommandStart[MAX_LINE_LENGTH];
+			TransliterateCommand(m_aCompletionBuffer + 1, aCommandStart, sizeof(aCommandStart));
 
 			const size_t NumCommands = m_vServerCommands.size();
 
@@ -416,7 +492,6 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 
 			m_CompletionUsed = true;
 
-			const char *pCommandStart = m_aCompletionBuffer + 1;
 			for(size_t i = 0; i < 2 * NumCommands; ++i)
 			{
 				int SearchType;
@@ -435,7 +510,7 @@ bool CChat::OnInput(const IInput::CEvent &Event)
 
 				auto &Command = m_vServerCommands[Index];
 
-				if(str_startswith_nocase(Command.m_aName, pCommandStart))
+				if(str_startswith_nocase(Command.m_aName, aCommandStart))
 				{
 					pCompletionCommand = &Command;
 					m_CompletionChosen = Index + SearchType * NumCommands;
@@ -1523,16 +1598,19 @@ void CChat::OnRender()
 		m_Input.SetScrollOffsetChange(ScrollOffsetChange);
 
 		// Autocompletion hint
-		if(m_Input.GetString()[0] == '/' && m_Input.GetString()[1] != '\0' && !m_vServerCommands.empty())
+		if(IsChatCommandPrefix(m_Input.GetString()[0]) && m_Input.GetString()[1] != '\0' && !m_vServerCommands.empty())
 		{
+			char aCommandStart[MAX_LINE_LENGTH];
+			TransliterateCommand(m_Input.GetString() + 1, aCommandStart, sizeof(aCommandStart));
+
 			for(const auto &Command : m_vServerCommands)
 			{
-				if(str_startswith_nocase(Command.m_aName, m_Input.GetString() + 1))
+				if(str_startswith_nocase(Command.m_aName, aCommandStart))
 				{
 					InputCursor.m_X = InputCursor.m_X + TextRender()->TextWidth(InputCursor.m_FontSize, m_Input.GetString(), -1, InputCursor.m_LineWidth);
 					InputCursor.m_Y = m_Input.GetCaretPosition().y;
 					TextRender()->TextColor(1.0f, 1.0f, 1.0f, 0.5f);
-					TextRender()->TextEx(&InputCursor, Command.m_aName + str_length(m_Input.GetString() + 1));
+					TextRender()->TextEx(&InputCursor, Command.m_aName + str_length(aCommandStart));
 					TextRender()->TextColor(TextRender()->DefaultTextColor());
 					break;
 				}
@@ -1870,41 +1948,43 @@ void CChat::EnsureCoherentWidth() const
 	g_Config.m_ClChatWidth = CHAT_FONTSIZE_WIDTH_RATIO * g_Config.m_ClChatFontSize;
 }
 
-const char *TransliterateCommand(const char *pCommand)
+const CChat::CCommand *CChat::FindCommand(const char *pName) const
 {
-	static const struct
+	for(const auto &Command : m_vServerCommands)
 	{
-		const char *pRu;
-		const char *pEn;
-	} s_aTranslit[] = {
-		{"е", "t"}, {"у", "e"}, {"ф", "a"}, {"ь", "m"},
-		{"д", "l"}, {"щ", "o"}, {"с", "c"}, {"л", "k"},
-		{"з", "p"}, {"ы", "z"}, {"и", "b"}, {"к", "r"},
-		{"а", "f"}, {"в", "d"}, {"г", "u"}, {"ё", "`"},
-		{"ж", ";"}, {"й", "q"}, {"м", "v"}, {"н", "y"},
-		{"о", "j"}, {"п", "g"}, {"р", "h"}, {"т", "n"},
-		{"х", "["}, {"ц", "w"}, {"ч", "x"}, {"ш", "i"},
-		{"ъ", "]"}, {"э", "s"}, {"ю", "."}, {"я", "`"},
-		{"б", ","}};
-
-	static char aResult[256];
-	str_copy(aResult, pCommand, sizeof(aResult));
-
-	// Заменяем каждую русскую букву на соответствующую английскую
-	for(const auto &Pair : s_aTranslit)
-	{
-		const char *pPos = aResult;
-		while((pPos = str_find(pPos, Pair.pRu)) != nullptr)
-		{
-			char aTemp[256];
-			str_copy(aTemp, pPos + str_length(Pair.pRu), sizeof(aTemp));
-			str_copy((char *)pPos, Pair.pEn, sizeof(aResult) - (pPos - aResult));
-			str_append((char *)pPos, aTemp, sizeof(aResult) - (pPos - aResult));
-			pPos += str_length(Pair.pEn);
-		}
+		if(str_comp_nocase(Command.m_aName, pName) == 0)
+			return &Command;
 	}
 
-	return aResult;
+	return nullptr;
+}
+
+bool CChat::TryTranslateCommand(const char *pLine, char *pLineBuf, size_t LineBufSize) const
+{
+	if(!IsChatCommandPrefix(pLine[0]) || pLine[1] == '\0')
+		return false;
+
+	char aCommand[MAX_LINE_LENGTH];
+	char aTransliteratedCommand[MAX_LINE_LENGTH];
+
+	const char *pArgs = str_find(pLine, " ");
+	if(pArgs != nullptr)
+		str_truncate(aCommand, sizeof(aCommand), pLine + 1, pArgs - (pLine + 1));
+	else
+		str_copy(aCommand, pLine + 1, sizeof(aCommand));
+
+	TransliterateCommand(aCommand, aTransliteratedCommand, sizeof(aTransliteratedCommand));
+
+	const CCommand *pCommand = FindCommand(aTransliteratedCommand);
+	if(pCommand == nullptr)
+		return false;
+
+	if(pArgs != nullptr)
+		str_format(pLineBuf, LineBufSize, "/%s%s", pCommand->m_aName, pArgs);
+	else
+		str_format(pLineBuf, LineBufSize, "/%s", pCommand->m_aName);
+
+	return true;
 }
 
 void CChat::SendChat(int Team, const char *pLine)
@@ -1915,43 +1995,9 @@ void CChat::SendChat(int Team, const char *pLine)
 
 	m_LastChatSend = time();
 
-	// Проверяем, начинается ли сообщение с точки или слеша
-	if(pLine[0] == '.' || pLine[0] == '/')
-	{
-		// Разделяем команду и параметры
-		char aCommand[256];
-		const char *pSpace = str_find(pLine, " ");
-		if(pSpace)
-		{
-			str_truncate(aCommand, sizeof(aCommand), pLine, pSpace - pLine);
-		}
-		else
-		{
-			str_copy(aCommand, pLine, sizeof(aCommand));
-		}
-
-		const char *pTranslit = TransliterateCommand(aCommand);
-
-		// Проверяем, есть ли такая команда в списке
-		for(const auto &Command : m_vServerCommands)
-		{
-			if(str_comp_nocase(Command.m_aName, pTranslit + 1) == 0)
-			{
-				// Если команда найдена, отправляем её английскую версию с параметрами
-				char aBuf[256];
-				if(pSpace)
-				{
-					str_format(aBuf, sizeof(aBuf), "/%s%s", Command.m_aName, pSpace);
-				}
-				else
-				{
-					str_format(aBuf, sizeof(aBuf), "/%s", Command.m_aName);
-				}
-				pLine = aBuf;
-				break;
-			}
-		}
-	}
+	char aCommandLine[MAX_LINE_LENGTH];
+	if(TryTranslateCommand(pLine, aCommandLine, sizeof(aCommandLine)))
+		pLine = aCommandLine;
 
 	if(GameClient()->Client()->IsSixup())
 	{
