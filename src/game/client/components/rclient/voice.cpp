@@ -179,6 +179,7 @@ static constexpr int VOICE_MAX_PACKET = 1200;
 static constexpr int VOICE_MAX_SERVER_IP_BYTES = 128;
 static constexpr int VOICE_HEADER_FIXED_SIZE = sizeof(VOICE_MAGIC) + 1 + 1 + 2 + 4 + 4 + 4 + 8 + 2 + 2 + 1 + 2 + 2 + 4 + 4;
 static constexpr int VOICE_MAX_PAYLOAD = VOICE_MAX_PACKET - (VOICE_HEADER_FIXED_SIZE + VOICE_MAX_SERVER_IP_BYTES);
+static constexpr int VOICE_MAX_PLC_FRAMES = 1;
 static constexpr uint32_t VOICE_GROUP_MASK = 0x3fffffff;
 static constexpr uint32_t VOICE_MODE_SHIFT = 30;
 static constexpr uint32_t VOICE_MODE_MASK = 0x3u;
@@ -308,6 +309,30 @@ static float VoiceFramePeak(const int16_t *pSamples, int Count)
 	return Peak / 32768.0f;
 }
 
+static float VoiceSmoothStep(float Edge0, float Edge1, float Value)
+{
+	if(Edge0 >= Edge1)
+		return Value >= Edge1 ? 1.0f : 0.0f;
+	const float T = std::clamp((Value - Edge0) / (Edge1 - Edge0), 0.0f, 1.0f);
+	return T * T * (3.0f - 2.0f * T);
+}
+
+static float VoiceSoftLimit(float Value, float Limit)
+{
+	Limit = std::clamp(Limit, 0.05f, 1.0f);
+	const float Abs = std::fabs(Value);
+	if(Abs <= 0.0f)
+		return 0.0f;
+
+	const float Knee = std::max(0.001f, Limit * 0.75f);
+	if(Abs <= Knee)
+		return Value;
+
+	const float Range = std::max(0.001f, Limit - Knee);
+	const float LimitedAbs = Knee + Range * std::tanh((Abs - Knee) / Range);
+	return std::copysign(std::min(LimitedAbs, Limit), Value);
+}
+
 static void ApplyMicGain(const SRClientVoiceConfigSnapshot &Config, int16_t *pSamples, int Count)
 {
 	const float Gain = std::clamp(Config.m_RiVoiceMicVolume / 100.0f, 0.0f, 3.0f);
@@ -316,16 +341,24 @@ static void ApplyMicGain(const SRClientVoiceConfigSnapshot &Config, int16_t *pSa
 
 	for(int i = 0; i < Count; i++)
 	{
-		const float Out = pSamples[i] * Gain;
-		const int Sample = (int)std::clamp(Out, -32768.0f, 32767.0f);
+		float Out = (pSamples[i] / 32768.0f) * Gain;
+		if(Config.m_RiVoiceFilterEnable)
+			Out = VoiceSoftLimit(Out, 0.98f);
+		else
+			Out = std::clamp(Out, -1.0f, 1.0f);
+
+		const int Sample = (int)std::clamp(Out * 32767.0f, -32768.0f, 32767.0f);
 		pSamples[i] = (int16_t)Sample;
 	}
 }
 
-static void ApplyHpfCompressor(const SRClientVoiceConfigSnapshot &Config, int16_t *pSamples, int Count, float &PrevIn, float &PrevOut, float &Env)
+static void ApplyHpfCompressor(const SRClientVoiceConfigSnapshot &Config, int16_t *pSamples, int Count, float &PrevIn, float &PrevOut, float &Env, float &GainState)
 {
 	if(!Config.m_RiVoiceFilterEnable)
+	{
+		GainState = 1.0f;
 		return;
+	}
 
 	const float CutoffHz = 120.0f;
 	const float Rc = 1.0f / (2.0f * 3.14159265f * CutoffHz);
@@ -336,11 +369,15 @@ static void ApplyHpfCompressor(const SRClientVoiceConfigSnapshot &Config, int16_
 	const float Ratio = std::max(1.0f, Config.m_RiVoiceCompRatio / 10.0f);
 	const float AttackSec = std::max(0.001f, Config.m_RiVoiceCompAttackMs / 1000.0f);
 	const float ReleaseSec = std::max(0.001f, Config.m_RiVoiceCompReleaseMs / 1000.0f);
-	const float MakeupGain = std::max(0.0f, Config.m_RiVoiceCompMakeup / 100.0f);
-	const float NoiseFloor = 0.02f;
+	const float MakeupGain = std::clamp(Config.m_RiVoiceCompMakeup / 100.0f, 0.0f, 2.0f);
 	const float Limiter = std::clamp(Config.m_RiVoiceLimiter / 100.0f, 0.05f, 1.0f);
 	const float AttackCoeff = 1.0f - std::exp(-1.0f / (AttackSec * VOICE_SAMPLE_RATE));
 	const float ReleaseCoeff = 1.0f - std::exp(-1.0f / (ReleaseSec * VOICE_SAMPLE_RATE));
+	const float GainAttackCoeff = 1.0f - std::exp(-1.0f / (0.005f * VOICE_SAMPLE_RATE));
+	const float GainReleaseCoeff = 1.0f - std::exp(-1.0f / (0.080f * VOICE_SAMPLE_RATE));
+
+	if(!std::isfinite(GainState) || GainState <= 0.0f)
+		GainState = 1.0f;
 
 	for(int i = 0; i < Count; i++)
 	{
@@ -355,13 +392,18 @@ static void ApplyHpfCompressor(const SRClientVoiceConfigSnapshot &Config, int16_
 		else
 			Env += (AbsY - Env) * ReleaseCoeff;
 
-		float Gain = 1.0f;
+		float TargetGain = 1.0f;
 		if(Env > Threshold)
-			Gain = (Threshold + (Env - Threshold) / Ratio) / Env;
-		if(Env > NoiseFloor)
-			Gain *= MakeupGain;
+			TargetGain = (Threshold + (Env - Threshold) / Ratio) / Env;
 
-		const float Out = std::clamp(PrevOut * Gain, -Limiter, Limiter);
+		const float MakeupAmount = VoiceSmoothStep(0.005f, 0.035f, Env);
+		TargetGain *= 1.0f + (MakeupGain - 1.0f) * MakeupAmount;
+		TargetGain = std::clamp(TargetGain, 0.0f, 2.0f);
+
+		const float GainCoeff = TargetGain < GainState ? GainAttackCoeff : GainReleaseCoeff;
+		GainState = SanitizeFloat(GainState + (TargetGain - GainState) * GainCoeff);
+
+		const float Out = VoiceSoftLimit(PrevOut * GainState, Limiter);
 		const int Sample = (int)std::clamp(Out * 32767.0f, -32768.0f, 32767.0f);
 		pSamples[i] = (int16_t)Sample;
 	}
@@ -536,6 +578,19 @@ static bool GetCurrentGameServerIdentity(IClient *pClient, char *pServerIp, size
 	CServerInfo CurrentServerInfo;
 	pClient->GetServerInfo(&CurrentServerInfo);
 	return ParseHostPort(CurrentServerInfo.m_aAddress, pServerIp, ServerIpSize, ServerPort);
+}
+
+static bool VoiceIsLoopbackAddr(const NETADDR &Addr)
+{
+	if(Addr.ip[0] == 127)
+		return true;
+
+	for(int i = 0; i < 15; i++)
+	{
+		if(Addr.ip[i] != 0)
+			return false;
+	}
+	return Addr.ip[15] == 1;
 }
 
 void CRClientVoice::Init(CGameClient *pGameClient, IClient *pClient, IConsole *pConsole)
@@ -1061,6 +1116,7 @@ void CRClientVoice::ClearPeerFrames()
 		Peer.m_LastGainLeft = 1.0f;
 		Peer.m_LastGainRight = 1.0f;
 		Peer.m_LossEwma = 0.0f;
+		Peer.m_PlcFrames = 0;
 		if(Peer.m_pDecoder)
 			opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
 		Peer.m_FrameHead = 0;
@@ -1101,6 +1157,7 @@ void CRClientVoice::ResetPeer(SVoicePeer &Peer)
 	Peer.m_LastGainLeft = 1.0f;
 	Peer.m_LastGainRight = 1.0f;
 	Peer.m_LossEwma = 0.0f;
+	Peer.m_PlcFrames = 0;
 	if(Peer.m_pDecoder)
 		opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
 	if(m_OutputDevice)
@@ -1213,6 +1270,7 @@ void CRClientVoice::Shutdown()
 	m_HpfPrevIn = 0.0f;
 	m_HpfPrevOut = 0.0f;
 	m_CompEnv = 0.0f;
+	m_CompGain = 1.0f;
 	m_NsNoiseFloor = 0.0f;
 	m_NsGain = 1.0f;
 #if defined(CONF_RNNOISE)
@@ -1380,6 +1438,12 @@ void CRClientVoice::ProcessCapture()
 	const bool MicMuted = Config.m_RiVoiceMicMute != 0;
 	const float TestGain = std::clamp(Config.m_RiVoiceVolume / 100.0f, 0.0f, 4.0f);
 
+	if(m_pClient && m_pClient->State() == IClient::STATE_ONLINE && VoiceIsLoopbackAddr(m_pClient->ServerAddress()))
+	{
+		m_PingMs.store(-1);
+		return;
+	}
+
 	int LocalClientId = -1;
 	vec2 LocalPos = vec2(0.0f, 0.0f);
 	bool Online = false;
@@ -1504,7 +1568,7 @@ void CRClientVoice::ProcessCapture()
 				SDL_DequeueAudio(m_CaptureDevice, aPcm, VOICE_FRAME_BYTES);
 				ApplyMicGain(Config, aPcm, VOICE_FRAME_SAMPLES);
 				ApplyNoiseSuppressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_NsNoiseFloor, m_NsGain, m_pNoiseSuppress);
-				ApplyHpfCompressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_HpfPrevIn, m_HpfPrevOut, m_CompEnv);
+				ApplyHpfCompressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_HpfPrevIn, m_HpfPrevOut, m_CompEnv, m_CompGain);
 				const float Peak = VoiceFramePeak(aPcm, VOICE_FRAME_SAMPLES);
 				UpdateMicLevel(Peak);
 				UpdatedMicLevel = true;
@@ -1543,7 +1607,7 @@ void CRClientVoice::ProcessCapture()
 		SDL_DequeueAudio(m_CaptureDevice, aPcm, VOICE_FRAME_BYTES);
 		ApplyMicGain(Config, aPcm, VOICE_FRAME_SAMPLES);
 		ApplyNoiseSuppressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_NsNoiseFloor, m_NsGain, m_pNoiseSuppress);
-		ApplyHpfCompressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_HpfPrevIn, m_HpfPrevOut, m_CompEnv);
+		ApplyHpfCompressor(Config, aPcm, VOICE_FRAME_SAMPLES, m_HpfPrevIn, m_HpfPrevOut, m_CompEnv, m_CompGain);
 
 		const float Peak = VoiceFramePeak(aPcm, VOICE_FRAME_SAMPLES);
 		if(ShowMicLevel)
@@ -1592,6 +1656,7 @@ void CRClientVoice::ProcessCapture()
 			m_HpfPrevIn = 0.0f;
 			m_HpfPrevOut = 0.0f;
 			m_CompEnv = 0.0f;
+			m_CompGain = 1.0f;
 			m_Sequence += 1000;
 			m_TxWasActive = true;
 		}
@@ -1680,6 +1745,12 @@ void CRClientVoice::ProcessIncoming()
 {
 	if(!m_OutputDevice || !m_Socket)
 		return;
+
+	if(m_pClient && m_pClient->State() == IClient::STATE_ONLINE && VoiceIsLoopbackAddr(m_pClient->ServerAddress()))
+	{
+		m_PingMs.store(-1);
+		return;
+	}
 
 	SRClientVoiceConfigSnapshot Config;
 	GetConfigSnapshot(Config);
@@ -2140,10 +2211,12 @@ void CRClientVoice::DecodeJitter()
 			}
 			m_aDecoderErrorLog[0] = '\0';
 			Peer.m_HasSeq = false;
+			Peer.m_PlcFrames = 0;
 		}
 
 		int16_t aPcm[VOICE_FRAME_SAMPLES];
 		int Samples = 0;
+		bool UsedPlc = false;
 		float LeftGain = Peer.m_LastGainLeft;
 		float RightGain = Peer.m_LastGainRight;
 		if(pPkt)
@@ -2157,13 +2230,27 @@ void CRClientVoice::DecodeJitter()
 			pPkt->m_Valid = false;
 			Peer.m_QueuedPackets = std::max(0, Peer.m_QueuedPackets - 1);
 		}
-		else if(pNextPkt && Peer.m_LossEwma > 0.02f)
+		else if(pNextPkt && Peer.m_HasSeq && Peer.m_LossEwma > 0.02f)
 		{
 			Samples = opus_decode(Peer.m_pDecoder, pNextPkt->m_aData, pNextPkt->m_Size, aPcm, VOICE_FRAME_SAMPLES, 1);
 		}
+		else if(Peer.m_HasSeq && Peer.m_PlcFrames < VOICE_MAX_PLC_FRAMES)
+		{
+			Samples = opus_decode(Peer.m_pDecoder, nullptr, 0, aPcm, VOICE_FRAME_SAMPLES, 0);
+			UsedPlc = Samples > 0;
+		}
 		else if(Peer.m_HasSeq)
 		{
-			Samples = opus_decode(Peer.m_pDecoder, nullptr, 0, aPcm, VOICE_FRAME_SAMPLES, 1);
+			opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
+			Peer.m_HasSeq = false;
+			Peer.m_PlcFrames = 0;
+		}
+		if(Samples < 0)
+		{
+			opus_decoder_ctl(Peer.m_pDecoder, OPUS_RESET_STATE);
+			Peer.m_HasSeq = false;
+			Peer.m_PlcFrames = 0;
+			Samples = 0;
 		}
 
 		if(Samples > 0)
@@ -2171,10 +2258,14 @@ void CRClientVoice::DecodeJitter()
 			SDL_LockAudioDevice(m_OutputDevice);
 			PushPeerFrame(PeerId, aPcm, Samples, LeftGain, RightGain);
 			SDL_UnlockAudioDevice(m_OutputDevice);
+			Peer.m_HasSeq = true;
+			if(UsedPlc)
+				Peer.m_PlcFrames++;
+			else
+				Peer.m_PlcFrames = 0;
 		}
 
 		Peer.m_LastSeq = Peer.m_NextSeq;
-		Peer.m_HasSeq = true;
 		Peer.m_NextSeq = (uint16_t)(Peer.m_NextSeq + 1);
 	}
 }

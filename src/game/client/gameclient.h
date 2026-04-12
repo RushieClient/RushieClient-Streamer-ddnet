@@ -71,9 +71,12 @@
 #include "components/rclient/bindwheel.h"
 #include "components/rclient/chat_bubbles.h"
 #include "components/rclient/edgehelper.h"
+#include "components/rclient/menus_rclient_clickgui.h"
+#include "components/rclient/music_island.h"
 #include "components/rclient/rclient.h"
 #include "components/rclient/rclient_indicator.h"
 #include "components/rclient/playermenu.h"
+#include "components/rclient/settingsprofiles.h"
 
 //Tater
 #include "components/tclient/bg_draw.h"
@@ -228,6 +231,7 @@ public:
 
 	// TClient Components
 	CSkinProfiles m_SkinProfiles;
+	CRushieSettingsProfiles m_RushieSettingsProfiles;
 	CStatusBar m_StatusBar;
 	CBindChat m_BindChat;
 	CBindWheel m_BindWheel;
@@ -253,8 +257,10 @@ public:
 	CBindWheelSpec m_BindWheelSpec;
 	CAdminPanel m_AdminPanelRi;
 	CEdgeHelper m_EdgeHelper;
+	CMusicIsland m_MusicIsland;
 	CRClientIndicator m_RClientIndicator;
 	CPlayerMenu m_RiPlayerMenu;
+	CMenusRClientClickGui m_RClientClickGui;
 
 private:
 	std::vector<class CComponent *> m_vpAll;

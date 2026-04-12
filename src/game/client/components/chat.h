@@ -15,6 +15,7 @@
 #include <game/client/component.h>
 #include <game/client/lineinput.h>
 #include <game/client/render.h>
+#include <game/client/ui.h>
 
 #include <vector>
 
@@ -30,7 +31,7 @@ constexpr auto SAVES_FILE = "ddnet-saves.txt";
 
 enum
 {
-	MAX_LINES = 64,
+	MAX_LINES = 256,
 	MAX_LINE_LENGTH = 256
 };
 
@@ -39,6 +40,7 @@ class CChat : public CComponent
 	static constexpr float CHAT_HEIGHT_FULL = 200.0f;
 	static constexpr float CHAT_HEIGHT_MIN = 50.0f;
 	static constexpr float CHAT_FONTSIZE_WIDTH_RATIO = 2.5f;
+	static constexpr int CHAT_HISTORY_LINES_NO_SCROLLBAR = 64;
 
 	CLineInputBuffered<MAX_LINE_LENGTH> m_Input;
 	class CLine
@@ -72,7 +74,10 @@ class CChat : public CComponent
 
 		std::shared_ptr<CTranslateResponse> m_pTranslateResponse;
 
-		// Animation: время появления строки для анимации выезда
+		//RClient chat utils
+		float m_BackgroundWidth;
+		time_t m_UnixTimestamp;
+		uint64_t m_Serial;
 		int64_t m_AppearTime;
 	};
 
@@ -81,6 +86,10 @@ class CChat : public CComponent
 
 	CLine m_aLines[MAX_LINES];
 	int m_CurrentLine;
+	int m_NumLines = 0;
+
+	//RClient chat utils
+	uint64_t m_NextLineSerial = 0;
 
 	enum
 	{
@@ -156,8 +165,37 @@ class CChat : public CComponent
 	bool m_IsInputCensored;
 	char m_aCurrentInputText[MAX_LINE_LENGTH];
 	bool m_EditingNewLine;
+	vec2 m_LastMousePos{};
+	bool m_HasLastMousePos = false;
 
 	bool m_ServerSupportsCommandInfo;
+
+	// RClient chat utls
+	bool m_LastCursorLeftPressed = false;
+	int m_MessageScrollOffset = 0;
+	bool m_ScrollbarDragging = false;
+	float m_ScrollbarDragOffset = 0.0f;
+	class CChatLinePopupContext : public SPopupMenuId
+	{
+	public:
+		static constexpr float POPUP_WIDTH = 110.0f;
+		static constexpr float POPUP_OUTER_MARGIN = 10.0f;
+		static constexpr float POPUP_INNER_MARGIN = 5.0f;
+		static constexpr float ITEM_SPACING = 2.0f;
+		static constexpr float BUTTON_SIZE = 17.5f;
+		static constexpr float FONT_SIZE = 12.0f;
+
+		CChat *m_pChat = nullptr;
+		CButtonContainer m_CopyButton;
+		CButtonContainer m_CopyMsgButton;
+		CButtonContainer m_ReplyButton;
+		CButtonContainer m_WhisperButton;
+		CButtonContainer m_CopyFullButton;
+		int m_LineIndex = -1;
+		uint64_t m_LineSerial = 0;
+
+		static CUi::EPopupMenuFunctionResult Render(void *pContext, CUIRect View, bool Active);
+	} m_LinePopupContext;
 
 	static void ConSay(IConsole::IResult *pResult, void *pUserData);
 	static void ConSayTeam(IConsole::IResult *pResult, void *pUserData);
@@ -171,6 +209,7 @@ class CChat : public CComponent
 	static void ConchainChatWidth(IConsole::IResult *pResult, void *pUserData, IConsole::FCommandCallback pfnCallback, void *pCallbackUserData);
 
 	void StoreSave(const char *pText);
+	void SetUiMousePos(vec2 Pos);
 
 	friend class CBindChat;
 	friend class CTranslate;
@@ -205,6 +244,7 @@ public:
 	void OnRelease() override;
 	void OnMessage(int MsgType, void *pRawMsg) override;
 	bool OnInput(const IInput::CEvent &Event) override;
+	bool OnCursorMove(float x, float y, IInput::ECursorType CursorType) override;
 	void OnInit() override;
 
 	void RebuildChat();
@@ -212,6 +252,10 @@ public:
 
 	void EnsureCoherentFontSize() const;
 	void EnsureCoherentWidth() const;
+	int HistoryLineLimit() const { return g_Config.m_RiChatScrollbar ? MAX_LINES : CHAT_HISTORY_LINES_NO_SCROLLBAR; }
+	int RenderHistoryLimit() const { return HasMouseCursor() && g_Config.m_RiChatScrollbar ? MAX_LINES : CHAT_HISTORY_LINES_NO_SCROLLBAR; }
+	bool HasMouseCursor() const { return IsActive() && g_Config.m_RiChatShowCursor; }
+	vec2 MouseCursorPos() const;
 
 	float FontSize() const { return g_Config.m_ClChatFontSize / 10.0f; }
 	float MessagePaddingX() const { return FontSize() * (5 / 6.f); }

@@ -112,6 +112,7 @@ public:
 
 	bool IsActive() const;
 	bool HasMouseCursor() const { return IsActive() && m_MouseUnlocked; };
+	vec2 MouseCursorPos() const;
 };
 
 #endif

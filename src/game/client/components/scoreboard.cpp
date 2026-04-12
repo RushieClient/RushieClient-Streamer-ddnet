@@ -1110,6 +1110,17 @@ bool CScoreboard::IsActive() const
 	return false;
 }
 
+vec2 CScoreboard::MouseCursorPos() const
+{
+	const vec2 WindowSize = vec2(Graphics()->WindowWidth(), Graphics()->WindowHeight());
+	const CUIRect *pScreen = Ui()->Screen();
+	const vec2 UpdatedMousePos = Ui()->UpdatedMousePos();
+
+	return vec2(
+		pScreen->x + UpdatedMousePos.x * pScreen->w / WindowSize.x,
+		pScreen->y + UpdatedMousePos.y * pScreen->h / WindowSize.y);
+}
+
 const char *CScoreboard::GetTeamName(int Team) const
 {
 	dbg_assert(Team == TEAM_RED || Team == TEAM_BLUE, "Team invalid");

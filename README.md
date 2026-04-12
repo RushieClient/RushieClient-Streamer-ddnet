@@ -4,13 +4,13 @@
 
 I've stole some features: the core functionality from [**TClient**](https://github.com/sjrc6/TaterClient-ddnet), Laser and scoreboard from [**Pulse Client**](https://github.com/PulseClient-ddnet/DDNetPulse), Discord rpc and ChatBubbles from [**Entity Client**](https://github.com/qxdFox/Entity-Client-DDNet), and some of mine functions.
 
-This client has a lot of code stolen from other great open-source clients. Feel free to use and reuse anything you find here!
+This client has a lot of code from other great open-source clients. If you want to use code for yours clients, please ask me first and dont forget to **keep credits** to the original upstream clients
 
 ---
 
 ## Status & Bugs
 
-I **can't guarantee everything is bug-free**, but I'm doing my best to fix things as they pop up. If you spot a problem or a crash, please tell me on Discord so I can look into it!
+I **can't** guarantee everything is bug-free, but I'm doing my best to fix things as they pop up. If you spot a problem or a crash, please tell me on Discord so I can look into it!
 
 ---
 

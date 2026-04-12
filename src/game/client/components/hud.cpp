@@ -2249,7 +2249,7 @@ void CHud::OnRender()
 			RenderSpectatorHud();
 		}
 
-		if(g_Config.m_ClShowhudTimer)
+		if(g_Config.m_ClShowhudTimer && !GameClient()->m_MusicIsland.IsActive())
 			RenderGameTimer();
 		RenderPauseNotification();
 		RenderSuddenDeath();
@@ -2269,6 +2269,7 @@ void CHud::OnRender()
 		if(g_Config.m_ClShowRecord)
 			RenderRecord();
 	}
+	GameClient()->m_MusicIsland.RenderHud();
 	RenderCursor();
 }
 

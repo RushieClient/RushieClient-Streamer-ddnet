@@ -183,7 +183,9 @@ void CControls::OnMessage(int Msg, void *pRawMsg)
 
 int CControls::SnapInput(int *pData)
 {
-	const bool FreezeInput = (GameClient()->m_Scoreboard.HasMouseCursor() && g_Config.m_RiScoreboardFreezeInputs);
+	const bool FreezeInput =
+		(GameClient()->m_Scoreboard.HasMouseCursor() && g_Config.m_RiScoreboardFreezeInputs) ||
+		(GameClient()->m_RClientClickGui.HasMouseCursor() && g_Config.m_RiNewMenuFreezeInputs);
 
 	// update player state
 	if(GameClient()->m_Chat.IsActive())
