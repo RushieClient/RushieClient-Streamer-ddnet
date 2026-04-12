@@ -76,6 +76,26 @@ static vec2 UiMouseToScreen(const CUIRect *pUiScreen, vec2 UiMousePos, vec2 Scre
 		ScreenTL.y + (UiMousePos.y - pUiScreen->y) * (ScreenBR.y - ScreenTL.y) / pUiScreen->h);
 }
 
+static CUIRect HudToUiRect(const CUIRect &HudRect, const CUIRect &UiScreen, float HudWidth, float HudHeight)
+{
+	CUIRect UiRect;
+	UiRect.x = UiScreen.x + HudRect.x * UiScreen.w / HudWidth;
+	UiRect.y = UiScreen.y + HudRect.y * UiScreen.h / HudHeight;
+	UiRect.w = HudRect.w * UiScreen.w / HudWidth;
+	UiRect.h = HudRect.h * UiScreen.h / HudHeight;
+	return UiRect;
+}
+
+static float HudToUiX(float HudX, const CUIRect &UiScreen, float HudScreenX0, float HudWidth)
+{
+	return UiScreen.x + (HudX - HudScreenX0) * UiScreen.w / HudWidth;
+}
+
+static float HudToUiY(float HudY, const CUIRect &UiScreen, float HudScreenY0, float HudHeight)
+{
+	return UiScreen.y + (HudY - HudScreenY0) * UiScreen.h / HudHeight;
+}
+
 float CMusicIsland::GetStableGameTimerWidth(ITextRender *pTextRender, float FontSize, float TimeSeconds, bool ShowCentiseconds)
 {
 	static float s_LastFontSize = -1.0f;
@@ -204,7 +224,7 @@ static float SnapToScreenSpan(float Value, float PixelSize)
 	return maximum(PixelSize, round_to_int(Value / PixelSize) * PixelSize);
 }
 
-void CMusicIsland::RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *pTextRender, const CUIRect &Rect, const char *pText, float FontSize, const ColorRGBA &Color, float ScrollSeconds)
+void CMusicIsland::RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *pTextRender, CUi *pUi, const CUIRect &Rect, const char *pText, float FontSize, const ColorRGBA &Color, float ScrollSeconds)
 {
 	if(Rect.w <= 0.0f || Rect.h <= 0.0f || pText == nullptr || pText[0] == '\0')
 		return;
@@ -222,29 +242,32 @@ void CMusicIsland::RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *
 	const float ScreenHeight = ScreenY1 - ScreenY0;
 	const float PixelSizeX = ScreenWidth / pGraphics->ScreenWidth();
 	const float PixelSizeY = ScreenHeight / pGraphics->ScreenHeight();
+	TextY = SnapToScreenPixel(TextY, ScreenY0, PixelSizeY);
 
 	if(!ShouldScroll)
 	{
 		TextX = SnapToScreenPixel(TextX, ScreenX0, PixelSizeX);
 		const float MaxTextX = maximum(Rect.x, Rect.x + Rect.w - TextWidth);
 		TextX = std::clamp(TextX, Rect.x, MaxTextX);
+		pTextRender->TextColor(Color);
+		pTextRender->Text(TextX, TextY, FontSize, pText, -1.0f);
+		pTextRender->TextColor(pTextRender->DefaultTextColor());
+		return;
 	}
-	TextY = SnapToScreenPixel(TextY, ScreenY0, PixelSizeY);
 
-	const float ScaleX = pGraphics->ScreenWidth() / ScreenWidth;
-	const float ScaleY = pGraphics->ScreenHeight() / ScreenHeight;
-	const int ClipX = (int)std::floor((Rect.x - ScreenX0) * ScaleX);
-	const int ClipY = (int)std::floor((Rect.y - ScreenY0) * ScaleY);
-	const int ClipX2 = (int)std::ceil((Rect.x + Rect.w - ScreenX0) * ScaleX);
-	const int ClipY2 = (int)std::ceil((Rect.y + Rect.h - ScreenY0) * ScaleY);
-	const int ClipW = maximum(0, ClipX2 - ClipX);
-	const int ClipH = maximum(0, ClipY2 - ClipY);
+	const CUIRect UiScreen = *pUi->Screen();
+	const CUIRect UiRect = HudToUiRect(Rect, UiScreen, ScreenWidth, ScreenHeight);
+	const float UiTextX = HudToUiX(TextX, UiScreen, ScreenX0, ScreenWidth);
+	const float UiTextY = HudToUiY(TextY, UiScreen, ScreenY0, ScreenHeight);
+	const float UiFontSize = FontSize * UiScreen.h / maximum(ScreenHeight, 1.0f);
 
-	pGraphics->ClipEnable(ClipX, ClipY, ClipW, ClipH);
+	pUi->MapScreen();
+	pUi->ClipEnable(&UiRect);
 	pTextRender->TextColor(Color);
-	pTextRender->Text(TextX, TextY, FontSize, pText, -1.0f);
+	pTextRender->Text(UiTextX, UiTextY, UiFontSize, pText, -1.0f);
 	pTextRender->TextColor(pTextRender->DefaultTextColor());
-	pGraphics->ClipDisable();
+	pUi->ClipDisable();
+	pGraphics->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
 }
 
 static float GetVisualizerBarPulse(float Time, int LayerIndex)
@@ -1561,27 +1584,32 @@ void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
 	const float ScreenHeight = ScreenY1 - ScreenY0;
 	const float PixelSizeX = ScreenWidth / Graphics()->ScreenWidth();
 	const float PixelSizeY = ScreenHeight / Graphics()->ScreenHeight();
+	TextY = SnapToScreenPixel(TextY, ScreenY0, PixelSizeY);
 	if(!ShouldScroll)
 	{
 		TextX = SnapToScreenPixel(TextX, ScreenX0, PixelSizeX);
 		const float MaxTextX = maximum(TimerRect.x, TimerRect.x + TimerRect.w - RenderInfo.m_TextWidth);
 		TextX = std::clamp(TextX, TimerRect.x, MaxTextX);
+		TextRender()->TextColor(RenderInfo.m_TextColor);
+		TextRender()->Text(TextX, TextY, RenderFontSize, RenderInfo.m_aText, -1.0f);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
 	}
-	TextY = SnapToScreenPixel(TextY, ScreenY0, PixelSizeY);
-	const float ScaleX = Graphics()->ScreenWidth() / ScreenWidth;
-	const float ScaleY = Graphics()->ScreenHeight() / ScreenHeight;
-	const int ClipX = (int)std::floor((TimerRect.x - ScreenX0) * ScaleX);
-	const int ClipY = (int)std::floor((TimerRect.y - ScreenY0) * ScaleY);
-	const int ClipX2 = (int)std::ceil((TimerRect.x + TimerRect.w - ScreenX0) * ScaleX);
-	const int ClipY2 = (int)std::ceil((TimerRect.y + TimerRect.h - ScreenY0) * ScaleY);
-	const int ClipW = maximum(0, ClipX2 - ClipX);
-	const int ClipH = maximum(0, ClipY2 - ClipY);
+	else
+	{
+		const CUIRect UiScreen = *Ui()->Screen();
+		const CUIRect UiTimerRect = HudToUiRect(TimerRect, UiScreen, ScreenWidth, ScreenHeight);
+		const float UiTextX = HudToUiX(TextX, UiScreen, ScreenX0, ScreenWidth);
+		const float UiTextY = HudToUiY(TextY, UiScreen, ScreenY0, ScreenHeight);
+		const float UiFontSize = RenderFontSize * UiScreen.h / maximum(ScreenHeight, 1.0f);
 
-	Graphics()->ClipEnable(ClipX, ClipY, ClipW, ClipH);
-	TextRender()->TextColor(RenderInfo.m_TextColor);
-	TextRender()->Text(TextX, TextY, RenderFontSize, RenderInfo.m_aText, -1.0f);
-	TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
-	Graphics()->ClipDisable();
+		Ui()->MapScreen();
+		Ui()->ClipEnable(&UiTimerRect);
+		TextRender()->TextColor(RenderInfo.m_TextColor);
+		TextRender()->Text(UiTextX, UiTextY, UiFontSize, RenderInfo.m_aText, -1.0f);
+		TextRender()->TextColor(1.0f, 1.0f, 1.0f, 1.0f);
+		Ui()->ClipDisable();
+		Graphics()->MapScreen(ScreenX0, ScreenY0, ScreenX1, ScreenY1);
+	}
 
 	if(AnimProgress <= 0.0f)
 		return;
@@ -1605,8 +1633,8 @@ void CMusicIsland::RenderMusicIslandMain(CUIRect *pBase)
 	ArtistRect.y = TitleRect.y + TitleRect.h + MetadataGap;
 	ArtistRect.h = ArtistLineHeight;
 
-	RenderCenteredClippedText(Graphics(), TextRender(), TitleRect, MusicInfo.m_Title.c_str(), TitleFontSize, ColorRGBA(1.0f, 1.0f, 1.0f, MetadataAlpha), LocalTime());
-	RenderCenteredClippedText(Graphics(), TextRender(), ArtistRect, MusicInfo.m_Artist.c_str(), ArtistFontSize, ColorRGBA(0.82f, 0.86f, 0.92f, MetadataAlpha), LocalTime() + 0.8f);
+	RenderCenteredClippedText(Graphics(), TextRender(), Ui(), TitleRect, MusicInfo.m_Title.c_str(), TitleFontSize, ColorRGBA(1.0f, 1.0f, 1.0f, MetadataAlpha), LocalTime());
+	RenderCenteredClippedText(Graphics(), TextRender(), Ui(), ArtistRect, MusicInfo.m_Artist.c_str(), ArtistFontSize, ColorRGBA(0.82f, 0.86f, 0.92f, MetadataAlpha), LocalTime() + 0.8f);
 }
 
 void CMusicIsland::UpdateMusicImageTexture()

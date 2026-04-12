@@ -14,6 +14,8 @@
 #include <string>
 #include <thread>
 
+class CUi;
+
 class CMusicIsland : public CComponent
 {
 	static void ConShowCurMusicInfo(IConsole::IResult *pResult, void *pUserData);
@@ -93,7 +95,7 @@ class CMusicIsland : public CComponent
 	static float GetStableGameTimerWidth(ITextRender *pTextRender, float FontSize, float TimeSeconds, bool ShowCentiseconds);
 	static bool GetGameTimerRenderInfo(const CNetObj_GameInfo *pGameInfo, IClient *pClient, ITextRender *pTextRender, float FontSize, SGameTimerRenderInfo &RenderInfo);
 	static float GetScrollingTextOffset(float Overflow, float Seconds);
-	static void RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *pTextRender, const CUIRect &Rect, const char *pText, float FontSize, const ColorRGBA &Color, float ScrollSeconds);
+	static void RenderCenteredClippedText(IGraphics *pGraphics, ITextRender *pTextRender, CUi *pUi, const CUIRect &Rect, const char *pText, float FontSize, const ColorRGBA &Color, float ScrollSeconds);
 
 public:
 	CMusicIsland();
