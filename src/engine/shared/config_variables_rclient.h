@@ -21,8 +21,7 @@ MACRO_CONFIG_STR(RiBlockedContentPartialReplacementChar, ri_blocked_content_part
 
 // Ri indicator
 MACRO_CONFIG_INT(RiShowRclientIndicator, ri_show_rclient_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Rclient player indicator in nameplates")
-MACRO_CONFIG_STR(RiRclientIndicatorUsersUrl, ri_rclient_indicator_users_url, 256, "https://server.rushie-client.ru/users.json", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rclient indicator users URL")
-MACRO_CONFIG_STR(RiRclientIndicatorTokenUrl, ri_rclient_indicator_token_url, 256, "https://server.rushie-client.ru/token", CFGFLAG_CLIENT | CFGFLAG_SAVE, "Rclient indicator token URL")
+MACRO_CONFIG_INT(RiRclientIndicatorIgnoreErrors, ri_rclient_indicator_ignore_errors, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ignore Rclient indicator network errors")
 MACRO_CONFIG_INT(RiScoreboardRclientIndicatorSize, ri_scoreboard_rclient_indicator_size, 30, -50, 100, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Size of rclient indicator icons in scoreboard")
 MACRO_CONFIG_INT(RiScoreboardShowRclientIndicator, ri_scoreboard_show_rclient_indicator, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show rclient mark in scoreboard")
 MACRO_CONFIG_INT(RiRclientIndicatorSize, ri_rclient_indicator_size, 30, -50, 100, CFGFLAG_SAVE | CFGFLAG_CLIENT, "Size of rclient indicator icons")
@@ -53,8 +52,6 @@ MACRO_CONFIG_INT(RiShowhudDummyPosition, ri_showhud_dummy_position, 0, 0, 1, CFG
 MACRO_CONFIG_INT(RiShowLastPosHudDummy, ri_show_last_pos_hud_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show last pos in hud dummy")
 MACRO_CONFIG_INT(RiChangeDummyColorWhenXDummyEqualXPlayer, ri_change_dummy_color_when_x_equal_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Change color pos x hud dummy to green when x dummy = x player")
 MACRO_CONFIG_INT(RiChangePlayerColorWhenXDummyEqualXPlayer, ri_change_player_color_when_x_equal_dummy, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Change color pos x hud player to green when x dummy = x player")
-
-// Music player
 
 //Others pages
 MACRO_CONFIG_INT(RiRClientSettingsTabs, ri_rclient_settings_tabs, 0, 0, 65536, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Bit flags to disable settings tabs")
@@ -181,10 +178,6 @@ MACRO_CONFIG_INT(RiUiShowBottomBar, ri_ui_show_bottombar, 1, 0, 1, CFGFLAG_CLIEN
 MACRO_CONFIG_INT(RiUiSkipOpenMenu, ri_ui_skip_open_menu, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Skip open new rclient's menu")
 MACRO_CONFIG_COL(RiMenusSettingsColor, ri_menus_settings_color, 1073742079, CFGFLAG_CLIENT | CFGFLAG_SAVE | CFGFLAG_COLALPHA, "Color of rclient's settings menu")
 MACRO_CONFIG_INT(RiNewMenuFreezeInputs, ri_new_menu_freeze_inputs, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Freeze inputs when new menu opened")
-
-//RClient Nameplates
-MACRO_CONFIG_INT(RiShowRclientIndicator, ri_show_rclient_indicator, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show Rclient player indicator in nameplates")
-MACRO_CONFIG_INT(RiRclientIndicatorIgnoreErrors, ri_rclient_indicator_ignore_errors, 0, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Ignore Rclient indicator network errors")
 
 //Config tab
 MACRO_CONFIG_INT(RiUiShowRClient, ri_ui_show_rclient, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Show RClient domain in Configs tab")
