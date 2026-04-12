@@ -1121,8 +1121,8 @@ void CChat::OnPrepareLines(float y)
 	float TextBegin = Begin + RealMsgPaddingX / 2.0f;
 	int OffsetType = IsScoreBoardOpen ? 1 : 0;
 	m_NumLines = minimum(m_NumLines, HistoryLineLimit());
-	const int StoredLineCount = m_NumLines;
-	const int MaxLinesToPrepare = g_Config.m_RiChatScrollbar ?
+	const int StoredLineCount = minimum(m_NumLines, RenderHistoryLimit());
+	const int MaxLinesToPrepare = HasMouseCursor() && g_Config.m_RiChatScrollbar ?
 		minimum(StoredLineCount, maximum(CHAT_HISTORY_LINES_NO_SCROLLBAR, m_MessageScrollOffset + CHAT_HISTORY_LINES_NO_SCROLLBAR)) :
 		StoredLineCount;
 
@@ -1582,7 +1582,7 @@ void CChat::OnRender()
 	}
 
 	m_NumLines = minimum(m_NumLines, HistoryLineLimit());
-	const int StoredLineCount = m_NumLines;
+	const int StoredLineCount = minimum(m_NumLines, RenderHistoryLimit());
 
 	if(!ScrollbarEnabled)
 	{

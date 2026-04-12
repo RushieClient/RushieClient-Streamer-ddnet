@@ -253,6 +253,7 @@ public:
 	void EnsureCoherentFontSize() const;
 	void EnsureCoherentWidth() const;
 	int HistoryLineLimit() const { return g_Config.m_RiChatScrollbar ? MAX_LINES : CHAT_HISTORY_LINES_NO_SCROLLBAR; }
+	int RenderHistoryLimit() const { return HasMouseCursor() && g_Config.m_RiChatScrollbar ? MAX_LINES : CHAT_HISTORY_LINES_NO_SCROLLBAR; }
 	bool HasMouseCursor() const { return IsActive() && g_Config.m_RiChatShowCursor; }
 	vec2 MouseCursorPos() const;
 
