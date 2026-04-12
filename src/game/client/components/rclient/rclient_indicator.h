@@ -33,6 +33,7 @@ class CRClientIndicator : public CComponent
 		std::string m_ServerAddress;
 		int m_PlayerId;
 		bool m_VoiceEnabled;
+		bool m_VoiceMuted;
 	};
 
 	std::vector<SRClientUserInfo> m_vRClientUsers; // server address, player id, voice enabled
@@ -55,6 +56,7 @@ public:
 
 	bool IsPlayerRClient(int ClientId);
 	bool IsPlayerRClientVoiceEnabled(int ClientId);
+	bool IsPlayerRClientVoiceMuted(int ClientId);
 	bool GetCachedVoiceAuth(uint32_t &Timestamp, uint64_t &Hash) const;
 };
 

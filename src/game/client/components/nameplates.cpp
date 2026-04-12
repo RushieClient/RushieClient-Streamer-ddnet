@@ -64,6 +64,7 @@ public:
 	int m_ShowVoiceIcon;
 	float m_FontSizeVoiceIcon;
 	int m_IsVoiceActive;
+	int m_IsVoiceMuted;
 };
 
 // Part Types
@@ -710,10 +711,10 @@ private:
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
 	{
-		m_Visible = Data.m_ShowVoiceIcon && Data.m_IsVoiceActive;
+		m_Visible = Data.m_ShowVoiceIcon && (Data.m_IsVoiceActive || Data.m_IsVoiceMuted);
 		if(!m_Visible)
 			return false;
-		m_Color = ColorRGBA(1.0f, 1.0f, 1.0f, Data.m_Color.a);
+		m_Color = Data.m_IsVoiceMuted ? ColorRGBA(1.0f, 0.22f, 0.22f, Data.m_Color.a) : ColorRGBA(1.0f, 1.0f, 1.0f, Data.m_Color.a);
 		return m_FontSize != Data.m_FontSizeVoiceIcon;
 	}
 	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
@@ -1366,6 +1367,7 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 			Data.m_ShowVoiceIcon = !pPlayerInfo->m_Local;
 	}
 	Data.m_IsVoiceActive = GameClient()->m_RClient.IsVoiceActive(pPlayerInfo->m_ClientId);
+	Data.m_IsVoiceMuted = g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedNameplate && GameClient()->m_RClientIndicator.IsPlayerRClientVoiceMuted(pPlayerInfo->m_ClientId);
 
 	// TClient
 	if(g_Config.m_TcWarList && g_Config.m_TcWarListShowClan && GameClient()->m_WarList.GetWarData(pPlayerInfo->m_ClientId).m_WarClan)
@@ -1431,6 +1433,7 @@ void CNamePlates::RenderNamePlatePreview(vec2 Position, int Dummy)
 	Data.m_IsUserRClientVoiceEnabled = g_Config.m_RiVoiceEnable != 0;
 	Data.m_ShowVoiceIcon = false;
 	Data.m_IsVoiceActive = false;
+	Data.m_IsVoiceMuted = g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedNameplate;
 
 	Data.m_FontSizeHookStrongWeak = FontSizeHookStrongWeak;
 	Data.m_HookStrongWeakId = Data.m_ClientId;

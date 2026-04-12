@@ -2055,10 +2055,11 @@ void CHud::RenderVoiceIndicator()
 	if(!g_Config.m_RiVoiceEnable)
 		return;
 
+	const bool ShowMuted = g_Config.m_RiVoiceMicMute;
 	const int LocalId = GameClient()->m_Snap.m_LocalClientId;
 	if(LocalId < 0 || LocalId >= MAX_CLIENTS)
 		return;
-	if(!GameClient()->m_RClient.IsVoiceActive(LocalId))
+	if(!GameClient()->m_RClient.IsVoiceActive(LocalId) && !ShowMuted)
 		return;
 
 	const float FontSize = 6.0f;
@@ -2068,10 +2069,13 @@ void CHud::RenderVoiceIndicator()
 	const float X = 5.0f;
 	const float Y = m_Height - BoxHeight - 10.0f;
 	const float TextY = Y + (BoxHeight - FontSize) / 2.0f;
+	const ColorRGBA VoiceColor = ShowMuted ? ColorRGBA(1.0f, 0.22f, 0.22f, 1.0f) : ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
 
 	Graphics()->DrawRect(X, Y, BoxWidth, BoxHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_ALL, 3.0f);
 	TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+	TextRender()->TextColor(VoiceColor);
 	TextRender()->Text(X + Padding, TextY, FontSize, FontIcon::RC_MICROPHONE, -1.0f);
+	TextRender()->TextColor(TextRender()->DefaultTextColor());
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
 
 	if(g_Config.m_RiVoiceShowPing)
@@ -2107,16 +2111,20 @@ void CHud::RenderVoiceSpeakerOverlay()
 		return;
 
 	int aSpeakerIds[MAX_CLIENTS];
+	int aSpeakerMuted[MAX_CLIENTS];
 	int SpeakerCount = 0;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(i == LocalId && !g_Config.m_RiVoiceIndicatorAboveSelf)
 			continue;
-		if(!GameClient()->m_RClient.IsVoiceActive(i))
+		const bool VoiceActive = GameClient()->m_RClient.IsVoiceActive(i);
+		const bool VoiceMuted = g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedOverlay && GameClient()->m_RClientIndicator.IsPlayerRClientVoiceMuted(i);
+		if(!VoiceActive && !VoiceMuted)
 			continue;
 		if(GameClient()->m_aClients[i].m_aName[0] == '\0')
 			continue;
 		aSpeakerIds[SpeakerCount++] = i;
+		aSpeakerMuted[SpeakerCount - 1] = VoiceMuted;
 	}
 	if(SpeakerCount == 0)
 		return;
@@ -2136,7 +2144,9 @@ void CHud::RenderVoiceSpeakerOverlay()
 	for(int Index = 0; Index < SpeakerCount; Index++)
 	{
 		const int ClientId = aSpeakerIds[Index];
+		const bool VoiceMuted = aSpeakerMuted[Index] != 0;
 		const char *pName = GameClient()->m_aClients[ClientId].m_aName;
+		const ColorRGBA VoiceColor = VoiceMuted ? ColorRGBA(1.0f, 0.22f, 0.22f, 1.0f) : TextRender()->DefaultTextColor();
 
 		const float NameWidth = TextRender()->TextWidth(FontSize, pName);
 		const float RowWidth = Padding * 2.0f + IconWidth + Gap + NameWidth;
@@ -2144,8 +2154,10 @@ void CHud::RenderVoiceSpeakerOverlay()
 		Graphics()->DrawRect(X, Y, RowWidth, RowHeight, ColorRGBA(0.0f, 0.0f, 0.0f, 0.4f), IGraphics::CORNER_R, 3.0f);
 
 		TextRender()->SetFontPreset(EFontPreset::ICON_FONT);
+		TextRender()->TextColor(VoiceColor);
 		TextRender()->Text(X + Padding, Y + TextYOff, FontSize, FontIcon::RC_MICROPHONE, -1.0f);
 		TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+		TextRender()->TextColor(TextRender()->DefaultTextColor());
 		TextRender()->Text(X + Padding + IconWidth + Gap, Y + TextYOff, FontSize, pName, -1.0f);
 
 		Y += RowHeight;

@@ -374,6 +374,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 
 	const char *pOnlineStr = Online ? "true" : "false";
 	const char *pVoiceEnabledStr = g_Config.m_RiVoiceEnable ? "true" : "false";
+	const char *pVoiceMutedStr = g_Config.m_RiVoiceEnable && g_Config.m_RiVoiceMicMute ? "true" : "false";
 	char aJsonData[768];
 
 	if(DummyClientId >= 0)
@@ -387,6 +388,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			"\"dummy_id\":%d,"
 			"\"online\":%s,"
 			"\"voice_enabled\":%s,"
+			"\"voice_muted\":%s,"
 			"\"client_version\":\"%s\","
 			"\"auth_timestamp\":%u,"
 			"\"auth_hash\":\"%s\""
@@ -398,6 +400,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			DummyClientId,
 			pOnlineStr,
 			pVoiceEnabledStr,
+			pVoiceMutedStr,
 			GetRclientClientVersion(),
 			AuthTimestamp,
 			aAuthHash);
@@ -412,6 +415,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			"\"player_id\":%d,"
 			"\"online\":%s,"
 			"\"voice_enabled\":%s,"
+			"\"voice_muted\":%s,"
 			"\"client_version\":\"%s\","
 			"\"auth_timestamp\":%u,"
 			"\"auth_hash\":\"%s\""
@@ -422,6 +426,7 @@ void CRClientIndicator::SendPlayerData(const char *pServerAddress, int ClientId,
 			ClientId,
 			pOnlineStr,
 			pVoiceEnabledStr,
+			pVoiceMutedStr,
 			GetRclientClientVersion(),
 			AuthTimestamp,
 			aAuthHash);
@@ -535,6 +540,7 @@ void CRClientIndicator::FinishRClientUsers()
 				const json_value &PlayerData = *PlayersObj.u.object.values[j].value;
 
 				bool VoiceEnabled = false;
+				bool VoiceMuted = false;
 				int DummyId = -1;
 				bool HasDummy = false;
 
@@ -556,13 +562,20 @@ void CRClientIndicator::FinishRClientUsers()
 							else if(Value.type == json_integer)
 								VoiceEnabled = Value.u.integer != 0;
 						}
+						else if(str_comp(pKey, "voice_muted") == 0)
+						{
+							if(Value.type == json_boolean)
+								VoiceMuted = Value.u.boolean != 0;
+							else if(Value.type == json_integer)
+								VoiceMuted = Value.u.integer != 0;
+						}
 					}
 				}
 
-				m_vRClientUsers.push_back({std::string(pServerAddr), PlayerId, VoiceEnabled});
+				m_vRClientUsers.push_back({std::string(pServerAddr), PlayerId, VoiceEnabled, VoiceMuted});
 
 				if(HasDummy)
-					m_vRClientUsers.push_back({std::string(pServerAddr), DummyId, VoiceEnabled});
+					m_vRClientUsers.push_back({std::string(pServerAddr), DummyId, VoiceEnabled, VoiceMuted});
 			}
 		}
 	}
@@ -605,6 +618,7 @@ void CRClientIndicator::ApplyPollHeaders(CHttpRequest &Request, const char *pSer
 	Request.HeaderInt("X-RClient-Since", m_ServerRev);
 	Request.HeaderInt("X-RClient-Timeout", POLL_TIMEOUT_SECONDS);
 	Request.HeaderInt("X-RClient-Voice", g_Config.m_RiVoiceEnable);
+	Request.HeaderInt("X-RClient-Voice-Muted", g_Config.m_RiVoiceEnable && g_Config.m_RiVoiceMicMute);
 	Request.HeaderString("X-RClient-Version", GetRclientClientVersion());
 	Request.HeaderString("X-RClient-Auth-Hash", aAuthHash);
 	Request.HeaderInt("X-RClient-Auth-Timestamp", (int)AuthTimestamp);
@@ -654,6 +668,23 @@ bool CRClientIndicator::IsPlayerRClientVoiceEnabled(int ClientId)
 	{
 		if(str_comp(User.m_ServerAddress.c_str(), CurrentServerInfo.m_aAddress) == 0 && User.m_PlayerId == ClientId)
 			return User.m_VoiceEnabled;
+	}
+
+	return false;
+}
+
+bool CRClientIndicator::IsPlayerRClientVoiceMuted(int ClientId)
+{
+	if(Client()->State() != IClient::STATE_ONLINE)
+		return false;
+
+	CServerInfo CurrentServerInfo;
+	Client()->GetServerInfo(&CurrentServerInfo);
+
+	for(const auto &User : m_vRClientUsers)
+	{
+		if(str_comp(User.m_ServerAddress.c_str(), CurrentServerInfo.m_aAddress) == 0 && User.m_PlayerId == ClientId)
+			return User.m_VoiceMuted;
 	}
 
 	return false;
