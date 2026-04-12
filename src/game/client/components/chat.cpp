@@ -1438,13 +1438,6 @@ void CChat::OnRender()
 	if(Client()->State() != IClient::STATE_ONLINE && Client()->State() != IClient::STATE_DEMOPLAYBACK)
 		return;
 
-	//RClient chat utils
-	if(HasMouseCursor())
-	{
-		Ui()->StartCheck();
-		Ui()->Update();
-	}
-
 	// send pending chat messages
 	if(m_PendingChatCounter > 0 && m_LastChatSend + time_freq() < time())
 	{
@@ -1500,7 +1493,15 @@ void CChat::OnRender()
 		float ScrollOffset = m_Input.GetScrollOffset();
 		float ScrollOffsetChange = m_Input.GetScrollOffsetChange();
 
-		m_Input.Activate(EInputPriority::CHAT); // Ensure that the input is active
+		//RClient chat utils
+		if(HasMouseCursor() && Ui()->IsPopupOpen(&m_LinePopupContext))
+		{
+			m_Input.Deactivate();
+		}
+		else
+		{
+			m_Input.Activate(EInputPriority::CHAT); // Ensure that the input is active
+		}
 		const CUIRect InputCursorRect = {InputCursor.m_X, InputCursor.m_Y - ScrollOffset, 0.0f, 0.0f};
 		const bool WasChanged = m_Input.WasChanged();
 		const bool WasCursorChanged = m_Input.WasCursorChanged();
@@ -1560,7 +1561,14 @@ void CChat::OnRender()
 	//RClient chat utils
 	const bool InteractiveChat = HasMouseCursor();
 	const bool ScrollbarEnabled = InteractiveChat && g_Config.m_RiChatScrollbar;
-	const bool PopupOpen = Ui()->IsPopupOpen(&m_LinePopupContext);
+	bool PopupOpen = HasMouseCursor() && Ui()->IsPopupOpen(&m_LinePopupContext);
+	bool PopupUiPrepared = false;
+	if(PopupOpen)
+	{
+		Ui()->StartCheck();
+		Ui()->Update();
+		PopupUiPrepared = true;
+	}
 	const vec2 MousePos = InteractiveChat ? UiMouseToScreen(Ui()->Screen(), MouseCursorPos(), Width, Height) : vec2(-1.0f, -1.0f);
 	const bool MousePressed = InteractiveChat && Input()->KeyIsPressed(KEY_MOUSE_1);
 	const bool MousePressedStarted = MousePressed && !m_LastCursorLeftPressed;
@@ -1684,7 +1692,10 @@ void CChat::OnRender()
 				}
 
 				if(m_ScrollbarDragging)
+				{
 					Ui()->ClosePopupMenu(&m_LinePopupContext);
+					PopupOpen = false;
+				}
 			}
 
 			if(MouseReleased || !CanScroll)
@@ -1700,6 +1711,7 @@ void CChat::OnRender()
 				{
 					m_MessageScrollOffset = NewScrollOffset;
 					Ui()->ClosePopupMenu(&m_LinePopupContext);
+					PopupOpen = false;
 				}
 
 				UpdateScrollbarHandle();
@@ -1761,6 +1773,7 @@ void CChat::OnRender()
 				m_LinePopupContext.m_LineSerial = Line.m_Serial;
 				Ui()->ClosePopupMenu(&m_LinePopupContext);
 				Ui()->DoPopupMenu(&m_LinePopupContext, PopupPos.x, PopupPos.y, CChatLinePopupContext::POPUP_WIDTH, PopupHeight, &m_LinePopupContext, CChatLinePopupContext::Render);
+				PopupOpen = true;
 			}
 		}
 
@@ -1819,8 +1832,13 @@ void CChat::OnRender()
 	}
 
 	//RClient chat utils
-	if(InteractiveChat)
+	if(PopupOpen)
 	{
+		if(!PopupUiPrepared)
+		{
+			Ui()->StartCheck();
+			Ui()->Update();
+		}
 		Ui()->MapScreen();
 		Ui()->RenderPopupMenus();
 		Ui()->FinishCheck();
