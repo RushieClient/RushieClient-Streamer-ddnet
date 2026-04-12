@@ -132,6 +132,7 @@ public:
 	static const SRushieSettingsSectionEntry *GetRushieSettingsSectionEntries();
 	static int GetNumRushieSettingsSections();
 	static const SRushieSettingsSectionEntry &GetRushieSettingsSectionEntry(ERushieSettingsSection SectionId);
+	bool IsRushieSettingsSectionVisible(ERushieSettingsSection SectionId) const;
 	void RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection SectionId);
 	void RenderRushieVoiceMix(CUIRect MainView);
 	void RenderRushieInfoPanel(CUIRect MainView);

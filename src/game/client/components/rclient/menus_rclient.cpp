@@ -296,6 +296,17 @@ const CMenus::SRushieSettingsSectionEntry &CMenus::GetRushieSettingsSectionEntry
 	return gs_aRushieSettingsSectionEntries[SectionId];
 }
 
+bool CMenus::IsRushieSettingsSectionVisible(ERushieSettingsSection SectionId) const
+{
+	switch(SectionId)
+	{
+	case SETTINGS_SECTION_RCON:
+		return Client()->RconAuthed();
+	default:
+		return true;
+	}
+}
+
 struct SDropDownSimple
 {
 	CUi::SDropDownState m_State;
@@ -353,14 +364,7 @@ void CMenus::RenderSettingsRushie(CUIRect MainView)
 		s_Time = (float)rand() / (float)RAND_MAX;
 	}
 
-	if(Client()->RconAuthed())
-	{
-		SetFlag(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_RCON, 0);
-	}
-	else
-	{
-		SetFlag(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_RCON, 1);
-	}
+	SetFlag(g_Config.m_RiRClientSettingsTabs, RCLIENT_TAB_RCON, !IsRushieSettingsSectionVisible(SETTINGS_SECTION_RCON));
 
 	CUIRect TabBar, Button;
 	int TabCount = NUMBER_OF_RUSHIE_TABS;
@@ -1938,8 +1942,18 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 	}
 	case SETTINGS_SECTION_RCON:
 	{
-		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiPlaySounds, RCLocalize("Play sounds when do command"), &g_Config.m_RiPlaySounds, &Column, LineSize);
+		Column.HSplitTop(HeadlineHeight, &Label, &Column);
+		Ui()->DoLabel(&Label, RCLocalize("Controls"), FontSize, TEXTALIGN_ML);
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		Column.HSplitTop(LineSize, &Label, &Column);
+		static CButtonContainer s_ReaderButtonRCON, s_ClearButtonRCON;
+		DoLine_KeyReader(Label, s_ReaderButtonRCON, s_ClearButtonRCON, RCLocalize("Admin Panel"), "toggle_adminpanel");
+
+		Column.HSplitTop(MarginBetweenSections, nullptr, &Column);
+		Column.HSplitTop(HeadlineHeight, &Label, &Column);
+		Ui()->DoLabel(&Label, RCLocalize("Adminpanel"), FontSize, TEXTALIGN_ML);
+		Column.HSplitTop(MarginSmall, nullptr, &Column);
+		DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiPlaySounds, RCLocalize("Plays sound at exec command"), &g_Config.m_RiPlaySounds, &Column, LineSize);
 		break;
 	}
 	case SETTINGS_SECTION_MENU:
@@ -2075,6 +2089,9 @@ void CMenus::RenderSettingsRushieSettings(CUIRect MainView)
 	{
 		const SRushieSettingsSectionEntry &Entry = pEntries[i];
 		dbg_assert(Entry.m_Column >= 0 && Entry.m_Column < 2, "invalid rushie settings column");
+		if(!IsRushieSettingsSectionVisible(Entry.m_Section))
+			continue;
+
 		const char *pLocalizedTitle = RCLocalize(Entry.m_pTitle, Entry.m_pTitleContext);
 		if(HasSearch && !str_utf8_find_nocase(pLocalizedTitle, pSearch) && !str_utf8_find_nocase(Entry.m_pTitle, pSearch))
 			continue;

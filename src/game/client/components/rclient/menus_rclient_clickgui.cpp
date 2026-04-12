@@ -949,6 +949,8 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	static vec2 s_aDetailOffsets[CMenus::NUM_RUSHIE_SETTINGS_SECTIONS];
 	const CMenus::SRushieSettingsSectionEntry *pEntries = CMenus::GetRushieSettingsSectionEntries();
 	const int NumEntries = CMenus::GetNumRushieSettingsSections();
+	if(m_OpenSettingsSection >= 0 && !GameClient()->m_Menus.IsRushieSettingsSectionVisible(pEntries[m_OpenSettingsSection].m_Section))
+		m_OpenSettingsSection = -1;
 	auto ApplyFunctionInsets = [&](CUIRect &Rect, float ScrollbarWidth, float TopInset) {
 		Rect.HSplitTop(TopInset, nullptr, &Rect);
 		Rect.HSplitBottom(DefaultVMargin, &Rect, nullptr);
@@ -1010,6 +1012,9 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 		for(int i = 0; i < NumEntries; ++i)
 		{
 			const CMenus::SRushieSettingsSectionEntry &Entry = pEntries[i];
+			if(!GameClient()->m_Menus.IsRushieSettingsSectionVisible(Entry.m_Section))
+				continue;
+
 			const char *pTitle = RCLocalize(Entry.m_pTitle, Entry.m_pTitleContext);
 			if(HasSearch && !str_utf8_find_nocase(pTitle, pSearch) && !str_utf8_find_nocase(Entry.m_pTitle, pSearch))
 				continue;
