@@ -1885,6 +1885,11 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 				Column.HSplitTop(LineSize, nullptr, &Column);
 				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowPing, RCLocalize("Show voice ping"), &g_Config.m_RiVoiceShowPing, &Rightoffset, LineSize);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
+				Column.VSplitLeft(25.0f, &Label, &Rightoffset);
+				Column.HSplitTop(LineSize, nullptr, &Column);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowMutedIndicator, RCLocalize("Show when muted"), &g_Config.m_RiVoiceShowMutedIndicator, &Rightoffset, LineSize);
+				Column.HSplitTop(MarginSmall, nullptr, &Column);
+
 			}
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowMuted, RCLocalize("Show muted players"), &g_Config.m_RiVoiceShowMuted, &Column, LineSize);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);

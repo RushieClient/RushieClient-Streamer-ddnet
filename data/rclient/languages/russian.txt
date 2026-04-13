@@ -971,3 +971,6 @@ AFK Emote/Texture In Spec
 
 Disable Frozen Flakes
 == Выключить Снежки
+
+Show when muted
+== Показывать когда замучен

@@ -2055,7 +2055,7 @@ void CHud::RenderVoiceIndicator()
 	if(!g_Config.m_RiVoiceEnable)
 		return;
 
-	const bool ShowMuted = g_Config.m_RiVoiceMicMute;
+	const bool ShowMuted = g_Config.m_RiVoiceMicMute && g_Config.m_RiVoiceShowMutedIndicator;
 	const int LocalId = GameClient()->m_Snap.m_LocalClientId;
 	if(LocalId < 0 || LocalId >= MAX_CLIENTS)
 		return;
@@ -2077,6 +2077,9 @@ void CHud::RenderVoiceIndicator()
 	TextRender()->Text(X + Padding, TextY, FontSize, FontIcon::RC_MICROPHONE, -1.0f);
 	TextRender()->TextColor(TextRender()->DefaultTextColor());
 	TextRender()->SetFontPreset(EFontPreset::DEFAULT_FONT);
+
+	if(ShowMuted)
+		return;
 
 	if(g_Config.m_RiVoiceShowPing)
 	{
