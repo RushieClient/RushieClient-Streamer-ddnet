@@ -1916,6 +1916,19 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowMutedOverlay, RCLocalize("Show muted in overlay"), &g_Config.m_RiVoiceShowMutedOverlay, &Rightoffset, LineSize);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
 			}
+			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowLocalMuted, RCLocalize("Show locally muted players"), &g_Config.m_RiVoiceShowLocalMuted, &Column, LineSize);
+			Column.HSplitTop(MarginSmall, nullptr, &Column);
+			if(g_Config.m_RiVoiceShowLocalMuted)
+			{
+				Column.VSplitLeft(25.0f, &Label, &Rightoffset);
+				Column.HSplitTop(LineSize, nullptr, &Column);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowLocalMutedNameplate, RCLocalize("Show locally muted in nameplates"), &g_Config.m_RiVoiceShowLocalMutedNameplate, &Rightoffset, LineSize);
+				Column.HSplitTop(MarginSmall, nullptr, &Column);
+				Column.VSplitLeft(25.0f, &Label, &Rightoffset);
+				Column.HSplitTop(LineSize, nullptr, &Column);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiVoiceShowLocalMutedOverlay, RCLocalize("Show locally muted in overlay"), &g_Config.m_RiVoiceShowLocalMutedOverlay, &Rightoffset, LineSize);
+				Column.HSplitTop(MarginSmall, nullptr, &Column);
+			}
 			Column.HSplitTop(LineSize, nullptr, &Column);
 			DoVoiceSubHeader(RCLocalize("Voice mix"));
 			static char s_aVoiceNameVolumeName[32];

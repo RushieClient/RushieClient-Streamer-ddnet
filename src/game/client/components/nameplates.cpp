@@ -24,6 +24,22 @@ enum class EHookStrongWeakState
 	STRONG
 };
 
+enum EVoiceDisplayState
+{
+	VOICE_DISPLAY_NONE = 0,
+	VOICE_DISPLAY_REMOTE_MUTED,
+	VOICE_DISPLAY_LOCAL_MUTED,
+};
+
+static ColorRGBA VoiceDisplayColor(int State, float Alpha)
+{
+	if(State == VOICE_DISPLAY_LOCAL_MUTED)
+		return ColorRGBA(1.0f, 0.22f, 0.22f, Alpha);
+	if(State == VOICE_DISPLAY_REMOTE_MUTED)
+		return ColorRGBA(1.0f, 0.55f, 0.0f, Alpha);
+	return ColorRGBA(1.0f, 1.0f, 1.0f, Alpha);
+}
+
 class CNamePlateData
 {
 public:
@@ -64,7 +80,7 @@ public:
 	int m_ShowVoiceIcon;
 	float m_FontSizeVoiceIcon;
 	int m_IsVoiceActive;
-	int m_IsVoiceMuted;
+	int m_VoiceDisplayState;
 };
 
 // Part Types
@@ -711,10 +727,10 @@ private:
 protected:
 	bool UpdateNeeded(CGameClient &This, const CNamePlateData &Data) override
 	{
-		m_Visible = Data.m_ShowVoiceIcon && (Data.m_IsVoiceActive || Data.m_IsVoiceMuted);
+		m_Visible = Data.m_ShowVoiceIcon && (Data.m_IsVoiceActive || Data.m_VoiceDisplayState != VOICE_DISPLAY_NONE);
 		if(!m_Visible)
 			return false;
-		m_Color = Data.m_IsVoiceMuted ? ColorRGBA(1.0f, 0.22f, 0.22f, Data.m_Color.a) : ColorRGBA(1.0f, 1.0f, 1.0f, Data.m_Color.a);
+		m_Color = VoiceDisplayColor(Data.m_VoiceDisplayState, Data.m_Color.a);
 		return m_FontSize != Data.m_FontSizeVoiceIcon;
 	}
 	void UpdateText(CGameClient &This, const CNamePlateData &Data) override
@@ -1359,7 +1375,13 @@ void CNamePlates::RenderNamePlateGame(vec2 Position, const CNetObj_PlayerInfo *p
 			Data.m_ShowVoiceIcon = !pPlayerInfo->m_Local;
 	}
 	Data.m_IsVoiceActive = GameClient()->m_RClient.IsVoiceActive(pPlayerInfo->m_ClientId);
-	Data.m_IsVoiceMuted = g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedNameplate && GameClient()->m_RClientIndicator.IsPlayerRClientVoiceMuted(pPlayerInfo->m_ClientId);
+	Data.m_VoiceDisplayState = VOICE_DISPLAY_NONE;
+	const bool VoiceMuted = g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedNameplate && GameClient()->m_RClientIndicator.IsPlayerRClientVoiceMuted(pPlayerInfo->m_ClientId);
+	const bool VoiceLocalMuted = g_Config.m_RiVoiceShowLocalMuted && g_Config.m_RiVoiceShowLocalMutedNameplate && GameClient()->m_RClient.VoiceListHasName(g_Config.m_RiVoiceMute, GameClient()->m_aClients[pPlayerInfo->m_ClientId].m_aName);
+	if(VoiceLocalMuted)
+		Data.m_VoiceDisplayState = VOICE_DISPLAY_LOCAL_MUTED;
+	else if(VoiceMuted)
+		Data.m_VoiceDisplayState = VOICE_DISPLAY_REMOTE_MUTED;
 
 	// TClient
 	if(g_Config.m_TcWarList && g_Config.m_TcWarListShowClan && GameClient()->m_WarList.GetWarData(pPlayerInfo->m_ClientId).m_WarClan)
@@ -1425,7 +1447,11 @@ void CNamePlates::RenderNamePlatePreview(vec2 Position, int Dummy)
 	Data.m_IsUserRClientVoiceEnabled = g_Config.m_RiVoiceEnable != 0;
 	Data.m_ShowVoiceIcon = false;
 	Data.m_IsVoiceActive = false;
-	Data.m_IsVoiceMuted = g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedNameplate;
+	Data.m_VoiceDisplayState = VOICE_DISPLAY_NONE;
+	if(g_Config.m_RiVoiceShowLocalMuted && g_Config.m_RiVoiceShowLocalMutedNameplate)
+		Data.m_VoiceDisplayState = VOICE_DISPLAY_LOCAL_MUTED;
+	else if(g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedNameplate)
+		Data.m_VoiceDisplayState = VOICE_DISPLAY_REMOTE_MUTED;
 
 	Data.m_FontSizeHookStrongWeak = FontSizeHookStrongWeak;
 	Data.m_HookStrongWeakId = Data.m_ClientId;

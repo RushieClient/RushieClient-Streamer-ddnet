@@ -27,6 +27,22 @@
 
 #include <cmath>
 
+enum EVoiceDisplayState
+{
+	VOICE_DISPLAY_NONE = 0,
+	VOICE_DISPLAY_REMOTE_MUTED,
+	VOICE_DISPLAY_LOCAL_MUTED,
+};
+
+static ColorRGBA VoiceDisplayColor(int State)
+{
+	if(State == VOICE_DISPLAY_LOCAL_MUTED)
+		return ColorRGBA(1.0f, 0.22f, 0.22f, 1.0f);
+	if(State == VOICE_DISPLAY_REMOTE_MUTED)
+		return ColorRGBA(1.0f, 0.55f, 0.0f, 1.0f);
+	return ColorRGBA(1.0f, 1.0f, 1.0f, 1.0f);
+}
+
 CHud::CHud()
 {
 	m_FPSTextContainerIndex.Reset();
@@ -2114,20 +2130,24 @@ void CHud::RenderVoiceSpeakerOverlay()
 		return;
 
 	int aSpeakerIds[MAX_CLIENTS];
-	int aSpeakerMuted[MAX_CLIENTS];
+	int aSpeakerVoiceState[MAX_CLIENTS];
 	int SpeakerCount = 0;
 	for(int i = 0; i < MAX_CLIENTS; i++)
 	{
 		if(i == LocalId && !g_Config.m_RiVoiceIndicatorAboveSelf)
 			continue;
 		const bool VoiceActive = GameClient()->m_RClient.IsVoiceActive(i);
-		const bool VoiceMuted = g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedOverlay && GameClient()->m_RClientIndicator.IsPlayerRClientVoiceMuted(i);
-		if(!VoiceActive && !VoiceMuted)
+		int VoiceState = VOICE_DISPLAY_NONE;
+		if(g_Config.m_RiVoiceShowLocalMuted && g_Config.m_RiVoiceShowLocalMutedOverlay && GameClient()->m_RClient.VoiceListHasName(g_Config.m_RiVoiceMute, GameClient()->m_aClients[i].m_aName))
+			VoiceState = VOICE_DISPLAY_LOCAL_MUTED;
+		else if(g_Config.m_RiVoiceShowMuted && g_Config.m_RiVoiceShowMutedOverlay && GameClient()->m_RClientIndicator.IsPlayerRClientVoiceMuted(i))
+			VoiceState = VOICE_DISPLAY_REMOTE_MUTED;
+		if(!VoiceActive && VoiceState == VOICE_DISPLAY_NONE)
 			continue;
 		if(GameClient()->m_aClients[i].m_aName[0] == '\0')
 			continue;
 		aSpeakerIds[SpeakerCount++] = i;
-		aSpeakerMuted[SpeakerCount - 1] = VoiceMuted;
+		aSpeakerVoiceState[SpeakerCount - 1] = VoiceState;
 	}
 	if(SpeakerCount == 0)
 		return;
@@ -2147,9 +2167,9 @@ void CHud::RenderVoiceSpeakerOverlay()
 	for(int Index = 0; Index < SpeakerCount; Index++)
 	{
 		const int ClientId = aSpeakerIds[Index];
-		const bool VoiceMuted = aSpeakerMuted[Index] != 0;
+		const int VoiceState = aSpeakerVoiceState[Index];
 		const char *pName = GameClient()->m_aClients[ClientId].m_aName;
-		const ColorRGBA VoiceColor = VoiceMuted ? ColorRGBA(1.0f, 0.22f, 0.22f, 1.0f) : TextRender()->DefaultTextColor();
+		const ColorRGBA VoiceColor = VoiceDisplayColor(VoiceState);
 
 		const float NameWidth = TextRender()->TextWidth(FontSize, pName);
 		const float RowWidth = Padding * 2.0f + IconWidth + Gap + NameWidth;

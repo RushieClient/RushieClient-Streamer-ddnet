@@ -1207,3 +1207,12 @@ On server
 
 Changed
 == Измененные
+
+Show locally muted players
+== Показывать игроков в муте у себя
+
+Show locally muted in nameplates
+== Показывать мут у себя в неймплейтах
+
+Show locally muted in overlay
+== Показывать мут у себя в оверлее
