@@ -343,13 +343,11 @@ void CMenusRClientClickGui::OnRender()
 	const float SmallVMargin = SClickGuiProperties::ms_SmallVMargin * PixelSize;
 	const float DefaultVMargin = SClickGuiProperties::ms_DefaultVMargin * PixelSize;
 	const float NicknameSizeWidth = SClickGuiProperties::ms_NicknameSizeWidth * PixelSize;
-	const float NicknameSizeHeight = SClickGuiProperties::ms_NicknameSizeHeight * PixelSize;
 	const float LogoSizeWidth = SClickGuiProperties::ms_LogoSizeWidth * PixelSize;
 	const float TeeSkinSize = SClickGuiProperties::ms_TeeSkinSize * PixelSize;
 	const float BarSizeHeight = SClickGuiProperties::ms_BarSizeHeight * PixelSize;
 	const float DefaultRounding = SClickGuiProperties::ms_Rounding * PixelSize;
 	const float SettingsProfilesWidth = SClickGuiProperties::ms_SettingsProfilesWidth * PixelSize;
-	const float SettingsProfilesHeight = SClickGuiProperties::ms_SettingsProfilesHeight * PixelSize;
 	const float HudEditorHeightGapProfiles = SClickGuiProperties::ms_HudEditorHeightGapProfiles * PixelSize;
 	const float ButtonSpace = SClickGuiProperties::ms_ButtonSpace * PixelSize;
 	const float SmallButtonSpace = SClickGuiProperties::ms_SmallButtonSpace * PixelSize;
@@ -667,11 +665,11 @@ void CMenusRClientClickGui::OnRender()
 
 		Content.Margin(DefaultVMargin * 0.5f, &Content);
 
-		CUIRect TopBar, BottomArea, Label, Button;
-		Content.HSplitTop(LineSize * 13.5f, &TopBar, &BottomArea);
+		CUIRect TopSection, BottomArea, Label, Button;
+		Content.HSplitTop(LineSize * 13.5f, &TopSection, &BottomArea);
 
 		CUIRect InfoArea, ActionArea;
-		TopBar.VSplitMid(&InfoArea, &ActionArea, MarginBetweenViews);
+		TopSection.VSplitMid(&InfoArea, &ActionArea, MarginBetweenViews);
 
 		CUIRect CurrentRect;
 		InfoArea.HSplitTop(HeadlineHeight, &Label, &InfoArea);
@@ -951,11 +949,11 @@ void CMenusRClientClickGui::RenderClickGuiRushieSettings(CUIRect MainView, float
 	const int NumEntries = CMenus::GetNumRushieSettingsSections();
 	if(m_OpenSettingsSection >= 0 && !GameClient()->m_Menus.IsRushieSettingsSectionVisible(pEntries[m_OpenSettingsSection].m_Section))
 		m_OpenSettingsSection = -1;
-	auto ApplyFunctionInsets = [&](CUIRect &Rect, float ScrollbarWidth, float TopInset) {
+	auto ApplyFunctionInsets = [&](CUIRect &Rect, float InsetsScrollbarWidth, float TopInset) {
 		Rect.HSplitTop(TopInset, nullptr, &Rect);
 		Rect.HSplitBottom(DefaultVMargin, &Rect, nullptr);
 		Rect.VSplitLeft(DefaultVMargin, nullptr, &Rect);
-		Rect.VSplitRight(maximum(0.0f, DefaultVMargin - ScrollbarWidth), &Rect, nullptr);
+		Rect.VSplitRight(maximum(0.0f, DefaultVMargin - InsetsScrollbarWidth), &Rect, nullptr);
 	};
 	auto RenderFontIcon = [&](const CUIRect &Rect, const char *pIcon, float Size, int Align, ColorRGBA Color) {
 		SLabelProperties Props;

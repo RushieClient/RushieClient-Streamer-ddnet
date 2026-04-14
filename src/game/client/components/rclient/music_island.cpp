@@ -46,7 +46,9 @@ static ColorRGBA MusicIslandGapsColor()
 	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandSectionsColor, true));
 }
 
+#if defined(CONF_FAMILY_WINDOWS)
 static constexpr int64_t gs_MusicIslandArtworkDebounceMs = 350;
+#endif
 
 static bool MusicIslandDebugEnabled()
 {
@@ -59,14 +61,6 @@ static void LogMusicIslandDebug(const char *pSys, const char *pMsg)
 		return;
 
 	dbg_msg(pSys, "%s", pMsg);
-}
-
-static vec2 NativeMouseToScreen(IInput *pInput, IGraphics *pGraphics, vec2 ScreenTL, vec2 ScreenBR)
-{
-	const vec2 NativeMousePos = pInput->NativeMousePos();
-	return vec2(
-		ScreenTL.x + NativeMousePos.x * (ScreenBR.x - ScreenTL.x) / pGraphics->ScreenWidth(),
-		ScreenTL.y + NativeMousePos.y * (ScreenBR.y - ScreenTL.y) / pGraphics->ScreenHeight());
 }
 
 static vec2 UiMouseToScreen(const CUIRect *pUiScreen, vec2 UiMousePos, vec2 ScreenTL, vec2 ScreenBR)
@@ -575,26 +569,41 @@ static bool QueryBestMprisPlayer(SMprisPlayerState &State)
 
 static void TriggerMprisControlAction(const char *pMethod)
 {
-	SMprisPlayerState PlayerState;
-	if(!QueryBestMprisPlayer(PlayerState) || PlayerState.m_BusName.empty())
-		return;
-
 	if(pMethod == nullptr)
 		return;
+
+	SMprisPlayerState PlayerState;
+	if(!QueryBestMprisPlayer(PlayerState) || PlayerState.m_BusName.empty())
+	{
+		LogMusicIslandDebug("music-island-mpris", "No active MPRIS player for control command");
+		return;
+	}
 
 	GError *pError = nullptr;
 	GDBusConnection *pConnection = g_bus_get_sync(G_BUS_TYPE_SESSION, nullptr, &pError);
 	if(pError != nullptr)
 	{
+		if(MusicIslandDebugEnabled())
+			dbg_msg("music-island-mpris", "Failed to connect to session D-Bus for control command: %s", pError->message != nullptr ? pError->message : "<null>");
 		g_error_free(pError);
 		return;
 	}
 	if(pConnection == nullptr)
+	{
+		LogMusicIslandDebug("music-island-mpris", "Failed to connect to session D-Bus for control command: connection is null");
 		return;
+	}
 
 	GVariant *pResult = MprisCallSync(pConnection, PlayerState.m_BusName.c_str(), gs_pMprisPlayerInterface, pMethod, nullptr, nullptr);
 	if(pResult != nullptr)
+	{
+		LogMusicIslandDebug("music-island-mpris", "Sent media control command");
 		g_variant_unref(pResult);
+	}
+	else
+	{
+		LogMusicIslandDebug("music-island-mpris", "Failed to send media control command");
+	}
 	g_object_unref(pConnection);
 }
 #endif
@@ -1370,6 +1379,10 @@ void CMusicIsland::UpdateMusicInfo()
 		NewInfo.m_Title = std::move(PlayerState.m_Title);
 		NewInfo.m_Artist = std::move(PlayerState.m_Artist);
 		NewInfo.m_Album = std::move(PlayerState.m_Album);
+	}
+	else
+	{
+		LogMusicIslandDebug("music-island-mpris", "No active MPRIS player");
 	}
 
 	if(m_InfoWorkerStopRequested.load())
