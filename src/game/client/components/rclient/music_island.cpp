@@ -54,12 +54,12 @@ static ColorRGBA MusicIslandGapsColor()
 static constexpr int64_t gs_MusicIslandArtworkDebounceMs = 350;
 #endif
 
+#if defined(CONF_MUSIC_ISLAND_WINRT) || (defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS))
 static bool MusicIslandDebugEnabled()
 {
 	return g_Config.m_RiShowMusicIslandDebug != 0;
 }
 
-#if defined(CONF_MUSIC_ISLAND_WINRT) || (defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS))
 static void LogMusicIslandDebug(const char *pSys, const char *pMsg)
 {
 	if(!MusicIslandDebugEnabled())
