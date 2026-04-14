@@ -59,6 +59,7 @@ static bool MusicIslandDebugEnabled()
 	return g_Config.m_RiShowMusicIslandDebug != 0;
 }
 
+#if defined(CONF_MUSIC_ISLAND_WINRT) || (defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS))
 static void LogMusicIslandDebug(const char *pSys, const char *pMsg)
 {
 	if(!MusicIslandDebugEnabled())
@@ -66,6 +67,7 @@ static void LogMusicIslandDebug(const char *pSys, const char *pMsg)
 
 	dbg_msg(pSys, "%s", pMsg);
 }
+#endif
 
 static vec2 UiMouseToScreen(const CUIRect *pUiScreen, vec2 UiMousePos, vec2 ScreenTL, vec2 ScreenBR)
 {
