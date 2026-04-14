@@ -13,7 +13,11 @@
 #include <utility>
 #include <vector>
 
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_FAMILY_WINDOWS) && defined(_MSC_VER) && __has_include(<winrt/base.h>)
+#define CONF_MUSIC_ISLAND_WINRT 1
+#endif
+
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 #pragma comment(lib, "runtimeobject.lib")
 #include <winrt/base.h>
 #include <winrt/Windows.Graphics.Imaging.h>
@@ -46,7 +50,7 @@ static ColorRGBA MusicIslandGapsColor()
 	return color_cast<ColorRGBA>(ColorHSLA(g_Config.m_RiShowMusicIslandSectionsColor, true));
 }
 
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 static constexpr int64_t gs_MusicIslandArtworkDebounceMs = 350;
 #endif
 
@@ -275,7 +279,7 @@ static float GetVisualizerBarPulse(float Time, int LayerIndex)
 
 static bool HasMusicIslandPlatformBackend()
 {
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 	return true;
 #elif defined(CONF_PLATFORM_LINUX) && defined(CONF_MUSIC_ISLAND_MPRIS)
 	return true;
@@ -608,7 +612,7 @@ static void TriggerMprisControlAction(const char *pMethod)
 }
 #endif
 
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 static std::string MakeArtworkKey(const std::string &Title, const std::string &Artist, const std::string &Album)
 {
 	std::string Key = Title;
@@ -1139,7 +1143,7 @@ void CMusicIsland::StopInfoWorker()
 
 void CMusicIsland::StopImageWorker()
 {
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 	m_ImageWorkerStopRequested.store(true);
 	if(m_ImageWorker.joinable())
 		m_ImageWorker.join();
@@ -1150,7 +1154,7 @@ void CMusicIsland::StopImageWorker()
 
 void CMusicIsland::InfoWorkerLoop()
 {
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 	winrt::init_apartment(winrt::apartment_type::multi_threaded);
 #endif
 
@@ -1178,7 +1182,7 @@ void CMusicIsland::InfoWorkerLoop()
 		UpdateMusicInfo();
 	}
 
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 	winrt::uninit_apartment();
 #endif
 	m_InfoWorkerRunning.store(false);
@@ -1186,7 +1190,7 @@ void CMusicIsland::InfoWorkerLoop()
 
 void CMusicIsland::UpdateMusicInfo()
 {
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 	SMusicInfo NewInfo;
 	const int64_t Now = time_get();
 	const int64_t ArtworkDebounceTicks = time_freq() * gs_MusicIslandArtworkDebounceMs / 1000;
@@ -1397,7 +1401,7 @@ void CMusicIsland::UpdateMusicInfo()
 
 void CMusicIsland::TriggerControlAction(EControlButton Button)
 {
-#if defined(CONF_FAMILY_WINDOWS)
+#if defined(CONF_MUSIC_ISLAND_WINRT)
 	std::thread([Button]() {
 		try
 		{
@@ -1467,11 +1471,7 @@ void CMusicIsland::TriggerControlAction(EControlButton Button)
 
 bool CMusicIsland::IsActive() const
 {
-#if defined(CONF_FAMILY_WINDOWS) || defined(CONF_PLATFORM_LINUX)
-	return g_Config.m_RiShowMusicIsland != 0;
-#else
-	return false;
-#endif
+	return g_Config.m_RiShowMusicIsland != 0 && HasMusicIslandPlatformBackend();
 }
 
 void CMusicIsland::ConShowCurMusicInfo(IConsole::IResult *pResult, void *pUserData)
