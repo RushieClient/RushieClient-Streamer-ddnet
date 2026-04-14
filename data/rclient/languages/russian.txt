@@ -827,7 +827,7 @@ Find finish
 == Найти финиш
 
 Player menu
-== Найти меню
+== Меню игрока
 
 Devices
 == Девайсы
@@ -974,3 +974,236 @@ Disable Frozen Flakes
 
 Show when muted
 == Показывать когда замучен
+
+Hide Hammer Hit
+== Скрыть Удар Хаммером
+
+Sound On Move
+== Звук При Движении
+
+Freeze inputs when new menu opened
+== Замораживать инпуты когда открыто новое меню
+
+Skip open new RClient's menu
+== Пропустить открытие нового меню
+
+Open new menu
+== Открыть новое меню
+
+Music Player
+== Музыкальный Плеер
+
+Show music island
+== Показывать музыкальный плеер
+
+Show cover image
+== Показывать изображение
+
+Show visualizer
+== Показывать визуализатор
+
+Show full timer
+== Показывать весь таймер
+
+Minimum width
+== Минимальная ширина
+
+Maximum width
+== Максимальная ширина
+
+Dynamic width expansion
+== Динамическое расширение
+
+Show visualizer sections
+== Показывать секции визуализатора
+
+Game timer:
+== Таймер:
+
+[Music]
+Full
+== Весь
+
+[Music]
+Scroll
+== Скролл
+
+Show visualizer sections
+== Показывать секции визуализатора
+
+Music island color
+== Цвет музыкального островка
+
+Section gaps color
+== Цвет секций
+
+Tracker
+== Трекер
+
+Millisecond In Game Timer
+== Миллисекунды В Таймере
+
+Heart Size In Nameplate
+== Размер Сердца В Неймплейтах
+
+Binds
+== Бинды
+
+Better Lasers (Pulse)
+== Улучшенные лазеры (Pulse)
+
+Spectator Move
+== Движение В Спеке
+
+Spectator Sort
+== Сортировка В Спеке
+
+Player Menu
+== Меню Игрока
+
+Chat Bubbles (Entity)
+== Чат Баблы (Entity)
+
+Show RClient User indicator in nameplates
+== Показывать индикатор клиента в неймплейтах
+
+Ignore indicator errors
+== Игнор ошибок индикатора
+
+Output
+== Вывод
+
+Advanced devices
+== Расширенные девайсы
+
+Testing
+== Тесты
+
+Microphone level
+== Громкость микрофона
+
+Listening
+== Прослушивание
+
+VAD listening
+== Прослушивание VAD
+
+Always hear these VAD players
+== Всегда слышать этих игроков с VAD
+
+Groups
+== Группы
+
+Processing
+== Обработка
+
+Stereo width (%)
+== Ширина стерео (%)
+
+Overlay & Indicator
+== Оверлей и Индикатор
+
+Show muted players
+== Показывать игроков в муте
+
+Show muted in nameplates
+== Показывать мут в неймплейтах
+
+Show muted in overlay
+== Показывать мут в оверлее
+
+Open changed voice mix
+== Открыть измененный войс микс
+
+Chatbinds
+== Чатбинды
+
+Percent In Vote Bar
+== Проценты В Голосовании
+
+Show procent in vote bar
+== Показывать проценты в голосовании
+
+Show/Find Checkpoint
+== Показывать/Найти Чекпоинт
+
+Show current checkpoint in hud
+== Показывать текущий чек в худе
+
+Compact Angle/Checkpoint
+== Компактный угол/чек
+
+Show angle and checkpoint oneline
+== Показывать угол и чек в одну линию
+
+Player Join Sound
+== Звук При Входе Игрока
+
+Play sound when player join
+== Играть звук при входе игрока
+
+Player names
+== Ники игроков
+
+Saved settings
+== Сохраненные настройки
+
+Current settings
+== Текущее настройки
+
+Selected profile
+== Выбранный профиль
+
+No profile selected
+== Не выбран профиль
+
+Config: Modified/Total
+== Конфиг: Измененных/Всего
+
+Include DDNet settings
+== Вкл настройки DDNet
+
+Include key binds
+== Вкл бинды
+
+Include TClient settings
+== Вкл настройки TClient
+
+Include TClient bindwheel
+== Вкл колесо биндов TClient
+
+Include RClient settings
+== Вкл настройки RClient
+
+Selected
+== Выбран
+
+Include RClient bindwheel
+== Вкл колесо биндов RClient
+
+Include warlist
+== Вкл варлист
+
+Include chat binds
+== Вкл чат бинды
+
+Include skin profiles
+== вкл профили скинов
+
+Save New
+== Сохранить новый
+
+Apply Selected
+== Применить выбраный
+
+Delete Selected
+== Удалить выбранный
+
+Create or update
+== Создать или обновить
+
+On server
+== На сервере
+
+Changed
+== Измененные

@@ -920,7 +920,7 @@ void CMusicIsland::RenderMusicIsland()
 	if(g_Config.m_RiShowMusicIslandTimerFull)
 	{
 		const float MinWidth = (float)g_Config.m_RiShowMusicIslandFullMinWidth;
-		WindowRect.w = g_Config.m_RiShowMusicIslandFullDynamicWidth && DesiredWidth > 0.0f ?
+		WindowRect.w = g_Config.m_RiShowMusicIslandDynamicWidth && DesiredWidth > 0.0f ?
 			maximum(MinWidth, DesiredWidth) :
 			MinWidth;
 	}

@@ -1246,25 +1246,37 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandVisualizer, RCLocalize("Show visualizer"), &g_Config.m_RiShowMusicIslandVisualizer, &Column, LineSize);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
-			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandTimerFull, RCLocalize("Show full timer"), &g_Config.m_RiShowMusicIslandTimerFull, &Column, LineSize);
+			static std::vector<CButtonContainer> s_vMusicPlayerFullButtonContainers = {{}, {}};
+			DoLine_RadioMenu(Column, RCLocalize("Game timer:"),
+				s_vMusicPlayerFullButtonContainers,
+				{RCLocalize("Scroll", "Music"), RCLocalize("Full", "Music")},
+				{0, 1},
+				g_Config.m_RiShowMusicIslandTimerFull);
 			Column.HSplitTop(MarginSmall, nullptr, &Column);
 			if(g_Config.m_RiShowMusicIslandTimerFull)
 			{
 				Column.HSplitTop(LineSize, &Button, &Column);
+				Button.VSplitLeft(25.0f, nullptr, &Button);
 				Ui()->DoScrollbarOption(&g_Config.m_RiShowMusicIslandFullMinWidth, &g_Config.m_RiShowMusicIslandFullMinWidth, &Button, RCLocalize("Minimum width"), 40, 300);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandFullDynamicWidth, RCLocalize("Dynamic width expansion"), &g_Config.m_RiShowMusicIslandFullDynamicWidth, &Column, LineSize);
+				Column.HSplitTop(LineSize, &Button, &Column);
+				Button.VSplitLeft(25.0f, nullptr, &Button);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandDynamicWidth, RCLocalize("Dynamic width expansion"), &g_Config.m_RiShowMusicIslandDynamicWidth, &Button, LineSize);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
 			}
 			else
 			{
 				Column.HSplitTop(LineSize, &Button, &Column);
+				Button.VSplitLeft(25.0f, nullptr, &Button);
 				Ui()->DoScrollbarOption(&g_Config.m_RiShowMusicIslandMinWidth, &g_Config.m_RiShowMusicIslandMinWidth, &Button, RCLocalize("Minimum width"), 40, 300);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
 				Column.HSplitTop(LineSize, &Button, &Column);
+				Button.VSplitLeft(25.0f, nullptr, &Button);
 				Ui()->DoScrollbarOption(&g_Config.m_RiShowMusicIslandMaxWidth, &g_Config.m_RiShowMusicIslandMaxWidth, &Button, RCLocalize("Maximum width"), 40, 300);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
-				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandDynamicWidth, RCLocalize("Dynamic width expansion"), &g_Config.m_RiShowMusicIslandDynamicWidth, &Column, LineSize);
+				Column.HSplitTop(LineSize, &Button, &Column);
+				Button.VSplitLeft(25.0f, nullptr, &Button);
+				DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandDynamicWidth, RCLocalize("Dynamic width expansion"), &g_Config.m_RiShowMusicIslandDynamicWidth, &Button, LineSize);
 				Column.HSplitTop(MarginSmall, nullptr, &Column);
 			}
 			DoButton_CheckBoxAutoVMarginAndSet(&g_Config.m_RiShowMusicIslandSections, RCLocalize("Show visualizer sections"), &g_Config.m_RiShowMusicIslandSections, &Column, LineSize);
@@ -2765,7 +2777,7 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 		GetStat(RUSHIESETTINGSPROFILE_SOURCE_SKINPROFILES, aSkinProfiles, sizeof(aSkinProfiles));
 
 		Rect.HSplitTop(LineSize, &Rect, nullptr);
-		str_format(aBuf, sizeof(aBuf), "%s: %d", Localize("Saved settings"), (int)Profile.m_vEntries.size());
+		str_format(aBuf, sizeof(aBuf), "%s: %d", RCLocalize("Saved settings"), (int)Profile.m_vEntries.size());
 		Ui()->DoLabel(&Rect, aBuf, FontSize, TEXTALIGN_ML);
 
 		Rect.y += LineSize + MarginExtraSmall;
@@ -2803,7 +2815,7 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 			InfoArea.HSplitTop(MarginSmall, nullptr, &InfoArea);
 			InfoArea.HSplitTop(LineSize, &Label, &InfoArea);
 			char aBuf[128];
-			str_format(aBuf, sizeof(aBuf), "%s: %s", Localize("Selected"), vProfiles[s_SelectedProfile].m_Name.c_str());
+			str_format(aBuf, sizeof(aBuf), "%s: %s", RCLocalize("Selected"), vProfiles[s_SelectedProfile].m_Name.c_str());
 			Ui()->DoLabel(&Label, aBuf, FontSize, TEXTALIGN_ML);
 			InfoArea.HSplitTop(MarginExtraSmall, nullptr, &InfoArea);
 			InfoArea.HSplitTop(LineSize * 3.0f, &Selected, &InfoArea);
@@ -2818,7 +2830,7 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 
 		InfoArea.HSplitBottom(MarginSmall, &InfoArea, nullptr);
 		InfoArea.HSplitBottom(LineSize, &InfoArea, &Label);
-		Ui()->DoLabel(&Label, "Config: Modified/Total", FontSize, TEXTALIGN_ML);
+		Ui()->DoLabel(&Label, RCLocalize("Config: Modified/Total"), FontSize, TEXTALIGN_ML);
 	}
 
 	{
@@ -2834,15 +2846,15 @@ void CMenus::RenderSettingsRushieProfiles(CUIRect MainView)
 
 		Actions.HSplitTop(LineSize * 5.5f, &ToggleArea, &Actions);
 		ToggleArea.VSplitMid(&InfoArea, &ButtonArea, MarginSmall);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeDdnet, Localize("Include DDNet settings"), &s_IncludeDdnet, &InfoArea, LineSize);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeBinds, Localize("Include key binds"), &s_IncludeBinds, &InfoArea, LineSize);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeTClient, Localize("Include TClient settings"), &s_IncludeTClient, &InfoArea, LineSize);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeTClientBindWheel, Localize("Include TClient bindwheel"), &s_IncludeTClientBindWheel, &InfoArea, LineSize);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeRClient, Localize("Include RClient settings"), &s_IncludeRClient, &InfoArea, LineSize);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeRClientBindWheel, Localize("Include Rushie bindwheel"), &s_IncludeRClientBindWheel, &ButtonArea, LineSize);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeWarlist, Localize("Include warlist"), &s_IncludeWarlist, &ButtonArea, LineSize);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeChatbinds, Localize("Include chat binds"), &s_IncludeChatbinds, &ButtonArea, LineSize);
-		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeSkinProfiles, Localize("Include skin profiles"), &s_IncludeSkinProfiles, &ButtonArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeDdnet, RCLocalize("Include DDNet settings"), &s_IncludeDdnet, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeBinds, RCLocalize("Include key binds"), &s_IncludeBinds, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeTClient, RCLocalize("Include TClient settings"), &s_IncludeTClient, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeTClientBindWheel, RCLocalize("Include TClient bindwheel"), &s_IncludeTClientBindWheel, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeRClient, RCLocalize("Include RClient settings"), &s_IncludeRClient, &InfoArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeRClientBindWheel, RCLocalize("Include RClient bindwheel"), &s_IncludeRClientBindWheel, &ButtonArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeWarlist, RCLocalize("Include warlist"), &s_IncludeWarlist, &ButtonArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeChatbinds, RCLocalize("Include chat binds"), &s_IncludeChatbinds, &ButtonArea, LineSize);
+		DoButton_CheckBoxAutoVMarginAndSet(&s_IncludeSkinProfiles, RCLocalize("Include skin profiles"), &s_IncludeSkinProfiles, &ButtonArea, LineSize);
 		Actions.HSplitTop(MarginSmall, nullptr, &Actions);
 
 		CUIRect ButtonRowLeft, ButtonRowRight;
