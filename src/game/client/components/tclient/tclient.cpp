@@ -433,7 +433,7 @@ void CTClient::OnConsoleInit()
 			if(pResult->NumArguments() == 1)
 			{
 				const char *pRegex = pResult->GetString(0);
-				char aLowerRegex[1024];
+				char aLowerRegex[sizeof(g_Config.m_TcRegexChatIgnore)];
 				str_utf8_tolower(pRegex, aLowerRegex, sizeof(aLowerRegex));
 
 				auto Re = Regex(aLowerRegex, true);

@@ -1084,20 +1084,38 @@ void CRClient::ConAddWhiteList(IConsole::IResult *pResult, void *pUserData)
 	char aBuf[256];
 	if(aInput[0])
 	{
-		if(g_Config.m_RiRegexPlayerWhitelist[0])
+		const bool HadExistingRegex = g_Config.m_RiRegexPlayerWhitelist[0] != '\0';
+		char aOldRegex[sizeof(g_Config.m_RiRegexPlayerWhitelist)];
+		str_copy(aOldRegex, g_Config.m_RiRegexPlayerWhitelist, sizeof(aOldRegex));
+		const char *pNewRegex = aInput;
+		char aNewRegex[sizeof(g_Config.m_RiRegexPlayerWhitelist)];
+		if(HadExistingRegex)
 		{
-			char aNewRegex[512];
-			str_format(aBuf, sizeof(aBuf), "Added to existing regex: %s", aInput);
 			str_format(aNewRegex, sizeof(aNewRegex), "%s|%s", g_Config.m_RiRegexPlayerWhitelist, aInput);
-			str_copy(g_Config.m_RiRegexPlayerWhitelist, aNewRegex, sizeof(g_Config.m_RiRegexPlayerWhitelist));
+			pNewRegex = aNewRegex;
+		}
+
+		str_copy(g_Config.m_RiRegexPlayerWhitelist, pNewRegex, sizeof(g_Config.m_RiRegexPlayerWhitelist));
+
+		auto Re = Regex(g_Config.m_RiRegexPlayerWhitelist);
+		if(!Re.error().empty())
+		{
+			str_copy(g_Config.m_RiRegexPlayerWhitelist, aOldRegex, sizeof(g_Config.m_RiRegexPlayerWhitelist));
+			str_format(aBuf, sizeof(aBuf), "Invalid regex, list not updated: %s", Re.error().c_str());
 			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
+			return;
+		}
+
+		pSelf->m_RegexSplitPlayer = std::move(Re);
+		if(!HadExistingRegex)
+		{
+			str_format(aBuf, sizeof(aBuf), "New regex added: %s", aInput);
 		}
 		else
 		{
-			str_copy(g_Config.m_RiRegexPlayerWhitelist, aInput, sizeof(g_Config.m_RiRegexPlayerWhitelist));
-			str_format(aBuf, sizeof(aBuf), "New regex added: %s", aInput);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
+			str_format(aBuf, sizeof(aBuf), "Added to existing regex: %s", aInput);
 		}
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
 	}
 	else
 	{
@@ -1671,20 +1689,40 @@ void CRClient::ConAddCensorList(IConsole::IResult *pResult, void *pUserData)
 	char aBuf[256];
 	if(aInput[0])
 	{
-		if(g_Config.m_TcRegexChatIgnore[0])
+		const bool HadExistingRegex = g_Config.m_TcRegexChatIgnore[0] != '\0';
+		char aOldRegex[sizeof(g_Config.m_TcRegexChatIgnore)];
+		str_copy(aOldRegex, g_Config.m_TcRegexChatIgnore, sizeof(aOldRegex));
+		const char *pNewRegex = aInput;
+		char aNewRegex[sizeof(g_Config.m_TcRegexChatIgnore)];
+		if(HadExistingRegex)
 		{
-			char aNewRegex[1024];
-			str_format(aBuf, sizeof(aBuf), "Added to existing regex: %s", aInput);
 			str_format(aNewRegex, sizeof(aNewRegex), "%s|%s", g_Config.m_TcRegexChatIgnore, aInput);
-			str_copy(g_Config.m_TcRegexChatIgnore, aNewRegex, sizeof(g_Config.m_TcRegexChatIgnore));
+			pNewRegex = aNewRegex;
+		}
+
+		str_copy(g_Config.m_TcRegexChatIgnore, pNewRegex, sizeof(g_Config.m_TcRegexChatIgnore));
+
+		char aLowerRegex[sizeof(g_Config.m_TcRegexChatIgnore)];
+		str_utf8_tolower(g_Config.m_TcRegexChatIgnore, aLowerRegex, sizeof(aLowerRegex));
+		auto Re = Regex(aLowerRegex, true);
+		if(!Re.error().empty())
+		{
+			str_copy(g_Config.m_TcRegexChatIgnore, aOldRegex, sizeof(g_Config.m_TcRegexChatIgnore));
+			str_format(aBuf, sizeof(aBuf), "Invalid regex, list not updated: %s", Re.error().c_str());
 			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
+			return;
+		}
+
+		pSelf->GameClient()->m_TClient.m_RegexChatIgnore = std::move(Re);
+		if(!HadExistingRegex)
+		{
+			str_format(aBuf, sizeof(aBuf), "New regex added: %s", aInput);
 		}
 		else
 		{
-			str_copy(g_Config.m_TcRegexChatIgnore, aInput, sizeof(g_Config.m_TcRegexChatIgnore));
-			str_format(aBuf, sizeof(aBuf), "New regex added: %s", aInput);
-			pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
+			str_format(aBuf, sizeof(aBuf), "Added to existing regex: %s", aInput);
 		}
+		pSelf->Console()->Print(IConsole::OUTPUT_LEVEL_STANDARD, "Regex", aBuf);
 	}
 	else
 	{
