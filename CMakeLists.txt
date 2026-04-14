@@ -1714,6 +1714,7 @@ set(EXPECTED_DATA
   rclient/rclient_big_logo.png
   rclient/rclient_icon.png
   rclient/rclient_icon_red.png
+  rclient/rclient_icon_white.png
   rclient/riactions.png
   rclient/rihammer.png
   rclient/rihook.png

@@ -801,26 +801,18 @@ protected:
 		m_ShiftOnInvis = !g_Config.m_RiShowIndicatorDynamic; // Only shift (horizontally) the other parts if directions as a whole is visible
 		m_Size = vec2(Data.m_FontSizeRClientIndicator + DEFAULT_PADDING, Data.m_FontSizeRClientIndicator + DEFAULT_PADDING);
 		m_Visible = Data.m_IsUserRClientIndicator;
-
-		if(Data.m_IsUserRClientVoiceEnabled)
-		{
-			m_Texture = g_pData->m_aImages[IMAGE_RIICON].m_Id;
-			m_Sprite = SPRITE_RI_ICON;
-		}
-		else
-		{
-			m_Texture = g_pData->m_aImages[IMAGE_RIICON_RED].m_Id;
-			m_Sprite = SPRITE_RI_ICON_RED;
-		}
-
-		m_Color.a = Data.m_Color.a;
+		m_Texture = g_pData->m_aImages[IMAGE_RIICON_WHITE].m_Id;
+		m_Sprite = SPRITE_RI_ICON_WHITE;
+		m_Color = Data.m_IsUserRClientVoiceEnabled ?
+			ColorRGBA(0.0f, 165.0f / 255.0f, 250.0f / 255.0f, Data.m_Color.a) :
+			ColorRGBA(1.0f, 0.0f, 0.0f, Data.m_Color.a);
 	}
 
 public:
 	CNamePlatePartRClientIndicator(CGameClient &This) :
 		CNamePlatePartSprite(This)
 	{
-		m_Texture = g_pData->m_aImages[IMAGE_RIICON].m_Id;
+		m_Texture = g_pData->m_aImages[IMAGE_RIICON_WHITE].m_Id;
 		m_Padding = vec2(0.0f, 0.0f);
 	}
 };

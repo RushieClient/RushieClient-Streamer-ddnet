@@ -771,12 +771,13 @@ void CScoreboard::RenderScoreboard(CUIRect Scoreboard, int Team, int CountStart,
 					if(Cursor.m_LineWidth > IndicatorAdvance)
 					{
 						const bool VoiceEnabled = GameClient()->m_RClientIndicator.IsPlayerRClientVoiceEnabled(pInfo->m_ClientId);
-						const int IconImage = VoiceEnabled ? IMAGE_RIICON : IMAGE_RIICON_RED;
-						const int IconSprite = VoiceEnabled ? SPRITE_RI_ICON : SPRITE_RI_ICON_RED;
-						Graphics()->TextureSet(g_pData->m_aImages[IconImage].m_Id);
+						const ColorRGBA IconColor = VoiceEnabled ?
+							ColorRGBA(0.0f, 165.0f / 255.0f, 250.0f / 255.0f, TextColor.a) :
+							ColorRGBA(1.0f, 0.0f, 0.0f, TextColor.a);
+						Graphics()->TextureSet(g_pData->m_aImages[IMAGE_RIICON_WHITE].m_Id);
 						Graphics()->QuadsBegin();
-						Graphics()->SetColor(ColorRGBA(1.0f, 1.0f, 1.0f, TextColor.a));
-						Graphics()->SelectSprite(IconSprite);
+						Graphics()->SetColor(IconColor);
+						Graphics()->SelectSprite(SPRITE_RI_ICON_WHITE);
 						Graphics()->DrawSprite(Cursor.m_X + IndicatorSize / 2.0f, Row.y + Row.h / 2.0f, IndicatorSize, IndicatorSize);
 						Graphics()->QuadsEnd();
 
