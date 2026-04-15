@@ -426,9 +426,9 @@ bool CConfigManager::Save()
 			Callback.m_pfnFunc(this, Callback.m_pUserData);
 	}
 
-	if(!m_aFailed[ConfigDomain::DDNET] && m_aConfigFile[ConfigDomain::DDNET])
+	if(!m_aFailed[ConfigDomain::UNKNOWN] && m_aConfigFile[ConfigDomain::UNKNOWN])
 		for(const char *pCommand : m_vpUnknownCommands)
-			WriteLine(pCommand);
+			WriteLine(pCommand, ConfigDomain::UNKNOWN);
 
 	for(ConfigDomain ConfigDomain = ConfigDomain::START; ConfigDomain < ConfigDomain::NUM; ++ConfigDomain)
 	{
