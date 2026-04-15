@@ -15,10 +15,10 @@
 
 #include <SDL.h>
 #include <SDL_messagebox.h>
-#include <SDL_syswm.h>
 #include <SDL_vulkan.h>
 
 #if defined(CONF_FAMILY_WINDOWS)
+#include <SDL_syswm.h>
 #include <base/windows.h>
 #include <windows.h>
 
