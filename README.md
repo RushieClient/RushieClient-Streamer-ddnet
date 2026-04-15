@@ -25,7 +25,7 @@ Getting started is easy:
 ## Build
 
 To clone this repository use \
-`git clone --recursive https://github.com/RushieClient/RushieClient-ddnet` \
+`git clone --recursive https://github.com/RushieClient/RushieClient-Streamer-ddnet` \
 And to build use guide from ddnet
 
 ---
