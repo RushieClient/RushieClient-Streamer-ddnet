@@ -2049,7 +2049,7 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 	}
 	case SETTINGS_SECTION_STREAMER_MOD:
 	{
-		MACRO_CONFIG_CHECKBOX(RiSensitiveUiHideFromCapture, "Hide screen when rcon things opened");
+		MACRO_CONFIG_CHECKBOX(RiSensitiveUiHideFromCapture, "Hide game/freeze(if captured game) when rcon things opened");
 		break;
 	}
 	default:
