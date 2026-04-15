@@ -106,6 +106,7 @@ public:
 	X(SHOW_FIND_CHECKPOINT, "Show/Find Checkpoint", "", FontIcon::RC_LOCATION_DOT, &g_Config.m_RiShowCheckpointInHud, 0, 1, 1) \
 	X(COMPACT_ANGLE_CHECKPOINT, "Compact Angle/Checkpoint", "", FontIcon::RC_COMPASS, &g_Config.m_RiHudOneLine, 0, 1, 1) \
 	X(PLAYER_JOIN_SOUND, "Player Join Sound", "", FontIcon::RC_BELL, &g_Config.m_RiJoinSoundEnable, 0, 1, 1) \
+	X(STREAMER_MOD, "Streamer Mod", "", FontIcon::GEAR, &g_Config.m_RiSensitiveUiHideFromCapture, 0, 1, 1) \
 
 	enum ERushieSettingsSection
 	{

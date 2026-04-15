@@ -2047,6 +2047,11 @@ void CMenus::RenderRushieSettingsSection(CUIRect &Column, ERushieSettingsSection
 		Column.HSplitTop(MarginSmall, nullptr, &Column);
 		break;
 	}
+	case SETTINGS_SECTION_STREAMER_MOD:
+	{
+		MACRO_CONFIG_CHECKBOX(RiSensitiveUiHideFromCapture, "Hide screen when rcon things opened");
+		break;
+	}
 	default:
 	{
 		Column.HSplitTop(LineSize, &Label, &Column);
