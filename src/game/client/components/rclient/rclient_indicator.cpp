@@ -18,7 +18,7 @@ static constexpr int POLL_RETRY_SECONDS = 1;
 static constexpr int HTTP_TIMEOUT_MS = 25000;
 static constexpr int HTTP_CONNECT_TIMEOUT_MS = 10000;
 static constexpr int LONGPOLL_TIMEOUT_MS = (POLL_TIMEOUT_SECONDS + 5) * 1000;
-static constexpr const char *RCLIENT_INDICATOR_USERS_URL = "http://127.0.0.1:8002/users.json";
+static constexpr const char *RCLIENT_INDICATOR_USERS_URL = "https://server.rushie-client.ru/users.json";
 
 static const char *GetRclientUsersUrl()
 {
@@ -273,7 +273,6 @@ CRClientIndicator::CRClientIndicator()
 
 void CRClientIndicator::OnInit()
 {
-	g_Config.m_HttpAllowInsecure = true;
 	ClearVoiceAuth();
 }
 
