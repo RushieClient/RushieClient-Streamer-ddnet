@@ -224,6 +224,7 @@ class CGraphicsBackend_SDL_GL : public CGraphicsBackend_Threaded
 	EBackendType m_BackendType = BACKEND_TYPE_AUTO;
 
 	char m_aErrorString[256];
+	bool m_WindowExcludedFromCapture = false;
 
 	static EBackendType DetectBackend();
 	static void ClampDriverVersion(EBackendType BackendType);
@@ -257,6 +258,7 @@ public:
 	bool ResizeWindow(int w, int h, int RefreshRate) override;
 	void GetViewportSize(int &w, int &h) override;
 	void NotifyWindow() override;
+	void SetWindowExcludeFromCapture(bool Exclude) override;
 	bool IsScreenKeyboardShown() override;
 
 	void WindowDestroyNtf(uint32_t WindowId) override;

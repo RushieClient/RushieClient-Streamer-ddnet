@@ -840,6 +840,13 @@ void CGameClient::UpdatePositions()
 	UpdateRenderedCharacters();
 }
 
+void CGameClient::UpdateSensitiveUiCaptureProtection()
+{
+	const bool ProtectSensitiveUi = g_Config.m_RiSensitiveUiHideFromCapture &&
+		(m_AdminPanelRi.IsActive() || m_GameConsole.IsRemoteActive());
+	Graphics()->SetWindowExcludeFromCapture(ProtectSensitiveUi);
+}
+
 void CGameClient::OnRender()
 {
 	const ColorRGBA ClearColor = color_cast<ColorRGBA>(ColorHSLA(g_Config.m_ClOverlayEntities ? g_Config.m_ClBackgroundEntitiesColor : g_Config.m_ClBackgroundColor));
@@ -884,6 +891,7 @@ void CGameClient::OnRender()
 	m_Camera.UpdateCamera();
 
 	UpdateSpectatorCursor();
+	UpdateSensitiveUiCaptureProtection();
 
 	// render all systems
 	for(auto &pComponent : m_vpAll)

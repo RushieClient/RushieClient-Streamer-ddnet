@@ -213,6 +213,7 @@ public:
 
 	void Toggle(int Type);
 	bool IsActive() const { return m_ConsoleState != CONSOLE_CLOSED; }
+	bool IsRemoteActive() const { return m_ConsoleState != CONSOLE_CLOSED && m_ConsoleType == CONSOLETYPE_REMOTE; }
 
 	void ForceUpdateRemoteCompletionSuggestions();
 };

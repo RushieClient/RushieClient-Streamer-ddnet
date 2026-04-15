@@ -15,7 +15,27 @@
 
 #include <SDL.h>
 #include <SDL_messagebox.h>
+#include <SDL_syswm.h>
 #include <SDL_vulkan.h>
+
+#if defined(CONF_FAMILY_WINDOWS)
+#include <base/windows.h>
+#include <windows.h>
+
+#ifndef WDA_NONE
+#define WDA_NONE 0x00000000
+#endif
+
+#ifndef WDA_MONITOR
+#define WDA_MONITOR 0x00000001
+#endif
+
+#ifndef WDA_EXCLUDEFROMCAPTURE
+#define WDA_EXCLUDEFROMCAPTURE 0x00000011
+#endif
+
+extern "C" WINUSERAPI BOOL WINAPI SetWindowDisplayAffinity(HWND hWnd, DWORD dwAffinity);
+#endif
 
 #if defined(CONF_VIDEORECORDER)
 #include <engine/shared/video.h>
@@ -47,6 +67,27 @@
 #include <cstdlib>
 
 class IStorage;
+
+#if defined(CONF_FAMILY_WINDOWS)
+static void UpdateWindowCaptureAffinity(SDL_Window *pWindow, bool Exclude)
+{
+	if(!pWindow)
+		return;
+
+	SDL_SysWMinfo WmInfo;
+	SDL_VERSION(&WmInfo.version);
+	if(!SDL_GetWindowWMInfo(pWindow, &WmInfo) || WmInfo.subsystem != SDL_SYSWM_WINDOWS)
+		return;
+
+	HWND WindowHandle = WmInfo.info.win.window;
+	if(!WindowHandle)
+		return;
+
+	DWORD Affinity = Exclude ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
+	if(!SetWindowDisplayAffinity(WindowHandle, Affinity) && Exclude)
+		SetWindowDisplayAffinity(WindowHandle, WDA_MONITOR);
+}
+#endif
 
 // ------------ CGraphicsBackend_Threaded
 
@@ -1781,6 +1822,18 @@ void CGraphicsBackend_SDL_GL::NotifyWindow()
 #endif
 }
 
+void CGraphicsBackend_SDL_GL::SetWindowExcludeFromCapture(bool Exclude)
+{
+	if(m_WindowExcludedFromCapture == Exclude)
+		return;
+	m_WindowExcludedFromCapture = Exclude;
+#if defined(CONF_FAMILY_WINDOWS)
+	UpdateWindowCaptureAffinity(m_pWindow, Exclude);
+#else
+	(void)Exclude;
+#endif
+}
+
 bool CGraphicsBackend_SDL_GL::IsScreenKeyboardShown()
 {
 	return SDL_IsScreenKeyboardShown(m_pWindow);
@@ -1793,6 +1846,9 @@ void CGraphicsBackend_SDL_GL::WindowDestroyNtf(uint32_t WindowId)
 void CGraphicsBackend_SDL_GL::WindowCreateNtf(uint32_t WindowId)
 {
 	m_pWindow = SDL_GetWindowFromID(WindowId);
+#if defined(CONF_FAMILY_WINDOWS)
+	UpdateWindowCaptureAffinity(m_pWindow, m_WindowExcludedFromCapture);
+#endif
 }
 
 TGLBackendReadPresentedImageData &CGraphicsBackend_SDL_GL::GetReadPresentedImageDataFuncUnsafe()

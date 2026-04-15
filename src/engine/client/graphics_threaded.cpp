@@ -2772,6 +2772,11 @@ void CGraphics_Threaded::NotifyWindow()
 	m_pBackend->NotifyWindow();
 }
 
+void CGraphics_Threaded::SetWindowExcludeFromCapture(bool Exclude)
+{
+	m_pBackend->SetWindowExcludeFromCapture(Exclude);
+}
+
 void CGraphics_Threaded::ReadPixel(ivec2 Position, ColorRGBA *pColor)
 {
 	dbg_assert(Position.x >= 0 && Position.x < ScreenWidth(), "ReadPixel position x out of range");

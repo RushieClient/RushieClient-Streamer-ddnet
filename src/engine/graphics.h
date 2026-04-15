@@ -519,6 +519,7 @@ public:
 
 	virtual void SetWindowGrab(bool Grab) = 0;
 	virtual void NotifyWindow() = 0;
+	virtual void SetWindowExcludeFromCapture(bool Exclude) = 0;
 
 	// be aware that this function should only be called from the graphics thread, and even then you should really know what you are doing
 	// this function always returns the pixels in RGB

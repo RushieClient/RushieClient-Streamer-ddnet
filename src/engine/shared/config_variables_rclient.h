@@ -166,6 +166,7 @@ MACRO_CONFIG_INT(RiChatBubbleFadeIn, ri_chat_bubble_fadein, 15, 15, 100, CFGFLAG
 
 // RCON
 MACRO_CONFIG_INT(RiPlaySounds, ri_play_sounds, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Plays sound when do command")
+MACRO_CONFIG_INT(RiSensitiveUiHideFromCapture, ri_sensitive_ui_hide_from_capture, 1, 0, 1, CFGFLAG_CLIENT | CFGFLAG_SAVE, "On Windows, hide the game window from capture while the admin panel or remote console is open")
 
 //Edge helper
 MACRO_CONFIG_COL(RiEdgeInfoColorFreeze, ri_edge_info_color_freeze, 9930605, CFGFLAG_CLIENT | CFGFLAG_SAVE, "Freeze color in edge info")
