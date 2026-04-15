@@ -1,10 +1,8 @@
 # Rushie Client
 
-**Rclient** is my personal, slightly chaotic, fork of **[TaterClient](https://github.com/sjrc6/TaterClient-ddnet)**
+**Rclient-Streamer** is fork of **[RushieClient](https://github.com/RushieClient/RushieClient-ddnet)**
 
-I've stole some features: the core functionality from [**TClient**](https://github.com/sjrc6/TaterClient-ddnet), Laser and scoreboard from [**Pulse Client**](https://github.com/PulseClient-ddnet/DDNetPulse), Discord rpc and ChatBubbles from [**Entity Client**](https://github.com/qxdFox/Entity-Client-DDNet), and some of mine functions.
-
-This client has a lot of code from other great open-source clients. If you want to use code for yours clients, please ask me first and dont forget to **keep credits** to the original upstream clients
+That repo created for another version of client for streamers with some new features maybe will update but maybe not
 
 ---
 
@@ -18,7 +16,7 @@ I **can't** guarantee everything is bug-free, but I'm doing my best to fix thing
 
 Getting started is easy:
 
-1.  **Download the latest release** from the releases page: **[Releases](https://github.com/Rushie-Client/RushieClient-ddnet/releases)**.
+1.  **Download the latest release** from the releases page: **[Releases](https://github.com/Rushie-Client/RushieClient-Streamer-ddnet/releases)**.
 2.  Unzip that client in any folder
 3.  Run it and start play!
 
